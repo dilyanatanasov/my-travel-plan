@@ -55,7 +55,13 @@ function RouteBuilder({ onSubmit, isLoading }: RouteBuilderProps) {
 
   const validAirports = airports.filter((a): a is Airport => a !== null);
   const isValid = validAirports.length >= 2;
-  const selectedIds = validAirports.map((a) => a.id);
+
+  // Only exclude the previous airport to prevent consecutive duplicates (VAR → VAR)
+  // but allow returning to the same airport later (VAR → SOF → VAR)
+  const getExcludeIds = (index: number): number[] => {
+    const prevAirport = index > 0 ? airports[index - 1] : null;
+    return prevAirport ? [prevAirport.id] : [];
+  };
 
   // Build route preview
   const routePreview = validAirports.map((a) => a.iataCode).join(' → ');
@@ -76,7 +82,7 @@ function RouteBuilder({ onSubmit, isLoading }: RouteBuilderProps) {
                 value={airport}
                 onChange={(a) => handleAirportChange(index, a)}
                 placeholder={index === 0 ? 'Start from...' : `Then to...`}
-                excludeIds={selectedIds.filter((id) => id !== airport?.id)}
+                excludeIds={getExcludeIds(index)}
               />
             </div>
             {airports.length > 2 && (
