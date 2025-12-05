@@ -1,4 +1,4 @@
-import { IsOptional, IsString, IsDateString } from 'class-validator';
+import { IsOptional, IsString, IsDateString, IsIn } from 'class-validator';
 
 export class UpdateVisitDto {
   @IsOptional()
@@ -8,4 +8,8 @@ export class UpdateVisitDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @IsOptional()
+  @IsIn(['trip', 'transit', 'home'])
+  visitType?: 'trip' | 'transit' | 'home';
 }

@@ -16,7 +16,7 @@ function FlightCard({ journey, onDelete }: FlightCardProps) {
     .join(' → ');
 
   const totalDistance = journey.legs.reduce(
-    (sum, leg) => sum + Number(leg.distanceKm),
+    (sum, leg) => sum + (Number(leg.distanceKm) || 0),
     0
   );
 
@@ -98,7 +98,7 @@ function FlightCard({ journey, onDelete }: FlightCardProps) {
               </svg>
               <span className="font-mono">{leg.arrivalAirport.iataCode}</span>
               <span className="text-gray-400">
-                ({Math.round(Number(leg.distanceKm))} km)
+                ({Math.round(Number(leg.distanceKm) || 0)} km)
               </span>
               {index < journey.legs.length - 1 && (
                 <span className="text-gray-300 mx-1">|</span>

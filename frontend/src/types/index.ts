@@ -6,25 +6,36 @@ export interface Country {
   createdAt: string;
 }
 
+export type VisitType = 'trip' | 'transit' | 'home';
+export type VisitSource = 'manual' | 'flight';
+
 export interface Visit {
   id: number;
   countryId: number;
   country: Country;
   visitedAt: string | null;
   notes: string | null;
+  visitType: VisitType;
+  source: VisitSource;
+  flightJourneyId: number | null;
   createdAt: string;
   updatedAt: string;
 }
 
 export interface CreateVisitDto {
-  countryId: number;
+  countryId?: number;
+  countryIso?: string;
   visitedAt?: string;
   notes?: string;
+  visitType?: VisitType;
+  source?: VisitSource;
+  flightJourneyId?: number;
 }
 
 export interface UpdateVisitDto {
   visitedAt?: string;
   notes?: string;
+  visitType?: VisitType;
 }
 
 // Airport types

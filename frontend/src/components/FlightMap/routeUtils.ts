@@ -72,7 +72,7 @@ export function aggregateRoutes(flights: FlightJourney[]): AggregatedRoute[] {
 
       if (existing) {
         existing.count += 1;
-        existing.totalDistance += leg.distanceKm;
+        existing.totalDistance += Number(leg.distanceKm) || 0;
         if (!existing.flights.includes(journey)) {
           existing.flights.push(journey);
         }
@@ -82,7 +82,7 @@ export function aggregateRoutes(flights: FlightJourney[]): AggregatedRoute[] {
           departure: leg.departureAirport,
           arrival: leg.arrivalAirport,
           count: 1,
-          totalDistance: leg.distanceKm,
+          totalDistance: Number(leg.distanceKm) || 0,
           flights: [journey],
         });
       }

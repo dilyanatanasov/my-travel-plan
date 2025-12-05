@@ -8,6 +8,10 @@ import {
   JoinColumn,
 } from 'typeorm';
 import { Country } from '../../countries/entities/country.entity';
+import { FlightJourney } from '../../flights/entities/flight-journey.entity';
+
+export type VisitType = 'trip' | 'transit' | 'home';
+export type VisitSource = 'manual' | 'flight';
 
 @Entity('visits')
 export class Visit {
@@ -26,6 +30,29 @@ export class Visit {
 
   @Column({ type: 'text', nullable: true })
   notes: string;
+
+  @Column({
+    name: 'visit_type',
+    type: 'varchar',
+    length: 20,
+    default: 'trip',
+  })
+  visitType: VisitType;
+
+  @Column({
+    name: 'source',
+    type: 'varchar',
+    length: 20,
+    default: 'manual',
+  })
+  source: VisitSource;
+
+  @Column({ name: 'flight_journey_id', nullable: true })
+  flightJourneyId: number | null;
+
+  @ManyToOne(() => FlightJourney, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'flight_journey_id' })
+  flightJourney: FlightJourney | null;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

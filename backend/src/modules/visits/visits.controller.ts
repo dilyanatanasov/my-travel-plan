@@ -22,6 +22,11 @@ export class VisitsController {
     return this.visitsService.findAll();
   }
 
+  @Get('home')
+  async getHomeCountry(): Promise<Visit | null> {
+    return this.visitsService.getHomeCountry();
+  }
+
   @Get(':id')
   async findOne(@Param('id', ParseIntPipe) id: number): Promise<Visit> {
     return this.visitsService.findOne(id);
@@ -30,6 +35,13 @@ export class VisitsController {
   @Post()
   async create(@Body() createVisitDto: CreateVisitDto): Promise<Visit> {
     return this.visitsService.create(createVisitDto);
+  }
+
+  @Post('home/:countryId')
+  async setHomeCountry(
+    @Param('countryId', ParseIntPipe) countryId: number,
+  ): Promise<Visit> {
+    return this.visitsService.setHomeCountry(countryId);
   }
 
   @Patch(':id')
