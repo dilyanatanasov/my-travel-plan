@@ -1,6 +1,7 @@
 import FlightForm from '../components/FlightForm';
 import FlightList from '../components/FlightList';
 import FlightStats from '../components/FlightStats';
+import FlightMap from '../components/FlightMap';
 
 function FlightsPage() {
   return (
@@ -13,6 +14,11 @@ function FlightsPage() {
           <p className="text-gray-500">
             Track all your flights and see amazing statistics
           </p>
+        </div>
+
+        {/* Flight Map - Full width on top */}
+        <div className="mb-8">
+          <FlightMap />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
