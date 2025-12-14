@@ -20,6 +20,8 @@ services:
       context: ./backend
       dockerfile: Dockerfile.dev
     container_name: travel_tracker_backend_dev
+    env_file:
+      - .env
     environment:
       NODE_ENV: development
       DB_HOST: db

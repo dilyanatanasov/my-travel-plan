@@ -1,0 +1,410 @@
+{
+  "metadata": {
+    "source": "EU Air Safety List",
+    "sourceUrl": "https://transport.ec.europa.eu/transport-themes/eu-air-safety-list_en",
+    "lastUpdated": "2024-12-01",
+    "description": "Airlines banned or restricted from operating in the European Union due to safety concerns"
+  },
+  "bannedAirlines": [
+    {
+      "name": "Avior Airlines",
+      "iataCode": "9V",
+      "icaoCode": "ROI",
+      "country": "Venezuela",
+      "banType": "full",
+      "reason": "Safety concerns with oversight by Venezuelan civil aviation authority"
+    },
+    {
+      "name": "Blue Wing Airlines",
+      "iataCode": null,
+      "icaoCode": "BWI",
+      "country": "Suriname",
+      "banType": "full",
+      "reason": "Safety concerns with operator oversight"
+    },
+    {
+      "name": "Iran Air",
+      "iataCode": "IR",
+      "icaoCode": "IRA",
+      "country": "Iran",
+      "banType": "partial",
+      "reason": "Restricted to specific aircraft types"
+    },
+    {
+      "name": "Iraqi Airways",
+      "iataCode": "IA",
+      "icaoCode": "IAW",
+      "country": "Iraq",
+      "banType": "full",
+      "reason": "Safety concerns with Iraqi civil aviation oversight"
+    },
+    {
+      "name": "Air Koryo",
+      "iataCode": "JS",
+      "icaoCode": "KOR",
+      "country": "North Korea",
+      "banType": "full",
+      "reason": "Safety concerns and sanctions"
+    },
+    {
+      "name": "Ariana Afghan Airlines",
+      "iataCode": "FG",
+      "icaoCode": "AFG",
+      "country": "Afghanistan",
+      "banType": "full",
+      "reason": "Safety concerns with Afghan civil aviation oversight"
+    },
+    {
+      "name": "Kam Air",
+      "iataCode": "RQ",
+      "icaoCode": "KMF",
+      "country": "Afghanistan",
+      "banType": "full",
+      "reason": "Safety concerns with Afghan civil aviation oversight"
+    },
+    {
+      "name": "TAAG Angola Airlines",
+      "iataCode": "DT",
+      "icaoCode": "DTA",
+      "country": "Angola",
+      "banType": "partial",
+      "reason": "Restricted to specific aircraft types (Boeing 777)"
+    },
+    {
+      "name": "Air Zimbabwe",
+      "iataCode": "UM",
+      "icaoCode": "AZW",
+      "country": "Zimbabwe",
+      "banType": "full",
+      "reason": "Safety concerns with Zimbabwean civil aviation oversight"
+    },
+    {
+      "name": "Nepal Airlines",
+      "iataCode": "RA",
+      "icaoCode": "RNA",
+      "country": "Nepal",
+      "banType": "full",
+      "reason": "Safety concerns with Nepalese civil aviation oversight"
+    },
+    {
+      "name": "Buddha Air",
+      "iataCode": "U4",
+      "icaoCode": "BHA",
+      "country": "Nepal",
+      "banType": "full",
+      "reason": "Safety concerns with Nepalese civil aviation oversight"
+    },
+    {
+      "name": "Yeti Airlines",
+      "iataCode": "YT",
+      "icaoCode": "NYT",
+      "country": "Nepal",
+      "banType": "full",
+      "reason": "Safety concerns with Nepalese civil aviation oversight"
+    },
+    {
+      "name": "Shree Airlines",
+      "iataCode": null,
+      "icaoCode": "SHA",
+      "country": "Nepal",
+      "banType": "full",
+      "reason": "Safety concerns with Nepalese civil aviation oversight"
+    },
+    {
+      "name": "Sita Air",
+      "iataCode": null,
+      "icaoCode": "SIT",
+      "country": "Nepal",
+      "banType": "full",
+      "reason": "Safety concerns with Nepalese civil aviation oversight"
+    },
+    {
+      "name": "Tara Air",
+      "iataCode": null,
+      "icaoCode": "TRN",
+      "country": "Nepal",
+      "banType": "full",
+      "reason": "Safety concerns with Nepalese civil aviation oversight"
+    },
+    {
+      "name": "Air Bishkek",
+      "iataCode": null,
+      "icaoCode": "AAB",
+      "country": "Kyrgyzstan",
+      "banType": "full",
+      "reason": "Safety concerns with Kyrgyz civil aviation oversight"
+    },
+    {
+      "name": "Air Manas",
+      "iataCode": "ZM",
+      "icaoCode": "MBB",
+      "country": "Kyrgyzstan",
+      "banType": "full",
+      "reason": "Safety concerns with Kyrgyz civil aviation oversight"
+    },
+    {
+      "name": "Avia Traffic Company",
+      "iataCode": "YK",
+      "icaoCode": "AVJ",
+      "country": "Kyrgyzstan",
+      "banType": "full",
+      "reason": "Safety concerns with Kyrgyz civil aviation oversight"
+    },
+    {
+      "name": "Aerotrans Cargo",
+      "iataCode": null,
+      "icaoCode": "ATG",
+      "country": "Moldova",
+      "banType": "full",
+      "reason": "Safety concerns"
+    },
+    {
+      "name": "Air Madagascar",
+      "iataCode": "MD",
+      "icaoCode": "MDG",
+      "country": "Madagascar",
+      "banType": "partial",
+      "reason": "Restricted to specific aircraft types"
+    },
+    {
+      "name": "Ceiba Intercontinental",
+      "iataCode": "C2",
+      "icaoCode": "CEL",
+      "country": "Equatorial Guinea",
+      "banType": "full",
+      "reason": "Safety concerns with Equatorial Guinean civil aviation oversight"
+    },
+    {
+      "name": "Cronos Airlines",
+      "iataCode": null,
+      "icaoCode": "C8",
+      "country": "Equatorial Guinea",
+      "banType": "full",
+      "reason": "Safety concerns with Equatorial Guinean civil aviation oversight"
+    },
+    {
+      "name": "Sudan Airways",
+      "iataCode": "SD",
+      "icaoCode": "SUD",
+      "country": "Sudan",
+      "banType": "full",
+      "reason": "Safety concerns with Sudanese civil aviation oversight"
+    },
+    {
+      "name": "Badr Airlines",
+      "iataCode": "J4",
+      "icaoCode": "BDR",
+      "country": "Sudan",
+      "banType": "full",
+      "reason": "Safety concerns with Sudanese civil aviation oversight"
+    },
+    {
+      "name": "Tarco Air",
+      "iataCode": null,
+      "icaoCode": "TKA",
+      "country": "Sudan",
+      "banType": "full",
+      "reason": "Safety concerns with Sudanese civil aviation oversight"
+    },
+    {
+      "name": "Hevilift",
+      "iataCode": null,
+      "icaoCode": "HVL",
+      "country": "Democratic Republic of Congo",
+      "banType": "full",
+      "reason": "Safety concerns with DRC civil aviation oversight"
+    },
+    {
+      "name": "Congo Airways",
+      "iataCode": "8Z",
+      "icaoCode": "CWA",
+      "country": "Democratic Republic of Congo",
+      "banType": "full",
+      "reason": "Safety concerns with DRC civil aviation oversight"
+    },
+    {
+      "name": "Compagnie Africaine d'Aviation",
+      "iataCode": null,
+      "icaoCode": "EKA",
+      "country": "Democratic Republic of Congo",
+      "banType": "full",
+      "reason": "Safety concerns with DRC civil aviation oversight"
+    },
+    {
+      "name": "Fly SAX",
+      "iataCode": null,
+      "icaoCode": "SAX",
+      "country": "Kenya",
+      "banType": "full",
+      "reason": "Operational suspension"
+    },
+    {
+      "name": "Jubba Airways",
+      "iataCode": "3J",
+      "icaoCode": "JUB",
+      "country": "Somalia",
+      "banType": "full",
+      "reason": "Safety concerns"
+    },
+    {
+      "name": "African Express Airways",
+      "iataCode": "XU",
+      "icaoCode": "AXK",
+      "country": "Kenya",
+      "banType": "full",
+      "reason": "Safety concerns"
+    },
+    {
+      "name": "Sky Mali",
+      "iataCode": null,
+      "icaoCode": null,
+      "country": "Mali",
+      "banType": "full",
+      "reason": "Safety concerns"
+    },
+    {
+      "name": "Trans Air Congo",
+      "iataCode": "Q8",
+      "icaoCode": "TSG",
+      "country": "Republic of Congo",
+      "banType": "full",
+      "reason": "Safety concerns"
+    },
+    {
+      "name": "Equatorial Congo Airlines",
+      "iataCode": null,
+      "icaoCode": "ECR",
+      "country": "Republic of Congo",
+      "banType": "full",
+      "reason": "Safety concerns"
+    },
+    {
+      "name": "Air Services Comores",
+      "iataCode": null,
+      "icaoCode": "GRD",
+      "country": "Comoros",
+      "banType": "full",
+      "reason": "Safety concerns"
+    },
+    {
+      "name": "Inter Iles Air",
+      "iataCode": null,
+      "icaoCode": null,
+      "country": "Comoros",
+      "banType": "full",
+      "reason": "Safety concerns"
+    },
+    {
+      "name": "Mauritania Airlines International",
+      "iataCode": "L6",
+      "icaoCode": "MAI",
+      "country": "Mauritania",
+      "banType": "full",
+      "reason": "Safety concerns"
+    },
+    {
+      "name": "Eritrean Airlines",
+      "iataCode": "B8",
+      "icaoCode": "ERT",
+      "country": "Eritrea",
+      "banType": "full",
+      "reason": "Safety concerns with Eritrean civil aviation oversight"
+    },
+    {
+      "name": "Nasair Eritrea",
+      "iataCode": null,
+      "icaoCode": "NAS",
+      "country": "Eritrea",
+      "banType": "full",
+      "reason": "Safety concerns with Eritrean civil aviation oversight"
+    },
+    {
+      "name": "Libyan Airlines",
+      "iataCode": "LN",
+      "icaoCode": "LAA",
+      "country": "Libya",
+      "banType": "full",
+      "reason": "Safety concerns with Libyan civil aviation oversight"
+    },
+    {
+      "name": "Afriqiyah Airways",
+      "iataCode": "8U",
+      "icaoCode": "AAW",
+      "country": "Libya",
+      "banType": "full",
+      "reason": "Safety concerns with Libyan civil aviation oversight"
+    },
+    {
+      "name": "Buraq Air",
+      "iataCode": "UZ",
+      "icaoCode": "BRQ",
+      "country": "Libya",
+      "banType": "full",
+      "reason": "Safety concerns with Libyan civil aviation oversight"
+    },
+    {
+      "name": "Ghadames Air Transport",
+      "iataCode": null,
+      "icaoCode": "GHT",
+      "country": "Libya",
+      "banType": "full",
+      "reason": "Safety concerns with Libyan civil aviation oversight"
+    },
+    {
+      "name": "Air Libya",
+      "iataCode": "7I",
+      "icaoCode": "TLR",
+      "country": "Libya",
+      "banType": "full",
+      "reason": "Safety concerns with Libyan civil aviation oversight"
+    },
+    {
+      "name": "Sao Tome Airlines",
+      "iataCode": null,
+      "icaoCode": "STP",
+      "country": "Sao Tome and Principe",
+      "banType": "full",
+      "reason": "Safety concerns"
+    },
+    {
+      "name": "Gabon Airlines",
+      "iataCode": "GY",
+      "icaoCode": "GBK",
+      "country": "Gabon",
+      "banType": "full",
+      "reason": "Safety concerns"
+    },
+    {
+      "name": "Conviasa",
+      "iataCode": "V0",
+      "icaoCode": "VCV",
+      "country": "Venezuela",
+      "banType": "full",
+      "reason": "Safety concerns with Venezuelan civil aviation oversight"
+    },
+    {
+      "name": "Peruvian Airlines",
+      "iataCode": "P9",
+      "icaoCode": "PVN",
+      "country": "Peru",
+      "banType": "full",
+      "reason": "Ceased operations"
+    },
+    {
+      "name": "Tajik Air",
+      "iataCode": "7J",
+      "icaoCode": "TJK",
+      "country": "Tajikistan",
+      "banType": "full",
+      "reason": "Safety concerns"
+    },
+    {
+      "name": "Somon Air",
+      "iataCode": "SZ",
+      "icaoCode": "SMR",
+      "country": "Tajikistan",
+      "banType": "full",
+      "reason": "Safety concerns with Tajik civil aviation oversight"
+    }
+  ]
+}

@@ -159,3 +159,250 @@ export interface FlightStats {
   estimatedFlightHours: number;
   walkingYears: number;
 }
+
+// Flight Search Types
+export type CabinClass = 'economy' | 'premium_economy' | 'business' | 'first';
+export type SafetyWarning = 'banned' | 'caution' | 'safe';
+export type SortOption = 'price_asc' | 'price_desc' | 'duration_asc' | 'duration_desc' | 'departure_asc' | 'departure_desc' | 'stops_asc';
+
+export interface SearchFlightsDto {
+  origin: string;
+  destination: string;
+  departureDate: string;
+  returnDate?: string;
+  passengers: number;
+  cabinClass: CabinClass;
+  filters?: FilterOptionsDto;
+}
+
+export interface FilterOptionsDto {
+  maxStops?: number;
+  minLayoverMinutes?: number;
+  maxLayoverMinutes?: number;
+  minPrice?: number;
+  maxPrice?: number;
+  airlines?: string[];
+  excludeAirlines?: string[];
+  maxDurationMinutes?: number;
+  minDurationMinutes?: number;
+}
+
+export interface CarrierDto {
+  code: string;
+  name: string;
+  logoUrl?: string;
+  safetyWarning: SafetyWarning;
+}
+
+export interface LayoverDto {
+  airport: string;
+  airportName: string;
+  durationMinutes: number;
+}
+
+export interface FlightSegmentDto {
+  segmentId: string;
+  flightNumber: string;
+  departureAirport: string;
+  departureAirportName: string;
+  arrivalAirport: string;
+  arrivalAirportName: string;
+  departureTime: string;
+  arrivalTime: string;
+  durationMinutes: number;
+  marketingCarrier: CarrierDto;
+  operatingCarrier: CarrierDto;
+  cabinClass?: string;
+}
+
+export interface FlightLegDto {
+  legId: string;
+  departureAirport: string;
+  departureAirportName: string;
+  arrivalAirport: string;
+  arrivalAirportName: string;
+  departureTime: string;
+  arrivalTime: string;
+  durationMinutes: number;
+  stopCount: number;
+  segments: FlightSegmentDto[];
+  layovers: LayoverDto[];
+  carriers: CarrierDto[];
+}
+
+export interface PricingOptionDto {
+  price: number;
+  currency: string;
+  agentName: string;
+  agentLogoUrl?: string;
+  deepLink: string;
+  cabinClass?: string;
+  fareFamily?: string;
+}
+
+export interface FlightResultDto {
+  itineraryId: string;
+  outboundLeg: FlightLegDto;
+  returnLeg?: FlightLegDto;
+  totalDurationMinutes: number;
+  totalStops: number;
+  pricingOptions: PricingOptionDto[];
+  lowestPrice: number;
+  currency: string;
+  safetyWarnings: {
+    hasBannedCarrier: boolean;
+    hasCautionCarrier: boolean;
+    carriers: { code: string; name: string; warning: SafetyWarning }[];
+  };
+  eco?: {
+    isEcoContender: boolean;
+    co2Emission?: number;
+  };
+}
+
+export interface FilterStatsDto {
+  minPrice: number;
+  maxPrice: number;
+  minDuration: number;
+  maxDuration: number;
+  airlines: { code: string; name: string; count: number }[];
+  stopCounts: { stops: number; count: number }[];
+}
+
+export interface FlightSearchResultDto {
+  searchId: string;
+  origin: string;
+  destination: string;
+  departureDate: string;
+  returnDate?: string;
+  passengers: number;
+  cabinClass: string;
+  results: FlightResultDto[];
+  totalResults: number;
+  filterStats: FilterStatsDto;
+}
+
+// Flight Exploration Types (Flexible Search)
+export type DateType = 'specific' | 'month' | 'range' | 'weekends';
+
+export interface FlexibleSearchDto {
+  origin: string;
+  destination: string;
+  dateType: DateType;
+  // For specific dates
+  departureDate?: string;
+  returnDate?: string;
+  // For month search
+  month?: string; // "2025-03"
+  // For range/weekends
+  dateRangeStart?: string;
+  dateRangeEnd?: string;
+  // Duration (for flexible searches)
+  minNights: number;
+  maxNights: number;
+  // Common
+  passengers: number;
+  cabinClass: CabinClass;
+  // Optional preferences
+  preferredHubs?: string[];
+  excludeHubs?: string[];
+  maxTravelTimeHours?: number;
+  allowAsymmetricRouting?: boolean;
+}
+
+export interface ExplorationFlightOptionDto {
+  id: string;
+  departureDate: string;
+  returnDate: string;
+  nightsAtDestination: number;
+  dateLabel: string;
+  outbound: FlightLegDto;
+  return?: FlightLegDto;
+  totalPrice: number;
+  currency: string;
+  pricePerPerson: number;
+  bookingUrl: string;
+  score: number;
+  scoreBreakdown: {
+    price: number;
+    duration: number;
+    convenience: number;
+  };
+  isRecommended: boolean;
+  isCheapest: boolean;
+  isFastest: boolean;
+  hasLongLayover: boolean;
+  hasBannedCarrier: boolean;
+  carriers: CarrierDto[];
+  safetyWarnings: {
+    hasBannedCarrier: boolean;
+    hasCautionCarrier: boolean;
+    carriers: { code: string; name: string; warning: SafetyWarning }[];
+  };
+}
+
+export interface DateGroupDto {
+  dateRange: string;
+  startDate: string;
+  endDate: string;
+  optionCount: number;
+  lowestPrice: number;
+  averagePrice: number;
+  bestDurationMinutes: number;
+  options: ExplorationFlightOptionDto[];
+}
+
+export interface RouteGroupDto {
+  routeDescription: string;
+  connectionAirports: string[];
+  optionCount: number;
+  lowestPrice: number;
+  averageDurationMinutes: number;
+  options: ExplorationFlightOptionDto[];
+}
+
+export interface InsightDto {
+  type: 'recommendation' | 'tip' | 'warning' | 'price_trend';
+  icon: string;
+  title: string;
+  message: string;
+  relatedOptionIds?: string[];
+}
+
+export interface PriceTrendDto {
+  date: string;
+  lowestPrice: number;
+  optionCount: number;
+}
+
+export interface FlightExplorationResultDto {
+  searchId: string;
+  origin: string;
+  destination: string;
+  dateType: DateType;
+  dateRange: {
+    from: string;
+    to: string;
+  };
+  duration: {
+    minNights: number;
+    maxNights: number;
+  };
+  passengers: number;
+  highlights: {
+    recommended: ExplorationFlightOptionDto | null;
+    cheapest: ExplorationFlightOptionDto | null;
+    fastest: ExplorationFlightOptionDto | null;
+  };
+  byDate: DateGroupDto[];
+  byRoute: RouteGroupDto[];
+  allOptions: ExplorationFlightOptionDto[];
+  insights: InsightDto[];
+  priceTrend: PriceTrendDto[];
+  meta: {
+    totalOptionsFound: number;
+    searchesPerformed: number;
+    searchDurationMs: number;
+    sampledDates: string[];
+  };
+}
