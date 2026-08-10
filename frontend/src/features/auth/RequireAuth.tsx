@@ -15,7 +15,7 @@ function RequireAuth() {
   if (isLoading) {
     return (
       <div
-        className="min-h-screen bg-canvas flex items-center justify-center"
+        className="scroll-page bg-canvas flex items-center justify-center"
         role="status"
         aria-live="polite"
       >

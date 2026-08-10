@@ -30,7 +30,7 @@ function CountryList({
 }: CountryListProps) {
   if (isLoading) {
     return (
-      <div className="bg-white rounded-lg shadow-md p-6">
+      <div>
         <h2 className="text-lg font-semibold text-gray-900 mb-4">
           Visited Countries
         </h2>
@@ -52,15 +52,16 @@ function CountryList({
   });
 
   return (
-    <div className="bg-white rounded-lg shadow-md">
-      <div className="px-6 py-4 border-b border-gray-200">
-        <h2 className="text-lg font-semibold text-gray-900">
-          Countries
-          <span className="ml-2 text-sm font-normal text-gray-500">
-            ({visits.length})
-          </span>
-        </h2>
-      </div>
+    // No card chrome and no inner scroller: this renders inside the section
+    // panel, which supplies both. Nesting them produced a card in a card and
+    // a scrollbar inside a scrollbar.
+    <div>
+      <h3 className="text-sm font-medium text-ink mb-2">
+        Your countries
+        <span className="ml-2 font-normal text-ink-subtle">
+          ({visits.length})
+        </span>
+      </h3>
 
       {visits.length === 0 ? (
         <div className="p-6 text-center text-gray-500">
@@ -70,7 +71,7 @@ function CountryList({
           </p>
         </div>
       ) : (
-        <ul className="divide-y divide-gray-200 max-h-[400px] overflow-y-auto">
+        <ul className="divide-y divide-line border-y border-line">
           {sortedVisits.map((visit) => {
             // Default to 'trip' if visitType is undefined (for existing records)
             const visitType: VisitType = visit.visitType || 'trip';
@@ -80,7 +81,7 @@ function CountryList({
             return (
               <li
                 key={visit.id}
-                className="px-6 py-4 flex items-center justify-between hover:bg-gray-50"
+                className="py-3 flex items-center justify-between gap-3 hover:bg-surface-sunken"
               >
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="min-w-0">
@@ -98,7 +99,8 @@ function CountryList({
                               e.target.value as VisitType
                             )
                           }
-                          className={`text-xs px-2 py-0.5 rounded font-medium ${colors.bg} ${colors.text} border-0 cursor-pointer`}
+                          aria-label={`Visit type for ${visit.country.name}`}
+                          className={`min-h-11 text-xs pl-2 pr-6 rounded-lg font-medium ${colors.bg} ${colors.text} border-0 cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-500`}
                         >
                           <option value="trip">Visited</option>
                           <option value="transit">Transit</option>
@@ -129,11 +131,28 @@ function CountryList({
                     </div>
                   </div>
                 </div>
+                {/* 44px icon button rather than 20px of text — this is the
+                    destructive control and it sits in a dense list. */}
                 <button
                   onClick={() => onRemove(visit)}
-                  className="text-red-600 hover:text-red-800 text-sm font-medium transition-colors flex-shrink-0 ml-4"
+                  aria-label={`Remove ${visit.country.name}`}
+                  title={`Remove ${visit.country.name}`}
+                  className="w-11 h-11 flex-shrink-0 flex items-center justify-center rounded-lg text-ink-subtle hover:text-danger hover:bg-danger-soft transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500"
                 >
-                  Remove
+                  <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    aria-hidden="true"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                    />
+                  </svg>
                 </button>
               </li>
             );

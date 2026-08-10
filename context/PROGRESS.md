@@ -22,10 +22,11 @@ Source review: UX/product review of the running app (desktop 1440px + mobile 390
 ## Items
 
 - [x] **1. Users + auth + scope all data by userId** — DONE, verified (see implement doc)
-- [x] **2. Mobile pass** — DONE, verified (0 sub-44px targets, no h-scroll, PWA installable)
+- [x] **2. Mobile pass** (superseded in part by 5.5) — DONE, verified (0 sub-44px targets, no h-scroll, PWA installable)
 - [x] **3. Design tokens + palette** — DONE, verified (greyscale-safe map, AA contrast)
 - [x] **4. Share (export PNG + OG tags)** — DONE, verified (payload leak-checked; revocation works)
 - [x] **5. Flight list grouping by year + undo toasts** — DONE, verified (undo restores full record; 7771px → 3121px)
+- [x] **5.5. Map-first app shell** — DONE, verified (no page scroll; wheel-hijack fixed at root)
 - [ ] **6. Flight import (CSV)** ← NEXT
 - [ ] 7. Decide fate of flight search (decision point with user)
 - [ ] 8. Accessibility pass

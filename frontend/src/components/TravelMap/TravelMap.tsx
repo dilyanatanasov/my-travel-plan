@@ -16,12 +16,17 @@ import FlightRoutes from '../FlightMap/FlightRoutes';
 import AirportMarkers from '../FlightMap/AirportMarkers';
 import RouteTooltip from '../FlightMap/RouteTooltip';
 import MapControlPanel, { type TravelMapSettings } from './MapControlPanel';
+import MapZoomControls from './MapZoomControls';
+import MapLegend from './MapLegend';
 import { useMapViewport } from './useMapViewport';
 import { MAP } from '../../theme/mapColors';
 import { buildCountryDisplayMap } from './countryColors';
 import CountriesLayer from './CountriesLayer';
 import type { AggregatedRoute } from '../FlightMap/routeUtils';
 
+
+const MIN_ZOOM = 1;
+const MAX_ZOOM = 8;
 
 const DEFAULT_SETTINGS: TravelMapSettings = {
   showCountries: true,
@@ -46,10 +51,31 @@ function TravelMap() {
   const [hoveredRoute, setHoveredRoute] = useState<AggregatedRoute | null>(null);
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
 
-  // On touch devices the map starts inert so a thumb-drag scrolls the page
-  // instead of panning the map. Tapping the scrim arms it.
-  const { scale, width, height, isCoarsePointer } = useMapViewport();
-  const [isTouchActivated, setIsTouchActivated] = useState(false);
+  // The map fills whatever the shell leaves it, so the viewBox follows the
+  // measured container rather than a breakpoint preset.
+  const { ref: containerRef, viewport } = useMapViewport<HTMLDivElement>();
+  const { width, height, scale } = viewport;
+
+  // Zoom is controlled so the +/- buttons and d3's own gestures stay in sync.
+  const [zoom, setZoom] = useState(1);
+  // Start slightly west of centre so the landmass sits right of the controls
+  // pinned to the top-left. Longitude only: the map always overflows
+  // horizontally (see useMapViewport), so panning sideways never exposes an
+  // edge, whereas a vertical offset would open a gap on a portrait canvas.
+  const [center, setCenter] = useState<[number, number]>([-12, 0]);
+
+  const handleMoveEnd = useCallback(
+    (position: { coordinates: [number, number]; zoom: number }) => {
+      setZoom(position.zoom);
+      setCenter(position.coordinates);
+    },
+    []
+  );
+
+  const handleResetView = useCallback(() => {
+    setZoom(1);
+    setCenter([0, 0]);
+  }, []);
 
   // Build country display map from visits
   const countryDisplayMap = useMemo(() => buildCountryDisplayMap(visits), [visits]);
@@ -166,40 +192,27 @@ function TravelMap() {
 
   return (
     <div
-      className="bg-white rounded-lg shadow-md overflow-hidden relative"
+      ref={containerRef}
+      className="relative w-full h-full overflow-hidden bg-map-ocean"
       onMouseMove={handleMouseMove}
     >
-      {/* Layers, filters and legend, collapsed into one panel */}
-      <MapControlPanel
-        settings={settings}
-        onSettingsChange={setSettings}
-        countries={countries}
-        homeCountryId={homeVisit?.countryId || null}
-        onSetHomeCountry={handleSetHomeCountry}
-        filters={filters}
-        onFiltersChange={setFilters}
-        airports={filterOptions.airports}
-        years={filterOptions.years}
-        stats={stats}
-      />
-
-      {/* Map */}
-      <div className="relative">
-        {/* Aspect ratios here must stay in step with MOBILE/DESKTOP in
-            useMapViewport, or preserveAspectRatio letterboxes the map. */}
-        <ComposableMap
-          width={width}
-          height={height}
-          projectionConfig={{
-            rotate: [-10, 0, 0],
-            scale,
-          }}
-          // h-auto is required: the svg carries a height attribute from the
-          // width/height props, and CSS aspect-ratio is ignored unless the
-          // used height is auto.
-          className="w-full h-auto aspect-[4/3] md:aspect-[2/1]"
+      {/* Map fills the canvas; chrome floats over it. */}
+      <ComposableMap
+        width={width}
+        height={height}
+        projectionConfig={{
+          rotate: [-10, 0, 0],
+          scale,
+        }}
+        className="w-full h-full"
+      >
+        <ZoomableGroup
+          zoom={zoom}
+          center={center}
+          minZoom={MIN_ZOOM}
+          maxZoom={MAX_ZOOM}
+          onMoveEnd={handleMoveEnd}
         >
-        <ZoomableGroup>
           {/*
             Explicit ocean. Without it the sea shows the white card through,
             so page, sea and unvisited land were three near-identical greys
@@ -239,27 +252,40 @@ function TravelMap() {
             />
           )}
         </ZoomableGroup>
-        </ComposableMap>
+      </ComposableMap>
 
-        {/*
-          Touch scroll-trap guard. d3-zoom inside ZoomableGroup swallows touch
-          drags, so a full-width map mid-page becomes impossible to scroll past.
-          The scrim intercepts the first touch and hands control over only once
-          the user has asked for it.
-        */}
-        {isCoarsePointer && !isTouchActivated && (
-          <button
-            type="button"
-            onClick={() => setIsTouchActivated(true)}
-            className="absolute inset-0 z-10 flex items-end justify-center pb-6 bg-transparent"
-            aria-label="Activate map interaction"
-          >
-            <span className="px-3 py-2 rounded-full bg-gray-900/75 text-white text-xs font-medium shadow-lg">
-              Tap to interact with map
-            </span>
-          </button>
-        )}
+      {/*
+        No tap-to-activate scrim any more. It existed because a full-width map
+        inside a scrolling document swallowed touch drags and wheel events. The
+        shell no longer scrolls, so there is nothing for the map to steal and
+        pan/zoom can just work.
+      */}
+
+      {/* Layers, filters and legend, floating over the canvas */}
+      <div className="absolute top-3 left-3 right-3 md:right-auto md:w-[30rem] z-20 max-h-[calc(100%-6rem)] overflow-y-auto overscroll-contain scrollbar-none">
+        <MapControlPanel
+          settings={settings}
+          onSettingsChange={setSettings}
+          countries={countries}
+          homeCountryId={homeVisit?.countryId || null}
+          onSetHomeCountry={handleSetHomeCountry}
+          filters={filters}
+          onFiltersChange={setFilters}
+          airports={filterOptions.airports}
+          years={filterOptions.years}
+        />
       </div>
+
+      <MapLegend showFlights={settings.showFlights} stats={stats} />
+
+      <MapZoomControls
+        zoom={zoom}
+        minZoom={MIN_ZOOM}
+        maxZoom={MAX_ZOOM}
+        onZoomIn={() => setZoom((z) => Math.min(z * 1.5, MAX_ZOOM))}
+        onZoomOut={() => setZoom((z) => Math.max(z / 1.5, MIN_ZOOM))}
+        onReset={handleResetView}
+      />
 
       {/* Route Tooltip */}
       <RouteTooltip route={hoveredRoute} position={tooltipPosition} />

@@ -109,7 +109,7 @@ function FlightSearchPage() {
   const isLoading = searchMode === 'specific' ? isSearchLoading : isExploreLoading;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="scroll-page bg-gray-50">
       {/* Header */}
       <div className="bg-blue-600 text-white py-8">
         <div className="max-w-7xl mx-auto px-4">

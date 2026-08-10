@@ -4,7 +4,6 @@ import type { FlightFilters } from '../FlightMap/filterTypes';
 import { DEFAULT_FILTERS, DISTANCE_RANGES, ROUTE_TYPES } from '../FlightMap/filterTypes';
 import { ALL_CONTINENTS, type Continent } from '../FlightMap/continentUtils';
 import { countActiveFilters } from '../FlightMap/filterUtils';
-import { COUNTRY_COLORS } from './countryColors';
 
 export interface TravelMapSettings {
   showCountries: boolean;
@@ -22,13 +21,6 @@ interface MapControlPanelProps {
   onFiltersChange: (filters: FlightFilters) => void;
   airports: Airport[];
   years: number[];
-  stats: {
-    visitedCount: number;
-    transitCount: number;
-    totalCountries: number;
-    flightRoutes: number;
-    airports: number;
-  };
 }
 
 // 44px minimum touch target; text-base stops iOS zooming the page on focus.
@@ -49,7 +41,9 @@ function ToggleRow({
   children: ReactNode;
 }) {
   return (
-    <label className="flex items-center gap-2 min-h-11 px-2 -mx-2 rounded-lg cursor-pointer hover:bg-gray-50">
+    // inline-flex so the labels size to their text and wrap naturally instead
+    // of being squeezed into equal grid columns.
+    <label className="inline-flex items-center gap-2 min-h-11 px-2 rounded-lg cursor-pointer hover:bg-gray-50">
       <input
         type="checkbox"
         checked={checked}
@@ -61,25 +55,12 @@ function ToggleRow({
   );
 }
 
-function LegendSwatch({ color, label }: { color: string; label: string }) {
-  return (
-    <div className="flex items-center gap-1.5">
-      <span
-        className="w-3 h-3 rounded flex-shrink-0"
-        style={{ backgroundColor: color }}
-        aria-hidden="true"
-      />
-      <span className="text-gray-600">{label}</span>
-    </div>
-  );
-}
-
 /**
  * Layer toggles, home country and flight filters behind a single disclosure.
  *
  * Previously these were two always-open bars totalling roughly 570px on a
- * phone, pushing the map itself below the fold. The legend stays outside the
- * disclosure because it explains the map rather than controlling it.
+ * phone, pushing the map itself below the fold. The legend lives in the map corner instead (MapLegend) — it is reference
+ * material, not a control.
  */
 function MapControlPanel({
   settings,
@@ -91,13 +72,11 @@ function MapControlPanel({
   onFiltersChange,
   airports,
   years,
-  stats,
 }: MapControlPanelProps) {
-  // Open by default on desktop, collapsed on phones. Evaluated once: flipping
-  // this on every resize would fight the user's own toggling.
-  const [isOpen, setIsOpen] = useState(() =>
-    typeof window === 'undefined' ? true : window.innerWidth >= 768
-  );
+  // Collapsed by default at every size. This is a card floating over the map
+  // now, not a bar above it, so opening by default would cover the thing the
+  // user came to look at.
+  const [isOpen, setIsOpen] = useState(false);
 
   const activeCount = countActiveFilters(filters);
 
@@ -115,7 +94,7 @@ function MapControlPanel({
   };
 
   return (
-    <div className="border-b border-gray-200">
+    <div className="rounded-xl border border-line bg-surface/95 backdrop-blur shadow-lg overflow-hidden">
       {/* Disclosure header */}
       <button
         type="button"
@@ -169,13 +148,12 @@ function MapControlPanel({
           id="map-control-panel"
           className="px-4 pb-3 space-y-3 border-t border-gray-100"
         >
-          {/* Layers + home country */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-6 gap-y-2 pt-2">
+          {/* Layers + home country, each on its own full-width row: sharing a
+              two-column grid left the toggle labels about 76px wide. */}
+          <div className="space-y-2 pt-2">
             <div>
               <span className={fieldLabelClass}>Show on map</span>
-              {/* Stacked on phones where width is scarce, inline everywhere
-                  else so the open panel stays short on desktop. */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 sm:gap-2">
+              <div className="flex flex-wrap gap-x-2 -mx-2">
                 <ToggleRow
                   checked={settings.showCountries}
                   onChange={() => handleToggle('showCountries')}
@@ -223,8 +201,13 @@ function MapControlPanel({
           {/* Flight filters, only meaningful when routes are shown */}
           {settings.showFlights && (
             <div className="space-y-2 pt-2 border-t border-gray-100">
-              {/* Five columns at lg so every filter fits on one row */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+              {/*
+                Two grids, not one five-across row. The panel now floats over
+                the map at a fixed ~30rem, so five columns left every select
+                about 75px wide — unreadable. Airport names need the room;
+                the three short selects are fine three-up.
+              */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label htmlFor="filter-origin" className={fieldLabelClass}>
                     Origin
@@ -272,7 +255,10 @@ function MapControlPanel({
                     ))}
                   </select>
                 </div>
+              </div>
 
+              {/* The three short selects, three-up */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label htmlFor="filter-year" className={fieldLabelClass}>
                     Year
@@ -383,29 +369,6 @@ function MapControlPanel({
         </div>
       )}
 
-      {/* Legend stays visible: it explains the map, it is not a control */}
-      <div className="px-4 py-2.5 border-t border-gray-100 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs">
-        <LegendSwatch color={COUNTRY_COLORS.home} label="Home" />
-        <LegendSwatch color={COUNTRY_COLORS.trip} label="Visited" />
-        <LegendSwatch color={COUNTRY_COLORS.transit} label="Transit" />
-        {/* These two must mirror what the map actually draws, so they use the
-            map tokens rather than the app accent. */}
-        <div className="flex items-center gap-1.5">
-          <span className="w-6 h-0.5 bg-map-route rounded" aria-hidden="true" />
-          <span className="text-gray-600">Route</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span
-            className="w-2.5 h-2.5 rounded-full bg-white border-2 border-slate-900"
-            aria-hidden="true"
-          />
-          <span className="text-gray-600">Airport</span>
-        </div>
-        <span className="text-gray-400 w-full sm:w-auto sm:ml-auto">
-          {stats.visitedCount} visited · {stats.transitCount} transit ·{' '}
-          {stats.flightRoutes} routes · {stats.airports} airports
-        </span>
-      </div>
     </div>
   );
 }

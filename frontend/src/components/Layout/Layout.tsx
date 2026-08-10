@@ -4,15 +4,20 @@ import ShareMenu from '../../features/share/ShareMenu';
 
 function Layout() {
   return (
-    <div className="min-h-screen bg-gray-100">
-      <header className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 py-3 sm:px-6 lg:px-8 flex items-center justify-between gap-3">
+    // Fixed shell: the app fills the viewport and never scrolls as a page.
+    // Only panels scroll. This is what stops content hiding below the fold and
+    // what stops the map competing with the document for the scroll wheel.
+    // 100dvh, not 100vh — iOS Safari's URL bar makes 100vh taller than what is
+    // actually visible, which would push the bottom tab bar off screen.
+    <div className="h-[100dvh] min-h-0 flex flex-col overflow-hidden bg-canvas">
+      <header className="flex-shrink-0 bg-surface border-b border-line z-40">
+        <div className="px-3 sm:px-4 lg:px-6 h-14 sm:h-16 flex items-center justify-between gap-3">
           <Link to="/" className="flex flex-col justify-center min-h-11 min-w-0">
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
+            <h1 className="text-lg sm:text-xl font-bold text-ink leading-tight">
               Travel Tracker
             </h1>
-            {/* Subtitle is redundant with the page heading on small screens */}
-            <p className="hidden sm:block text-sm text-gray-500">
+            {/* Subtitle only where there is room for it */}
+            <p className="hidden lg:block text-xs text-ink-subtle leading-tight">
               Track your journeys around the world
             </p>
           </Link>
@@ -46,7 +51,9 @@ function Layout() {
           </div>
         </div>
       </header>
-      <main>
+      {/* min-h-0 is required for the flex child to be allowed to shrink, which
+          is what lets inner panels scroll instead of the page. */}
+      <main className="flex-1 min-h-0">
         <Outlet />
       </main>
     </div>

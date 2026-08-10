@@ -5,24 +5,40 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
+/*
+  The app is a fixed shell, not a scrolling document — the map is a canvas and
+  only panels scroll. Anything that assumes page scroll (min-height: 100vh,
+  overflow-x guards) belongs to the old layout and would reintroduce the
+  problems it caused.
+*/
+html,
+body,
+#root {
+  height: 100%;
   margin: 0;
-  min-height: 100vh;
-  /* Token, not a literal — the hardcoded value here was the reason dark mode
-     could not be added without unpicking it first. */
-  background-color: rgb(var(--color-canvas));
-  /* Nothing in this app is wide enough to justify a sideways page scroll.
-     Guards against a single overflowing child dragging the whole document. */
-  overflow-x: hidden;
+  overflow: hidden;
+  /* Stops pull-to-refresh and rubber-banding on a shell that cannot scroll. */
+  overscroll-behavior: none;
 }
 
-#root {
-  min-height: 100vh;
+body {
+  background-color: rgb(var(--color-canvas));
+  /* Standard on iOS: prevents the page shifting when an input is focused. */
+  -webkit-text-size-adjust: 100%;
+}
+
+/*
+  Routes that genuinely are documents (login, register, the public shared map,
+  flight search) opt back into scrolling by setting this on their own root.
+*/
+.scroll-page {
+  height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 @layer utilities {
-  /* Horizontal scroll strips (e.g. the tab bar) scroll by swipe; the bar
-     itself is visual noise on a 390px screen. */
+  /* Horizontal scroll strips scroll by swipe; the bar itself is visual noise. */
   .scrollbar-none {
     -ms-overflow-style: none;
     scrollbar-width: none;

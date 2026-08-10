@@ -49,7 +49,11 @@
       "Bash(sed -i '/^- `tailwind.config.js` `theme.extend` is empty; no design tokens/d' context/PROGRESS.md)",
       "Bash(rm -f m3-*.png)",
       "Bash(mv -f og-image.png frontend/public/)",
-      "Bash(rm -f m4-*.png)"
+      "Bash(rm -f m4-*.png)",
+      "Bash(sed -i 's|className=\"min-h-screen bg-canvas flex flex-col justify-center px-4 py-12\"|className=\"scroll-page bg-canvas flex flex-col justify-center px-4 py-12\"|' features/auth/AuthLayout.tsx)",
+      "Bash(sed -i 's|className=\"min-h-screen bg-canvas flex items-center justify-center\"|className=\"scroll-page bg-canvas flex items-center justify-center\"|' features/auth/RequireAuth.tsx)",
+      "Bash(sed -i 's|className=\"min-h-screen bg-canvas\"|className=\"scroll-page bg-canvas\"|; s|className=\"min-h-screen bg-canvas flex items-center justify-center px-4\"|className=\"scroll-page bg-canvas flex items-center justify-center px-4\"|' pages/SharedMapPage.tsx)",
+      "Bash(sed -i 's|className=\"min-h-screen bg-gray-50\"|className=\"scroll-page bg-gray-50\"|' pages/FlightSearchPage.tsx)"
     ],
     "deny": [],
     "ask": []

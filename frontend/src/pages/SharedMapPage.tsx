@@ -25,7 +25,10 @@ function SharedMapPage() {
   const { data, isLoading, isError } = useGetPublicMapQuery(token, {
     skip: !token,
   });
-  const { scale, width, height } = useMapViewport();
+  // The shared page is a document, not the shell, so the map keeps a fixed
+  // aspect box; the hook measures whatever that box resolves to.
+  const { ref: mapBoxRef, viewport } = useMapViewport<HTMLDivElement>();
+  const { width, height, scale } = viewport;
 
   const countryDisplayMap = useMemo(() => {
     const map = new Map<string, CountryDisplayInfo>();
@@ -82,7 +85,7 @@ function SharedMapPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-canvas flex items-center justify-center">
+      <div className="scroll-page bg-canvas flex items-center justify-center">
         <p className="text-ink-muted">Loading map…</p>
       </div>
     );
@@ -90,7 +93,7 @@ function SharedMapPage() {
 
   if (isError || !data) {
     return (
-      <div className="min-h-screen bg-canvas flex items-center justify-center px-4">
+      <div className="scroll-page bg-canvas flex items-center justify-center px-4">
         <div className="text-center max-w-sm">
           <h1 className="text-2xl font-bold text-ink mb-2">
             This map isn't available
@@ -112,7 +115,7 @@ function SharedMapPage() {
   const { stats } = data;
 
   return (
-    <div className="min-h-screen bg-canvas">
+    <div className="scroll-page bg-canvas">
       <header className="bg-surface border-b border-line">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between gap-3">
           <div className="min-w-0">
@@ -134,12 +137,16 @@ function SharedMapPage() {
 
       <main className="max-w-6xl mx-auto px-3 sm:px-4 py-4 sm:py-8 space-y-4 sm:space-y-6">
         <div className="bg-surface rounded-lg shadow-md overflow-hidden">
-          <ComposableMap
-            width={width}
-            height={height}
-            projectionConfig={{ rotate: [-10, 0, 0], scale }}
-            className="w-full h-auto aspect-[4/3] md:aspect-[2/1]"
+          <div
+            ref={mapBoxRef}
+            className="w-full aspect-[4/3] md:aspect-[2/1] bg-map-ocean"
           >
+            <ComposableMap
+              width={width}
+              height={height}
+              projectionConfig={{ rotate: [-10, 0, 0], scale }}
+              className="w-full h-full"
+            >
             <ZoomableGroup>
               <rect
                 x={-width * 2}
@@ -165,8 +172,9 @@ function SharedMapPage() {
                   highlightedAirports={[]}
                 />
               )}
-            </ZoomableGroup>
-          </ComposableMap>
+              </ZoomableGroup>
+            </ComposableMap>
+          </div>
 
           <div className="px-4 py-2.5 border-t border-line flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs">
             {COUNTRY_LEGEND.map((entry) => (

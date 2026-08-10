@@ -39,7 +39,7 @@ function CountrySelector({ countries, visitedCountryIds, onToggleCountry }: Coun
           }}
           onFocus={() => setIsOpen(true)}
           placeholder="Search country to add/remove..."
-          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+          className="flex-1 min-h-11 px-3 text-base sm:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
         />
       </div>
 
