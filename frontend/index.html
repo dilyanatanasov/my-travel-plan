@@ -10,6 +10,32 @@
       content="Track the countries you have visited and the flights you have taken, on one interactive world map."
     />
 
+    <!--
+      Link previews. These are static: crawlers for Slack, iMessage and
+      Twitter do not run JavaScript, so a shared /s/:token link cannot get
+      per-user tags from React. Making those dynamic needs the API to serve
+      this HTML with injected tags — logged as a follow-up.
+      VITE_PUBLIC_URL is only used to build the absolute og:url at build time;
+      relative image paths resolve against the page's own origin.
+    -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Travel Tracker" />
+    <meta property="og:title" content="Travel Tracker" />
+    <meta
+      property="og:description"
+      content="Map every country you've been to, and every flight you've taken."
+    />
+    <meta property="og:image" content="/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Travel Tracker" />
+    <meta
+      name="twitter:description"
+      content="Map every country you've been to, and every flight you've taken."
+    />
+    <meta name="twitter:image" content="/og-image.png" />
+
     <!-- Icons -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />

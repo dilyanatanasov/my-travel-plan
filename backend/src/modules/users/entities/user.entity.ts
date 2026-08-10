@@ -24,6 +24,20 @@ export class User {
   @Column({ name: 'display_name', type: 'varchar', length: 100, nullable: true })
   displayName: string | null;
 
+  /**
+   * Random token for the public map. Null means sharing is off; clearing it
+   * revokes every existing link. Deliberately not derived from the email or id
+   * so a map cannot be found by guessing.
+   */
+  @Column({
+    name: 'share_token',
+    type: 'varchar',
+    length: 24,
+    nullable: true,
+    unique: true,
+  })
+  shareToken: string | null;
+
   @OneToMany(() => Visit, (visit) => visit.user)
   visits: Visit[];
 

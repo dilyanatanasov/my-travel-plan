@@ -36,6 +36,14 @@ const baseQueryWithAuthHandling: BaseQueryFn<
 export const apiSlice = createApi({
   reducerPath: 'api',
   baseQuery: baseQueryWithAuthHandling,
-  tagTypes: ['Country', 'Visit', 'Airport', 'Flight', 'FlightStats', 'Auth'],
+  tagTypes: [
+    'Country',
+    'Visit',
+    'Airport',
+    'Flight',
+    'FlightStats',
+    'Auth',
+    'Share',
+  ],
   endpoints: () => ({}),
 });

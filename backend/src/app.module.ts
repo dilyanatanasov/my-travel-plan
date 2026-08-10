@@ -9,6 +9,7 @@ import { AirportsModule } from './modules/airports/airports.module';
 import { FlightsModule } from './modules/flights/flights.module';
 import { UsersModule } from './modules/users/users.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { ShareModule } from './modules/share/share.module';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 
 @Module({
@@ -42,6 +43,7 @@ import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
     FlightsModule,
     UsersModule,
     AuthModule,
+    ShareModule,
   ],
   providers: [
     // Deny by default: every endpoint requires auth unless marked @Public().

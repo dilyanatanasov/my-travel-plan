@@ -47,7 +47,9 @@
       "Bash(sed -i 's|^- \\\\[ \\\\] \\\\*\\\\*3\\\\. Design tokens + palette\\\\*\\\\* ← IN PROGRESS$|- [x] **3. Design tokens + palette** — DONE, verified \\(greyscale-safe map, AA contrast\\)|' context/PROGRESS.md)",
       "Bash(sed -i 's|^- \\\\[ \\\\] 4\\\\. Share \\(export PNG + OG tags\\)|- [ ] **4. Share \\(export PNG + OG tags\\)** ← NEXT|' context/PROGRESS.md)",
       "Bash(sed -i '/^- `tailwind.config.js` `theme.extend` is empty; no design tokens/d' context/PROGRESS.md)",
-      "Bash(rm -f m3-*.png)"
+      "Bash(rm -f m3-*.png)",
+      "Bash(mv -f og-image.png frontend/public/)",
+      "Bash(rm -f m4-*.png)"
     ],
     "deny": [],
     "ask": []

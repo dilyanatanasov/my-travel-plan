@@ -26,6 +26,13 @@ export const MAP = {
   countryBorder: '#ffffff',
 } as const;
 
+/** Legend entries, shared by the app's map panel and the public shared map. */
+export const COUNTRY_LEGEND = [
+  { label: 'Home', color: MAP.home },
+  { label: 'Visited', color: MAP.visited },
+  { label: 'Transit', color: MAP.transit },
+] as const;
+
 /** Slightly darker variants for hover feedback. */
 export const MAP_HOVER = {
   home: '#5b21b6',

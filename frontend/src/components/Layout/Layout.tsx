@@ -1,5 +1,6 @@
 import { Outlet, Link } from 'react-router-dom';
 import AccountMenu from '../../features/auth/AccountMenu';
+import ShareMenu from '../../features/share/ShareMenu';
 
 function Layout() {
   return (
@@ -40,6 +41,7 @@ function Layout() {
               </span>
               <span className="sr-only sm:hidden">Search Flights</span>
             </Link>
+            <ShareMenu />
             <AccountMenu />
           </div>
         </div>

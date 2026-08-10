@@ -24,9 +24,9 @@ Source review: UX/product review of the running app (desktop 1440px + mobile 390
 - [x] **1. Users + auth + scope all data by userId** — DONE, verified (see implement doc)
 - [x] **2. Mobile pass** — DONE, verified (0 sub-44px targets, no h-scroll, PWA installable)
 - [x] **3. Design tokens + palette** — DONE, verified (greyscale-safe map, AA contrast)
-- [ ] **4. Share (export PNG + OG tags)** ← NEXT
+- [x] **4. Share (export PNG + OG tags)** — DONE, verified (payload leak-checked; revocation works)
 - [x] **5. Flight list grouping by year + undo toasts** — DONE, verified (undo restores full record; 7771px → 3121px)
-- [ ] 6. Flight import (CSV)
+- [ ] **6. Flight import (CSV)** ← NEXT
 - [ ] 7. Decide fate of flight search (decision point with user)
 - [ ] 8. Accessibility pass
 
@@ -81,3 +81,9 @@ Docs: `context/research/2026-08-10_user-accounts-auth_research.md`,
   there are no orphans, a migration can set NOT NULL.
 - **Dev gotchas:** `docker compose restart` does not re-read `.env` (use
   `up -d --force-recreate`); Tailwind config changes need a frontend container restart.
+- **Per-link OG tags need server-rendered HTML** — crawlers do not run JS, so every shared
+  link previews with the same generic card. Highest-value sharing follow-up.
+- **Micro-states do not render** — `countries-110m` omits Malta/Vatican/Monaco etc, so 25
+  visits draw 23 shapes. `countries-50m` would fix it.
+- **Backend watcher** now uses polling (`nest-cli.json`), same fix as Vite. Both dev servers
+  pick up host edits; no more mystery stale routes.

@@ -4,6 +4,7 @@ import TravelMapPage from './pages/TravelMapPage';
 import FlightSearchPage from './pages/FlightSearchPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
+import SharedMapPage from './pages/SharedMapPage';
 import RequireAuth from './features/auth/RequireAuth';
 
 function App() {
@@ -12,6 +13,8 @@ function App() {
       {/* Public */}
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
+      {/* Public shared map — deliberately outside RequireAuth */}
+      <Route path="/s/:token" element={<SharedMapPage />} />
 
       {/* Everything below renders user data and requires a session */}
       <Route element={<RequireAuth />}>
