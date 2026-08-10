@@ -8,10 +8,11 @@ import {
 import {
   useGetVisitsQuery,
   useGetCountriesQuery,
-  useAddVisitMutation,
-  useRemoveVisitMutation,
   useSetHomeCountryMutation,
 } from '../../features/visits/visitsApi';
+import { useVisitActions } from '../../features/visits/useVisitActions';
+import { useToast } from '../Toast/ToastProvider';
+import type { Visit } from '../../types';
 import { useGetFlightsQuery } from '../../features/flights/flightsApi';
 import { aggregateRoutes, extractUniqueAirports, countAirportVisits } from '../FlightMap/routeUtils';
 import { applyFilters, extractFilterOptions } from '../FlightMap/filterUtils';
@@ -94,9 +95,9 @@ function TravelMap() {
   const { data: flights = [] } = useGetFlightsQuery();
 
   // Mutations
-  const [addVisit] = useAddVisitMutation();
-  const [removeVisit] = useRemoveVisitMutation();
   const [setHomeCountry] = useSetHomeCountryMutation();
+  const { addVisitForCountry, removeVisitWithUndo } = useVisitActions();
+  const { showToast } = useToast();
 
   // State
   const [settings, setSettings] = useState<TravelMapSettings>(DEFAULT_SETTINGS);
@@ -127,10 +128,12 @@ function TravelMap() {
     return map;
   }, [countries]);
 
+  // Keyed by country so a removal can be undone with the full record — the
+  // date, notes and visit type would otherwise be lost on a single mis-tap.
   const visitByCountryId = useMemo(() => {
-    const map = new Map<number, number>();
+    const map = new Map<number, Visit>();
     visits.forEach((v) => {
-      map.set(v.countryId, v.id);
+      map.set(v.countryId, v);
     });
     return map;
   }, [visits]);
@@ -175,28 +178,25 @@ function TravelMap() {
       const countryId = countryByIsoCode.get(isoCode);
       if (!countryId) return;
 
-      const existingVisitId = visitByCountryId.get(countryId);
-      if (existingVisitId) {
-        await removeVisit(existingVisitId);
+      const existingVisit = visitByCountryId.get(countryId);
+      if (existingVisit) {
+        await removeVisitWithUndo(existingVisit);
       } else {
-        await addVisit({
-          countryId,
-          visitedAt: new Date().toISOString().split('T')[0],
-        });
+        await addVisitForCountry(countryId);
       }
     },
-    [countryByIsoCode, visitByCountryId, addVisit, removeVisit]
+    [countryByIsoCode, visitByCountryId, addVisitForCountry, removeVisitWithUndo]
   );
 
   const handleSetHomeCountry = useCallback(
     async (countryId: number) => {
       try {
         await setHomeCountry(countryId).unwrap();
-      } catch (error) {
-        console.error('Failed to set home country:', error);
+      } catch {
+        showToast('Could not set your home country', { tone: 'error' });
       }
     },
-    [setHomeCountry]
+    [setHomeCountry, showToast]
   );
 
   const handleRouteHover = useCallback(

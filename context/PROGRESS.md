@@ -25,7 +25,7 @@ Source review: UX/product review of the running app (desktop 1440px + mobile 390
 - [x] **2. Mobile pass** — DONE, verified (0 sub-44px targets, no h-scroll, PWA installable)
 - [x] **3. Design tokens + palette** — DONE, verified (greyscale-safe map, AA contrast)
 - [ ] **4. Share (export PNG + OG tags)** ← NEXT
-- [ ] 5. Flight list grouping by year + undo toasts
+- [x] **5. Flight list grouping by year + undo toasts** — DONE, verified (undo restores full record; 7771px → 3121px)
 - [ ] 6. Flight import (CSV)
 - [ ] 7. Decide fate of flight search (decision point with user)
 - [ ] 8. Accessibility pass
@@ -66,5 +66,18 @@ Docs: `context/research/2026-08-10_user-accounts-auth_research.md`,
 ## Known issues logged during review (fix within the items above)
 
 - `main.ts:11` CORS `origin: true` with credentials → item 1.9.
-- `TravelMap.tsx:167` country click deletes visit with no confirm/undo → item 5.
-- Mutation errors swallowed (`TravelMapPage.tsx:52`, `TravelMap.tsx:185`) → item 5 (toasts).
+
+---
+
+## Follow-ups discovered while implementing
+
+- **Flights still have no undo.** `POST /flights` re-derives legs from `isRoundTrip`, so
+  replaying a deleted journey would duplicate legs or drop the flag. Needs a
+  `POST /flights/restore` endpoint that takes a journey verbatim. Until then flight deletion
+  keeps its confirm dialog. See `2026-08-10_undo-and-flight-list_implement.md`.
+- **Dark mode is groundwork only.** Tokens and `darkMode:'class'` exist; no theme ships.
+- **`features/flightSearch/` still uses raw `blue-*`** — deliberately skipped pending item 7.
+- **`user_id` is nullable** at the DB level to allow the item-1 backfill. Once confident
+  there are no orphans, a migration can set NOT NULL.
+- **Dev gotchas:** `docker compose restart` does not re-read `.env` (use
+  `up -d --force-recreate`); Tailwind config changes need a frontend container restart.

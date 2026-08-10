@@ -3,7 +3,8 @@ import type { Visit, VisitType } from '../../types';
 interface CountryListProps {
   visits: Visit[];
   isLoading: boolean;
-  onRemove: (visitId: number) => void;
+  /** Takes the whole visit so the caller can offer undo with its full record. */
+  onRemove: (visit: Visit) => void;
   onUpdateVisitType?: (visitId: number, visitType: VisitType) => void;
 }
 
@@ -129,7 +130,7 @@ function CountryList({
                   </div>
                 </div>
                 <button
-                  onClick={() => onRemove(visit.id)}
+                  onClick={() => onRemove(visit)}
                   className="text-red-600 hover:text-red-800 text-sm font-medium transition-colors flex-shrink-0 ml-4"
                 >
                   Remove

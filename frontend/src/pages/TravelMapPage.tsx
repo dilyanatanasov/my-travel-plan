@@ -8,11 +8,11 @@ import CountrySelector from '../components/CountrySelector';
 import {
   useGetCountriesQuery,
   useGetVisitsQuery,
-  useAddVisitMutation,
-  useRemoveVisitMutation,
   useUpdateVisitMutation,
 } from '../features/visits/visitsApi';
-import type { VisitType } from '../types';
+import { useVisitActions } from '../features/visits/useVisitActions';
+import { useToast } from '../components/Toast/ToastProvider';
+import type { VisitType, Visit } from '../types';
 
 type TabId = 'overview' | 'countries' | 'flights' | 'stats';
 
@@ -33,49 +33,52 @@ function TravelMapPage() {
 
   const { data: countries = [] } = useGetCountriesQuery();
   const { data: visits = [], isLoading: visitsLoading } = useGetVisitsQuery();
-  const [addVisit] = useAddVisitMutation();
-  const [removeVisit] = useRemoveVisitMutation();
   const [updateVisit] = useUpdateVisitMutation();
+  const { addVisitForCountry, removeVisitWithUndo } = useVisitActions();
+  const { showToast } = useToast();
 
   const visitedCountryIds = useMemo(() => {
     return new Set(visits.map((v) => v.countryId));
   }, [visits]);
 
+  // Full record, not just the id, so a removal can be undone with its date,
+  // notes and visit type intact.
   const visitByCountryId = useMemo(() => {
-    const map = new Map<number, number>();
+    const map = new Map<number, Visit>();
     visits.forEach((v) => {
-      map.set(v.countryId, v.id);
+      map.set(v.countryId, v);
     });
     return map;
   }, [visits]);
 
   const handleToggleCountry = useCallback(
     async (countryId: number) => {
-      const existingVisitId = visitByCountryId.get(countryId);
-      if (existingVisitId) {
-        await removeVisit(existingVisitId);
+      const existingVisit = visitByCountryId.get(countryId);
+      if (existingVisit) {
+        await removeVisitWithUndo(existingVisit);
       } else {
-        await addVisit({
-          countryId,
-          visitedAt: new Date().toISOString().split('T')[0],
-        });
+        await addVisitForCountry(countryId);
       }
     },
-    [visitByCountryId, addVisit, removeVisit]
+    [visitByCountryId, addVisitForCountry, removeVisitWithUndo]
   );
 
   const handleRemoveVisit = useCallback(
-    async (visitId: number) => {
-      await removeVisit(visitId);
+    async (visit: Visit) => {
+      await removeVisitWithUndo(visit);
     },
-    [removeVisit]
+    [removeVisitWithUndo]
   );
 
   const handleUpdateVisitType = useCallback(
     async (visitId: number, visitType: VisitType) => {
-      await updateVisit({ id: visitId, data: { visitType } });
+      try {
+        await updateVisit({ id: visitId, data: { visitType } }).unwrap();
+      } catch {
+        showToast('Could not update that country', { tone: 'error' });
+      }
     },
-    [updateVisit]
+    [updateVisit, showToast]
   );
 
   // Stats for overview - handle undefined visitType for existing records
