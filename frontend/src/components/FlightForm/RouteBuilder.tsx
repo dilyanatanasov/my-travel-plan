@@ -74,7 +74,7 @@ function RouteBuilder({ onSubmit, isLoading }: RouteBuilderProps) {
       <div className="space-y-3">
         {airports.map((airport, index) => (
           <div key={index} className="flex items-center gap-2">
-            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-sm font-medium">
+            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-brand-100 text-brand-600 flex items-center justify-center text-sm font-medium">
               {index + 1}
             </div>
             <div className="flex-1">
@@ -113,7 +113,7 @@ function RouteBuilder({ onSubmit, isLoading }: RouteBuilderProps) {
       <button
         type="button"
         onClick={addLeg}
-        className="flex items-center gap-2 text-blue-600 hover:text-blue-700 text-sm font-medium"
+        className="flex items-center gap-2 text-brand-600 hover:text-brand-700 text-sm font-medium"
       >
         <svg
           className="w-4 h-4"
@@ -152,7 +152,7 @@ function RouteBuilder({ onSubmit, isLoading }: RouteBuilderProps) {
             type="date"
             value={journeyDate}
             onChange={(e) => setJourneyDate(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
           />
         </div>
         <div className="flex items-end">
@@ -161,7 +161,7 @@ function RouteBuilder({ onSubmit, isLoading }: RouteBuilderProps) {
               type="checkbox"
               checked={isRoundTrip}
               onChange={(e) => setIsRoundTrip(e.target.checked)}
-              className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+              className="w-4 h-4 text-brand-600 rounded focus:ring-brand-500"
             />
             <span className="text-sm text-gray-700">Round trip</span>
           </label>
@@ -177,7 +177,7 @@ function RouteBuilder({ onSubmit, isLoading }: RouteBuilderProps) {
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           placeholder="e.g., Business trip, vacation..."
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
         />
       </div>
 
@@ -186,7 +186,7 @@ function RouteBuilder({ onSubmit, isLoading }: RouteBuilderProps) {
         disabled={!isValid || isLoading}
         className={`w-full py-2 px-4 rounded-lg text-white font-medium transition-colors ${
           isValid && !isLoading
-            ? 'bg-blue-600 hover:bg-blue-700'
+            ? 'bg-brand-600 hover:bg-brand-700'
             : 'bg-gray-400 cursor-not-allowed'
         }`}
       >

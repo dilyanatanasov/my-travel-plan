@@ -2,6 +2,7 @@ import { memo } from 'react';
 import { useMapContext, useZoomPanContext } from 'react-simple-maps';
 import type { AggregatedRoute } from './routeUtils';
 import { calculateArcPath, getStrokeWidth, getZoomAdjustedSize } from './routeUtils';
+import { MAP } from '../../theme/mapColors';
 
 interface FlightRoutesProps {
   routes: AggregatedRoute[];
@@ -47,7 +48,7 @@ function FlightRoutes({
             key={route.key}
             d={pathD}
             fill="none"
-            stroke={isHovered ? '#1d4ed8' : '#3b82f6'}
+            stroke={isHovered ? MAP.routeHighlight : MAP.route}
             strokeWidth={strokeWidth}
             strokeLinecap="round"
             strokeOpacity={isHovered ? 1 : 0.7}

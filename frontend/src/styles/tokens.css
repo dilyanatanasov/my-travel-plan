@@ -1,0 +1,78 @@
+/**
+ * Design tokens.
+ *
+ * Values are bare RGB triplets ("13 148 136") rather than hex so Tailwind can
+ * compose them with an alpha channel — `bg-brand-600/50` only works if the
+ * variable is consumed as `rgb(var(--x) / <alpha-value>)`.
+ *
+ * Map semantics are duplicated in src/theme/mapColors.ts because
+ * react-simple-maps takes colour strings in JS, not classes. That file is the
+ * source of truth for anything the map draws; these variables exist so the
+ * legend swatches and badges can match without a JS round-trip.
+ */
+:root {
+  /* Accent — teal. Deliberately not blue: blue means "flight route" on the map
+     and nothing else, which is what stops the old five-meanings-of-blue problem. */
+  --color-brand-50: 240 253 250;
+  --color-brand-100: 204 251 241;
+  --color-brand-200: 153 246 228;
+  --color-brand-300: 94 234 212;
+  --color-brand-400: 45 212 191;
+  --color-brand-500: 20 184 166;
+  /* 600 is the filled-button background. Teal-600 (#0d9488) only reaches
+     3.74:1 against white text, under the 4.5:1 AA threshold, so the ramp is
+     shifted a step darker from here down. Fixing it in the token keeps every
+     call site as bg-brand-600. */
+  --color-brand-600: 15 118 110;
+  --color-brand-700: 17 94 89;
+  --color-brand-800: 19 78 74;
+  --color-brand-900: 15 61 58;
+
+  /* Surfaces */
+  --color-canvas: 246 247 249;
+  --color-surface: 255 255 255;
+  --color-surface-sunken: 241 245 249;
+  --color-border: 229 231 235;
+  --color-border-strong: 203 213 225;
+
+  /* Text ramp */
+  --color-ink: 17 24 39;
+  --color-ink-muted: 75 85 99;
+  --color-ink-subtle: 148 163 184;
+
+  /* Map semantics. Ordered by lightness (home darkest -> ocean lightest) so the
+     map survives greyscale and every common colour vision deficiency. */
+  --color-map-home: 109 40 217;
+  --color-map-visited: 5 150 105;
+  --color-map-transit: 251 191 36;
+  --color-map-land: 203 213 225;
+  --color-map-ocean: 238 244 248;
+  --color-map-route: 29 78 216;
+  --color-map-airport-ring: 15 23 42;
+
+  /* Feedback */
+  --color-danger: 220 38 38;
+  --color-danger-soft: 254 242 242;
+}
+
+/**
+ * Dark theme groundwork.
+ *
+ * Not wired to a toggle yet: shipping a half-finished dark mode looks worse
+ * than none. Having the variables here means enabling it later is a contained
+ * change rather than a rewrite, because no component hardcodes a colour.
+ */
+.dark {
+  --color-canvas: 15 23 42;
+  --color-surface: 30 41 59;
+  --color-surface-sunken: 51 65 85;
+  --color-border: 51 65 85;
+  --color-border-strong: 71 85 105;
+
+  --color-ink: 248 250 252;
+  --color-ink-muted: 203 213 225;
+  --color-ink-subtle: 148 163 184;
+
+  --color-map-land: 71 85 105;
+  --color-map-ocean: 30 41 59;
+}

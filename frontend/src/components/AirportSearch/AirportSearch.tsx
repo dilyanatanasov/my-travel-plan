@@ -79,7 +79,7 @@ function AirportSearch({
           }}
           placeholder={placeholder}
           disabled={disabled}
-          className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+          className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent ${
             disabled ? 'bg-gray-100 cursor-not-allowed' : ''
           } ${value ? 'pr-8' : ''}`}
         />
@@ -124,7 +124,7 @@ function AirportSearch({
               >
                 <div className="flex items-center justify-between">
                   <div>
-                    <span className="font-mono font-semibold text-blue-600">
+                    <span className="font-mono font-semibold text-brand-600">
                       {airport.iataCode}
                     </span>
                     <span className="ml-2 text-gray-900">{airport.name}</span>

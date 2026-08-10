@@ -51,12 +51,12 @@ function AccountMenu() {
       <button
         type="button"
         onClick={() => setIsOpen((open) => !open)}
-        className="flex items-center gap-2 min-h-11 px-2 rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className="flex items-center gap-2 min-h-11 px-2 rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-brand-500"
         aria-haspopup="menu"
         aria-expanded={isOpen}
         aria-label={`Account menu for ${label}`}
       >
-        <span className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-semibold flex-shrink-0">
+        <span className="w-8 h-8 rounded-full bg-brand-600 text-white flex items-center justify-center text-sm font-semibold flex-shrink-0">
           {initial}
         </span>
         <span className="hidden sm:block text-sm text-gray-700 max-w-[10rem] truncate">

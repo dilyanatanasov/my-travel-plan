@@ -34,7 +34,7 @@ interface MapControlPanelProps {
 // 44px minimum touch target; text-base stops iOS zooming the page on focus.
 const selectClass =
   'min-h-11 w-full text-base sm:text-sm border border-gray-300 rounded-lg px-3 ' +
-  'bg-white focus:outline-none focus:ring-2 focus:ring-blue-500';
+  'bg-white focus:outline-none focus:ring-2 focus:ring-brand-500';
 
 const fieldLabelClass = 'block text-xs font-medium text-gray-500 mb-1';
 
@@ -54,7 +54,7 @@ function ToggleRow({
         type="checkbox"
         checked={checked}
         onChange={onChange}
-        className="w-4 h-4 flex-shrink-0 text-blue-600 rounded focus:ring-blue-500"
+        className="w-4 h-4 flex-shrink-0 text-brand-600 rounded focus:ring-brand-500"
       />
       <span className="text-sm text-gray-700 select-none">{children}</span>
     </label>
@@ -122,7 +122,7 @@ function MapControlPanel({
         onClick={() => setIsOpen((open) => !open)}
         aria-expanded={isOpen}
         aria-controls="map-control-panel"
-        className="w-full flex items-center justify-between gap-2 min-h-12 px-4 py-2 text-left hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500"
+        className="w-full flex items-center justify-between gap-2 min-h-12 px-4 py-2 text-left hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-brand-500"
       >
         <span className="flex items-center gap-2 text-sm font-medium text-gray-700">
           <svg
@@ -141,7 +141,7 @@ function MapControlPanel({
           </svg>
           Map layers &amp; filters
           {activeCount > 0 && (
-            <span className="inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full bg-blue-600 text-white text-xs font-semibold">
+            <span className="inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full bg-brand-600 text-white text-xs font-semibold">
               {activeCount}
             </span>
           )}
@@ -356,10 +356,10 @@ function MapControlPanel({
                         type="button"
                         onClick={() => handleContinentToggle(continent)}
                         aria-pressed={isActive}
-                        className={`min-h-11 px-3 text-sm rounded-lg border transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                        className={`min-h-11 px-3 text-sm rounded-lg border transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500 ${
                           isActive
-                            ? 'bg-blue-600 text-white border-blue-600'
-                            : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400'
+                            ? 'bg-brand-600 text-white border-brand-600'
+                            : 'bg-white text-gray-700 border-gray-300 hover:border-brand-400'
                         }`}
                       >
                         {continent}
@@ -373,7 +373,7 @@ function MapControlPanel({
                 <button
                   type="button"
                   onClick={() => onFiltersChange(DEFAULT_FILTERS)}
-                  className="min-h-11 text-sm text-blue-600 hover:text-blue-800 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg px-2 -mx-2"
+                  className="min-h-11 text-sm text-brand-600 hover:text-brand-800 font-medium focus:outline-none focus:ring-2 focus:ring-brand-500 rounded-lg px-2 -mx-2"
                 >
                   Clear all filters ({activeCount})
                 </button>
@@ -388,12 +388,17 @@ function MapControlPanel({
         <LegendSwatch color={COUNTRY_COLORS.home} label="Home" />
         <LegendSwatch color={COUNTRY_COLORS.trip} label="Visited" />
         <LegendSwatch color={COUNTRY_COLORS.transit} label="Transit" />
+        {/* These two must mirror what the map actually draws, so they use the
+            map tokens rather than the app accent. */}
         <div className="flex items-center gap-1.5">
-          <span className="w-6 h-0.5 bg-blue-500 rounded" aria-hidden="true" />
+          <span className="w-6 h-0.5 bg-map-route rounded" aria-hidden="true" />
           <span className="text-gray-600">Route</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <span className="w-2.5 h-2.5 rounded-full bg-red-500" aria-hidden="true" />
+          <span
+            className="w-2.5 h-2.5 rounded-full bg-white border-2 border-slate-900"
+            aria-hidden="true"
+          />
           <span className="text-gray-600">Airport</span>
         </div>
         <span className="text-gray-400 w-full sm:w-auto sm:ml-auto">

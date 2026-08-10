@@ -7,10 +7,12 @@ interface CountryListProps {
   onUpdateVisitType?: (visitId: number, visitType: VisitType) => void;
 }
 
+// Mirrors the map's visit-type colours so a "Transit" badge here is the same
+// colour as that country on the map.
 const VISIT_TYPE_COLORS: Record<VisitType, { bg: string; text: string }> = {
-  home: { bg: 'bg-purple-100', text: 'text-purple-700' },
-  trip: { bg: 'bg-green-100', text: 'text-green-700' },
-  transit: { bg: 'bg-orange-100', text: 'text-orange-700' },
+  home: { bg: 'bg-map-home/10', text: 'text-map-home' },
+  trip: { bg: 'bg-map-visited/10', text: 'text-map-visited' },
+  transit: { bg: 'bg-map-transit/20', text: 'text-amber-700' },
 };
 
 const VISIT_TYPE_LABELS: Record<VisitType, string> = {
@@ -109,9 +111,10 @@ function CountryList({
                         </span>
                       )}
 
-                      {/* Source Badge */}
+                      {/* Source badge. Blue, matching flight routes on the map:
+                          it means "we learned this from a flight". */}
                       {visit.source === 'flight' && (
-                        <span className="text-xs px-2 py-0.5 rounded bg-blue-100 text-blue-700">
+                        <span className="text-xs px-2 py-0.5 rounded bg-map-route/10 text-map-route">
                           Flight
                         </span>
                       )}

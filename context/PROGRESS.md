@@ -23,8 +23,8 @@ Source review: UX/product review of the running app (desktop 1440px + mobile 390
 
 - [x] **1. Users + auth + scope all data by userId** — DONE, verified (see implement doc)
 - [x] **2. Mobile pass** — DONE, verified (0 sub-44px targets, no h-scroll, PWA installable)
-- [ ] **3. Design tokens + palette** ← IN PROGRESS
-- [ ] 4. Share (export PNG + OG tags)
+- [x] **3. Design tokens + palette** — DONE, verified (greyscale-safe map, AA contrast)
+- [ ] **4. Share (export PNG + OG tags)** ← NEXT
 - [ ] 5. Flight list grouping by year + undo toasts
 - [ ] 6. Flight import (CSV)
 - [ ] 7. Decide fate of flight search (decision point with user)
@@ -68,4 +68,3 @@ Docs: `context/research/2026-08-10_user-accounts-auth_research.md`,
 - `main.ts:11` CORS `origin: true` with credentials → item 1.9.
 - `TravelMap.tsx:167` country click deletes visit with no confirm/undo → item 5.
 - Mutation errors swallowed (`TravelMapPage.tsx:52`, `TravelMap.tsx:185`) → item 5 (toasts).
-- `tailwind.config.js` `theme.extend` is empty; no design tokens → item 3.

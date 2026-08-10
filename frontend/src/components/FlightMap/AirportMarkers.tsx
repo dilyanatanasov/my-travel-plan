@@ -2,6 +2,7 @@ import { memo } from 'react';
 import { useMapContext, useZoomPanContext } from 'react-simple-maps';
 import type { Airport } from '../../types';
 import { getZoomAdjustedSize } from './routeUtils';
+import { MAP } from '../../theme/mapColors';
 
 interface AirportMarkersProps {
   airports: Airport[];
@@ -46,26 +47,31 @@ function AirportMarkers({
 
         return (
           <g key={airport.iataCode}>
-            {/* Outer glow for highlighted airports */}
+            {/* Outer ring for highlighted airports */}
             {isHighlighted && (
               <circle
                 cx={x}
                 cy={y}
                 r={radius + highlightOffset}
                 fill="none"
-                stroke="#fbbf24"
+                stroke={MAP.route}
                 strokeWidth={highlightStroke}
                 strokeOpacity={0.8}
               />
             )}
-            {/* Main marker */}
+            {/*
+              Main marker. White fill with a dark ring rather than a hue: these
+              sit on top of visited countries, and the old red-on-green was the
+              app's worst colour-vision failure. Lightness contrast works for
+              everyone.
+            */}
             <circle
               cx={x}
               cy={y}
               r={radius}
-              fill={isHighlighted ? '#fbbf24' : '#ef4444'}
-              stroke="#fff"
-              strokeWidth={strokeWidth}
+              fill={isHighlighted ? MAP.route : MAP.airportFill}
+              stroke={isHighlighted ? MAP.route : MAP.airportRing}
+              strokeWidth={strokeWidth * 1.5}
               style={{
                 transition: 'fill 0.15s',
               }}
@@ -78,7 +84,7 @@ function AirportMarkers({
                 textAnchor="middle"
                 fontSize={fontSize}
                 fontWeight="bold"
-                fill="#1f2937"
+                fill={MAP.airportRing}
                 style={{ pointerEvents: 'none' }}
               >
                 {airport.iataCode}

@@ -1,4 +1,5 @@
 import type { Visit, VisitType } from '../../types';
+import { MAP, MAP_HOVER, MAP_PRESSED } from '../../theme/mapColors';
 
 export interface CountryDisplayInfo {
   isoCode: string;
@@ -8,29 +9,35 @@ export interface CountryDisplayInfo {
   visit: Visit | null;
 }
 
-// Color scheme for different visit types
+/**
+ * Visit-type colours, from the shared map tokens.
+ *
+ * The values are chosen for a monotonic lightness ramp rather than for hue
+ * contrast alone — the previous green/orange pair was nearly identical in
+ * greyscale and unreadable with red-green colour vision deficiency.
+ */
 export const COUNTRY_COLORS = {
-  home: '#8b5cf6',        // Purple
-  trip: '#22c55e',        // Green
-  transit: '#f59e0b',     // Orange
-  flightOnly: '#3b82f6',  // Blue (not used currently since we auto-create visits)
-  none: '#d1d5db',        // Gray
+  home: MAP.home,
+  trip: MAP.visited,
+  transit: MAP.transit,
+  flightOnly: MAP.route,
+  none: MAP.land,
 } as const;
 
 export const COUNTRY_COLORS_HOVER = {
-  home: '#7c3aed',
-  trip: '#16a34a',
-  transit: '#d97706',
-  flightOnly: '#2563eb',
-  none: '#9ca3af',
+  home: MAP_HOVER.home,
+  trip: MAP_HOVER.visited,
+  transit: MAP_HOVER.transit,
+  flightOnly: MAP.routeHighlight,
+  none: MAP_HOVER.land,
 } as const;
 
 export const COUNTRY_COLORS_PRESSED = {
-  home: '#6d28d9',
-  trip: '#15803d',
-  transit: '#b45309',
-  flightOnly: '#1d4ed8',
-  none: '#6b7280',
+  home: MAP_PRESSED.home,
+  trip: MAP_PRESSED.visited,
+  transit: MAP_PRESSED.transit,
+  flightOnly: MAP.routeHighlight,
+  none: MAP_PRESSED.land,
 } as const;
 
 export function getCountryColor(

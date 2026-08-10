@@ -104,7 +104,7 @@ function TravelMapPage() {
   }, [visits, countries]);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-canvas">
       {/* No page header here: the app header already says "Travel Tracker /
           Track your journeys around the world". Two headings stacked cost
           ~150px of a phone screen to say the same thing twice. */}
@@ -128,9 +128,9 @@ function TravelMapPage() {
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
                   aria-current={activeTab === tab.id ? 'page' : undefined}
-                  className={`snap-start whitespace-nowrap min-h-12 px-4 sm:px-6 py-3 text-sm font-medium border-b-2 transition-colors focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500 ${
+                  className={`snap-start whitespace-nowrap min-h-12 px-4 sm:px-6 py-3 text-sm font-medium border-b-2 transition-colors focus:outline-none focus:ring-2 focus:ring-inset focus:ring-brand-500 ${
                     activeTab === tab.id
-                      ? 'border-blue-500 text-blue-600'
+                      ? 'border-brand-500 text-brand-600'
                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                   }`}
                 >
@@ -147,39 +147,46 @@ function TravelMapPage() {
                 <h2 className="text-lg font-semibold text-gray-900">
                   Travel Overview
                 </h2>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="bg-green-50 rounded-lg p-4">
-                    <div className="text-2xl font-bold text-green-600">
+                {/*
+                  These four cards describe map categories, so each carries the
+                  same colour its countries have on the map — the card teaches
+                  the legend. Hue is reserved for map semantics; the app's own
+                  accent (brand) is used only for the one card that is not a
+                  map category.
+                */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+                  <div className="bg-map-visited/10 rounded-lg p-4">
+                    <div className="text-2xl font-bold text-map-visited">
                       {overviewStats.tripCount}
                     </div>
-                    <div className="text-sm text-green-700">
-                      Countries Visited
+                    <div className="text-sm text-ink-muted">
+                      Countries visited
                     </div>
                   </div>
-                  <div className="bg-orange-50 rounded-lg p-4">
-                    <div className="text-2xl font-bold text-orange-600">
+                  <div className="bg-map-transit/15 rounded-lg p-4">
+                    <div className="text-2xl font-bold text-amber-600">
                       {overviewStats.transitCount}
                     </div>
-                    <div className="text-sm text-orange-700">
-                      Transit Countries
+                    <div className="text-sm text-ink-muted">
+                      Transit countries
                     </div>
                   </div>
-                  <div className="bg-blue-50 rounded-lg p-4">
-                    <div className="text-2xl font-bold text-blue-600">
+                  <div className="bg-brand-50 rounded-lg p-4">
+                    <div className="text-2xl font-bold text-brand-700">
                       {overviewStats.worldPercent}%
                     </div>
-                    <div className="text-sm text-blue-700">
+                    <div className="text-sm text-ink-muted">
                       Of the world{' '}
-                      <span className="text-blue-500">
+                      <span className="text-ink-subtle">
                         ({overviewStats.tripCount}/{overviewStats.totalCountries})
                       </span>
                     </div>
                   </div>
-                  <div className="bg-purple-50 rounded-lg p-4">
-                    <div className="text-lg font-bold text-purple-600 truncate">
+                  <div className="bg-map-home/10 rounded-lg p-4">
+                    <div className="text-lg font-bold text-map-home truncate">
                       {overviewStats.homeCountry}
                     </div>
-                    <div className="text-sm text-purple-700">Home Country</div>
+                    <div className="text-sm text-ink-muted">Home country</div>
                   </div>
                 </div>
 

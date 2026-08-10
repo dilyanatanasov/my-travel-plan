@@ -15,13 +15,13 @@ function RequireAuth() {
   if (isLoading) {
     return (
       <div
-        className="min-h-screen bg-gray-50 flex items-center justify-center"
+        className="min-h-screen bg-canvas flex items-center justify-center"
         role="status"
         aria-live="polite"
       >
         <div className="flex flex-col items-center gap-3">
           <svg
-            className="w-8 h-8 text-blue-600 animate-spin"
+            className="w-8 h-8 text-brand-600 animate-spin"
             fill="none"
             viewBox="0 0 24 24"
             aria-hidden="true"

@@ -38,7 +38,7 @@ function FlightCard({ journey, onDelete }: FlightCardProps) {
               {routeString}
             </span>
             {journey.isRoundTrip && (
-              <span className="px-2 py-0.5 text-xs bg-blue-100 text-blue-700 rounded-full">
+              <span className="px-2 py-0.5 text-xs bg-brand-100 text-brand-700 rounded-full">
                 Round trip
               </span>
             )}

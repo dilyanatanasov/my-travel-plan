@@ -18,7 +18,7 @@ function Layout() {
           <div className="flex items-center gap-2 flex-shrink-0">
             <Link
               to="/search"
-              className="flex items-center gap-2 min-h-11 bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-4 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              className="flex items-center gap-2 min-h-11 bg-brand-600 hover:bg-brand-700 text-white px-3 sm:px-4 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2"
             >
               <svg
                 className="w-5 h-5 flex-shrink-0"

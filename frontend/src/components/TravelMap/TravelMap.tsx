@@ -21,6 +21,7 @@ import AirportMarkers from '../FlightMap/AirportMarkers';
 import RouteTooltip from '../FlightMap/RouteTooltip';
 import MapControlPanel, { type TravelMapSettings } from './MapControlPanel';
 import { useMapViewport } from './useMapViewport';
+import { MAP, MAP_HOVER, MAP_PRESSED } from '../../theme/mapColors';
 import {
   buildCountryDisplayMap,
   getCountryColor,
@@ -258,6 +259,19 @@ function TravelMap() {
           className="w-full h-auto aspect-[4/3] md:aspect-[2/1]"
         >
         <ZoomableGroup>
+          {/*
+            Explicit ocean. Without it the sea shows the white card through,
+            so page, sea and unvisited land were three near-identical greys
+            and the map had no ground to sit on.
+          */}
+          <rect
+            x={-width * 2}
+            y={-height * 2}
+            width={width * 5}
+            height={height * 5}
+            fill={MAP.ocean}
+          />
+
           {/* Countries */}
           <Geographies geography={GEO_URL}>
             {({ geographies }) =>
@@ -274,13 +288,13 @@ function TravelMap() {
                 const showVisitColors = settings.showCountries;
                 const fillColor = showVisitColors
                   ? getCountryColor(visitType, isHome)
-                  : '#e5e7eb';
+                  : MAP.land;
                 const hoverColor = showVisitColors
                   ? getCountryHoverColor(visitType, isHome)
-                  : '#d1d5db';
+                  : MAP_HOVER.land;
                 const pressedColor = showVisitColors
                   ? getCountryPressedColor(visitType, isHome)
-                  : '#d1d5db';
+                  : MAP_PRESSED.land;
 
                 return (
                   <Geography
@@ -294,20 +308,20 @@ function TravelMap() {
                     style={{
                       default: {
                         fill: fillColor,
-                        stroke: '#fff',
+                        stroke: MAP.countryBorder,
                         strokeWidth: 0.5,
                         outline: 'none',
                       },
                       hover: {
                         fill: hoverColor,
-                        stroke: '#fff',
+                        stroke: MAP.countryBorder,
                         strokeWidth: 0.5,
                         outline: 'none',
                         cursor: isoCode && settings.showCountries ? 'pointer' : 'default',
                       },
                       pressed: {
                         fill: pressedColor,
-                        stroke: '#fff',
+                        stroke: MAP.countryBorder,
                         strokeWidth: 0.5,
                         outline: 'none',
                       },

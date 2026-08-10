@@ -84,19 +84,19 @@ function FlightStats() {
       </div>
 
       {/* Creative Stats */}
-      <div className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl p-6 text-white">
+      <div className="bg-gradient-to-r from-brand-500 to-purple-600 rounded-xl p-6 text-white">
         <h3 className="text-lg font-semibold mb-4">Fun Facts</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <p className="text-blue-100 text-sm">Distance to Moon</p>
+            <p className="text-brand-100 text-sm">Distance to Moon</p>
             <p className="text-2xl font-bold">{stats.moonDistancePercent.toFixed(1)}%</p>
           </div>
           <div>
-            <p className="text-blue-100 text-sm">If you walked instead...</p>
+            <p className="text-brand-100 text-sm">If you walked instead...</p>
             <p className="text-2xl font-bold">{stats.walkingYears.toFixed(1)} years</p>
           </div>
           <div>
-            <p className="text-blue-100 text-sm">Earth Circumferences</p>
+            <p className="text-brand-100 text-sm">Earth Circumferences</p>
             <p className="text-2xl font-bold">{stats.earthCircumferences.toFixed(2)}×</p>
           </div>
         </div>
@@ -113,7 +113,7 @@ function FlightStats() {
             <p className="text-sm text-gray-500">
               {stats.longestFlight.departureCity} to {stats.longestFlight.arrivalCity}
             </p>
-            <p className="text-blue-600 font-semibold mt-1">
+            <p className="text-brand-600 font-semibold mt-1">
               {formatNumber(Math.round(stats.longestFlight.distanceKm))} km
             </p>
           </div>
@@ -179,7 +179,7 @@ function FlightStats() {
                   {airport.iataCode}
                 </span>
                 <span className="text-sm text-gray-500">{airport.city}</span>
-                <span className="text-xs text-blue-600 font-medium">
+                <span className="text-xs text-brand-600 font-medium">
                   {airport.visitCount}×
                 </span>
               </div>

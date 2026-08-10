@@ -40,7 +40,14 @@
       "Bash(sed -i 's/^- \\\\[ \\\\] \\\\*\\\\*1\\\\. Users + auth + scope all data by userId\\\\*\\\\* ← IN PROGRESS$/- [x] **1. Users + auth + scope all data by userId** — DONE, verified \\(see implement doc\\)/' context/PROGRESS.md)",
       "Bash(sed -i 's/^- \\\\[ \\\\] 2\\\\. Mobile pass/- [ ] **2. Mobile pass** ← IN PROGRESS/' context/PROGRESS.md)",
       "Bash(MSYS_NO_PATHCONV=1 docker exec travel_tracker_frontend_dev ls -la /app/public)",
-      "Bash(echo \"exit: $?\")"
+      "Bash(echo \"exit: $?\")",
+      "Bash(sed -i \"s/stroke: '#fff',/stroke: MAP.countryBorder,/g\" src/components/TravelMap/TravelMap.tsx)",
+      "Bash(sed -i \"s|import { MAP } from '../../theme/mapColors';|import { MAP, MAP_HOVER, MAP_PRESSED } from '../../theme/mapColors';|\" src/components/TravelMap/TravelMap.tsx)",
+      "Bash(grep -n \"#[0-9a-fA-F]\\\\{3,6\\\\}\" src/components/FlightMap/FlightRoutes.tsx)",
+      "Bash(sed -i 's|^- \\\\[ \\\\] \\\\*\\\\*3\\\\. Design tokens + palette\\\\*\\\\* ← IN PROGRESS$|- [x] **3. Design tokens + palette** — DONE, verified \\(greyscale-safe map, AA contrast\\)|' context/PROGRESS.md)",
+      "Bash(sed -i 's|^- \\\\[ \\\\] 4\\\\. Share \\(export PNG + OG tags\\)|- [ ] **4. Share \\(export PNG + OG tags\\)** ← NEXT|' context/PROGRESS.md)",
+      "Bash(sed -i '/^- `tailwind.config.js` `theme.extend` is empty; no design tokens/d' context/PROGRESS.md)",
+      "Bash(rm -f m3-*.png)"
     ],
     "deny": [],
     "ask": []
