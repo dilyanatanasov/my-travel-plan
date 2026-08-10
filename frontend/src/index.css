@@ -6,8 +6,23 @@ body {
   margin: 0;
   min-height: 100vh;
   background-color: #f3f4f6;
+  /* Nothing in this app is wide enough to justify a sideways page scroll.
+     Guards against a single overflowing child dragging the whole document. */
+  overflow-x: hidden;
 }
 
 #root {
   min-height: 100vh;
+}
+
+@layer utilities {
+  /* Horizontal scroll strips (e.g. the tab bar) scroll by swipe; the bar
+     itself is visual noise on a 390px screen. */
+  .scrollbar-none {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
 }

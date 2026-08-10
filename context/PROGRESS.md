@@ -22,8 +22,8 @@ Source review: UX/product review of the running app (desktop 1440px + mobile 390
 ## Items
 
 - [x] **1. Users + auth + scope all data by userId** — DONE, verified (see implement doc)
-- [ ] **2. Mobile pass** ← IN PROGRESS (h-scroll, tap targets, filter sheet, full-bleed map, PWA)
-- [ ] 3. Design tokens + palette
+- [x] **2. Mobile pass** — DONE, verified (0 sub-44px targets, no h-scroll, PWA installable)
+- [ ] **3. Design tokens + palette** ← IN PROGRESS
 - [ ] 4. Share (export PNG + OG tags)
 - [ ] 5. Flight list grouping by year + undo toasts
 - [ ] 6. Flight import (CSV)
@@ -65,12 +65,7 @@ Docs: `context/research/2026-08-10_user-accounts-auth_research.md`,
 
 ## Known issues logged during review (fix within the items above)
 
-- `frontend/src/pages/HomePage.tsx` is dead code — not routed. Delete during item 2 or 3.
-- `frontend/src/components/WorldMap/` superseded by `TravelMap/`. Delete with HomePage.
-- Tab bar at `TravelMapPage.tsx:118` causes 36px horizontal page scroll at 390px → item 2.
-- 15 tap targets under 40px at 390px → item 2.
 - `main.ts:11` CORS `origin: true` with credentials → item 1.9.
 - `TravelMap.tsx:167` country click deletes visit with no confirm/undo → item 5.
 - Mutation errors swallowed (`TravelMapPage.tsx:52`, `TravelMap.tsx:185`) → item 5 (toasts).
 - `tailwind.config.js` `theme.extend` is empty; no design tokens → item 3.
-- `frontend/public/` empty; `index.html` references a nonexistent `/vite.svg` favicon → item 2.

@@ -87,40 +87,48 @@ function TravelMapPage() {
     const transitCount = visits.filter((v) => v.visitType === 'transit').length;
     const homeCountry = visits.find((v) => v.visitType === 'home');
 
+    // Share of the world visited — more useful than the old "Total Countries"
+    // card, which just repeated the Countries Visited number.
+    const worldPercent =
+      countries.length > 0
+        ? Math.round((tripCount / countries.length) * 1000) / 10
+        : 0;
+
     return {
       tripCount,
       transitCount,
-      totalVisits: visits.length,
+      worldPercent,
+      totalCountries: countries.length,
       homeCountry: homeCountry?.country?.name || 'Not set',
     };
-  }, [visits]);
+  }, [visits, countries]);
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Travel Map</h1>
-          <p className="text-gray-500">
-            Track your countries, flights, and adventures around the world
-          </p>
-        </div>
-
+      {/* No page header here: the app header already says "Travel Tracker /
+          Track your journeys around the world". Two headings stacked cost
+          ~150px of a phone screen to say the same thing twice. */}
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-8">
         {/* Map */}
-        <div className="mb-8">
+        <div className="mb-4 sm:mb-8">
           <TravelMap />
         </div>
 
         {/* Tabs */}
         <div className="bg-white rounded-lg shadow-md">
-          {/* Tab Navigation */}
+          {/* Tab Navigation — scrolls horizontally rather than overflowing the
+              page, which is what pushed the document to 426px at a 390px width. */}
           <div className="border-b border-gray-200">
-            <nav className="flex -mb-px">
+            <nav
+              className="flex -mb-px overflow-x-auto snap-x scrollbar-none"
+              aria-label="Travel data sections"
+            >
               {TABS.map((tab) => (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                  aria-current={activeTab === tab.id ? 'page' : undefined}
+                  className={`snap-start whitespace-nowrap min-h-12 px-4 sm:px-6 py-3 text-sm font-medium border-b-2 transition-colors focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500 ${
                     activeTab === tab.id
                       ? 'border-blue-500 text-blue-600'
                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -133,7 +141,7 @@ function TravelMapPage() {
           </div>
 
           {/* Tab Content */}
-          <div className="p-6">
+          <div className="p-4 sm:p-6">
             {activeTab === 'overview' && (
               <div className="space-y-6">
                 <h2 className="text-lg font-semibold text-gray-900">
@@ -158,9 +166,14 @@ function TravelMapPage() {
                   </div>
                   <div className="bg-blue-50 rounded-lg p-4">
                     <div className="text-2xl font-bold text-blue-600">
-                      {overviewStats.totalVisits}
+                      {overviewStats.worldPercent}%
                     </div>
-                    <div className="text-sm text-blue-700">Total Countries</div>
+                    <div className="text-sm text-blue-700">
+                      Of the world{' '}
+                      <span className="text-blue-500">
+                        ({overviewStats.tripCount}/{overviewStats.totalCountries})
+                      </span>
+                    </div>
                   </div>
                   <div className="bg-purple-50 rounded-lg p-4">
                     <div className="text-lg font-bold text-purple-600 truncate">

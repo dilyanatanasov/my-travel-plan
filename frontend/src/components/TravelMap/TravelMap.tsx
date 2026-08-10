@@ -19,8 +19,8 @@ import { DEFAULT_FILTERS, type FlightFilters } from '../FlightMap/filterTypes';
 import FlightRoutes from '../FlightMap/FlightRoutes';
 import AirportMarkers from '../FlightMap/AirportMarkers';
 import RouteTooltip from '../FlightMap/RouteTooltip';
-import FlightMapFilters from '../FlightMap/FlightMapFilters';
-import TravelMapControls, { type TravelMapSettings } from './TravelMapControls';
+import MapControlPanel, { type TravelMapSettings } from './MapControlPanel';
+import { useMapViewport } from './useMapViewport';
 import {
   buildCountryDisplayMap,
   getCountryColor,
@@ -102,6 +102,11 @@ function TravelMap() {
   const [filters, setFilters] = useState<FlightFilters>(DEFAULT_FILTERS);
   const [hoveredRoute, setHoveredRoute] = useState<AggregatedRoute | null>(null);
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
+
+  // On touch devices the map starts inert so a thumb-drag scrolls the page
+  // instead of panning the map. Tapping the scrim arms it.
+  const { scale, width, height, isCoarsePointer } = useMapViewport();
+  const [isTouchActivated, setIsTouchActivated] = useState(false);
 
   // Build country display map from visits
   const countryDisplayMap = useMemo(() => buildCountryDisplayMap(visits), [visits]);
@@ -222,34 +227,36 @@ function TravelMap() {
       className="bg-white rounded-lg shadow-md overflow-hidden relative"
       onMouseMove={handleMouseMove}
     >
-      {/* Controls */}
-      <TravelMapControls
+      {/* Layers, filters and legend, collapsed into one panel */}
+      <MapControlPanel
         settings={settings}
         onSettingsChange={setSettings}
         countries={countries}
         homeCountryId={homeVisit?.countryId || null}
         onSetHomeCountry={handleSetHomeCountry}
+        filters={filters}
+        onFiltersChange={setFilters}
+        airports={filterOptions.airports}
+        years={filterOptions.years}
         stats={stats}
       />
 
-      {/* Flight Filters (only show if flights layer is enabled) */}
-      {settings.showFlights && (
-        <FlightMapFilters
-          filters={filters}
-          onFiltersChange={setFilters}
-          airports={filterOptions.airports}
-          years={filterOptions.years}
-        />
-      )}
-
       {/* Map */}
-      <ComposableMap
-        projectionConfig={{
-          rotate: [-10, 0, 0],
-          scale: 147,
-        }}
-        className="w-full h-[500px]"
-      >
+      <div className="relative">
+        {/* Aspect ratios here must stay in step with MOBILE/DESKTOP in
+            useMapViewport, or preserveAspectRatio letterboxes the map. */}
+        <ComposableMap
+          width={width}
+          height={height}
+          projectionConfig={{
+            rotate: [-10, 0, 0],
+            scale,
+          }}
+          // h-auto is required: the svg carries a height attribute from the
+          // width/height props, and CSS aspect-ratio is ignored unless the
+          // used height is auto.
+          className="w-full h-auto aspect-[4/3] md:aspect-[2/1]"
+        >
         <ZoomableGroup>
           {/* Countries */}
           <Geographies geography={GEO_URL}>
@@ -330,7 +337,27 @@ function TravelMap() {
             />
           )}
         </ZoomableGroup>
-      </ComposableMap>
+        </ComposableMap>
+
+        {/*
+          Touch scroll-trap guard. d3-zoom inside ZoomableGroup swallows touch
+          drags, so a full-width map mid-page becomes impossible to scroll past.
+          The scrim intercepts the first touch and hands control over only once
+          the user has asked for it.
+        */}
+        {isCoarsePointer && !isTouchActivated && (
+          <button
+            type="button"
+            onClick={() => setIsTouchActivated(true)}
+            className="absolute inset-0 z-10 flex items-end justify-center pb-6 bg-transparent"
+            aria-label="Activate map interaction"
+          >
+            <span className="px-3 py-2 rounded-full bg-gray-900/75 text-white text-xs font-medium shadow-lg">
+              Tap to interact with map
+            </span>
+          </button>
+        )}
+      </div>
 
       {/* Route Tooltip */}
       <RouteTooltip route={hoveredRoute} position={tooltipPosition} />

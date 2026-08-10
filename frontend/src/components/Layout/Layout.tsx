@@ -6,7 +6,7 @@ function Layout() {
     <div className="min-h-screen bg-gray-100">
       <header className="bg-white shadow-sm">
         <div className="max-w-7xl mx-auto px-4 py-3 sm:px-6 lg:px-8 flex items-center justify-between gap-3">
-          <Link to="/" className="block min-w-0">
+          <Link to="/" className="flex flex-col justify-center min-h-11 min-w-0">
             <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
               Travel Tracker
             </h1>

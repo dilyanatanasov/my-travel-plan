@@ -38,7 +38,9 @@
       "Bash(docker compose *)",
       "mcp__playwright__browser_fill_form",
       "Bash(sed -i 's/^- \\\\[ \\\\] \\\\*\\\\*1\\\\. Users + auth + scope all data by userId\\\\*\\\\* ← IN PROGRESS$/- [x] **1. Users + auth + scope all data by userId** — DONE, verified \\(see implement doc\\)/' context/PROGRESS.md)",
-      "Bash(sed -i 's/^- \\\\[ \\\\] 2\\\\. Mobile pass/- [ ] **2. Mobile pass** ← IN PROGRESS/' context/PROGRESS.md)"
+      "Bash(sed -i 's/^- \\\\[ \\\\] 2\\\\. Mobile pass/- [ ] **2. Mobile pass** ← IN PROGRESS/' context/PROGRESS.md)",
+      "Bash(MSYS_NO_PATHCONV=1 docker exec travel_tracker_frontend_dev ls -la /app/public)",
+      "Bash(echo \"exit: $?\")"
     ],
     "deny": [],
     "ask": []

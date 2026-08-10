@@ -1,3 +1,4 @@
 export { default } from './TravelMap';
-export { default as TravelMapControls } from './TravelMapControls';
+export { default as MapControlPanel } from './MapControlPanel';
+export type { TravelMapSettings } from './MapControlPanel';
 export * from './countryColors';
