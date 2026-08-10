@@ -6,6 +6,11 @@ import { CreateVisitDto } from './dto/create-visit.dto';
 import { UpdateVisitDto } from './dto/update-visit.dto';
 import { CountriesService } from '../countries/countries.service';
 
+/**
+ * Every method here is scoped to a single user. `userId` is deliberately the
+ * first parameter on all of them so that an unscoped call is a compile error
+ * rather than a silent data leak.
+ */
 @Injectable()
 export class VisitsService {
   constructor(
@@ -14,38 +19,40 @@ export class VisitsService {
     private readonly countriesService: CountriesService,
   ) {}
 
-  async findAll(): Promise<Visit[]> {
+  async findAll(userId: number): Promise<Visit[]> {
     return this.visitRepository.find({
+      where: { userId },
       relations: ['country'],
       order: { createdAt: 'DESC' },
     });
   }
 
-  async findOne(id: number): Promise<Visit> {
+  async findOne(userId: number, id: number): Promise<Visit> {
     const visit = await this.visitRepository.findOne({
-      where: { id },
+      where: { id, userId },
       relations: ['country'],
     });
     if (!visit) {
+      // 404 rather than 403 — do not confirm that another user's row exists.
       throw new NotFoundException(`Visit with ID ${id} not found`);
     }
     return visit;
   }
 
-  async findByCountryId(countryId: number): Promise<Visit | null> {
+  async findByCountryId(userId: number, countryId: number): Promise<Visit | null> {
     return this.visitRepository.findOne({
-      where: { countryId },
+      where: { countryId, userId },
       relations: ['country'],
     });
   }
 
-  async findByCountryIso2(isoCode2: string): Promise<Visit | null> {
+  async findByCountryIso2(userId: number, isoCode2: string): Promise<Visit | null> {
     const country = await this.countriesService.findByIsoCode2(isoCode2);
     if (!country) return null;
-    return this.findByCountryId(country.id);
+    return this.findByCountryId(userId, country.id);
   }
 
-  async create(createVisitDto: CreateVisitDto): Promise<Visit> {
+  async create(userId: number, createVisitDto: CreateVisitDto): Promise<Visit> {
     let countryId = createVisitDto.countryId;
 
     // If countryIso provided instead of countryId, look up the country
@@ -62,6 +69,7 @@ export class VisitsService {
     }
 
     const visit = this.visitRepository.create({
+      userId,
       countryId,
       visitedAt: createVisitDto.visitedAt ? new Date(createVisitDto.visitedAt) : null,
       notes: createVisitDto.notes,
@@ -71,13 +79,18 @@ export class VisitsService {
     });
 
     const savedVisit = await this.visitRepository.save(visit);
-    return this.findOne(savedVisit.id);
+    return this.findOne(userId, savedVisit.id);
   }
 
   /**
-   * Create a visit from a flight, or update existing visit if country already visited
+   * Create a visit from a flight, or update existing visit if country already visited.
+   *
+   * Called across the module boundary by FlightsService. The userId must be the
+   * one that owns the journey — otherwise one user's flight would mutate
+   * another user's visits.
    */
   async createOrUpdateFromFlight(
+    userId: number,
     countryIso2: string,
     visitType: VisitType,
     flightJourneyId: number,
@@ -90,7 +103,7 @@ export class VisitsService {
     }
 
     // Check if visit already exists for this country
-    const existingVisit = await this.findByCountryId(country.id);
+    const existingVisit = await this.findByCountryId(userId, country.id);
 
     if (existingVisit) {
       // If existing visit is manual 'trip' or 'home', don't downgrade to transit
@@ -104,7 +117,7 @@ export class VisitsService {
     }
 
     // Create new visit from flight
-    return this.create({
+    return this.create(userId, {
       countryId: country.id,
       visitedAt: journeyDate,
       visitType,
@@ -114,12 +127,12 @@ export class VisitsService {
   }
 
   /**
-   * Set a country as the home country
+   * Set a country as this user's home country
    */
-  async setHomeCountry(countryId: number): Promise<Visit> {
-    // First, remove 'home' type from any existing home country
+  async setHomeCountry(userId: number, countryId: number): Promise<Visit> {
+    // First, remove 'home' type from this user's existing home country
     const existingHome = await this.visitRepository.findOne({
-      where: { visitType: 'home' },
+      where: { visitType: 'home', userId },
     });
     if (existingHome) {
       existingHome.visitType = 'trip';
@@ -127,15 +140,15 @@ export class VisitsService {
     }
 
     // Check if country already has a visit
-    const existingVisit = await this.findByCountryId(countryId);
+    const existingVisit = await this.findByCountryId(userId, countryId);
     if (existingVisit) {
       existingVisit.visitType = 'home';
       const saved = await this.visitRepository.save(existingVisit);
-      return this.findOne(saved.id);
+      return this.findOne(userId, saved.id);
     }
 
     // Create new visit as home
-    return this.create({
+    return this.create(userId, {
       countryId,
       visitType: 'home',
       source: 'manual',
@@ -143,24 +156,28 @@ export class VisitsService {
   }
 
   /**
-   * Get the current home country visit
+   * Get this user's current home country visit
    */
-  async getHomeCountry(): Promise<Visit | null> {
+  async getHomeCountry(userId: number): Promise<Visit | null> {
     return this.visitRepository.findOne({
-      where: { visitType: 'home' },
+      where: { visitType: 'home', userId },
       relations: ['country'],
     });
   }
 
-  async update(id: number, updateVisitDto: UpdateVisitDto): Promise<Visit> {
-    const visit = await this.findOne(id);
+  async update(
+    userId: number,
+    id: number,
+    updateVisitDto: UpdateVisitDto,
+  ): Promise<Visit> {
+    const visit = await this.findOne(userId, id);
     Object.assign(visit, updateVisitDto);
     const saved = await this.visitRepository.save(visit);
-    return this.findOne(saved.id);
+    return this.findOne(userId, saved.id);
   }
 
-  async remove(id: number): Promise<void> {
-    const visit = await this.findOne(id);
+  async remove(userId: number, id: number): Promise<void> {
+    const visit = await this.findOne(userId, id);
     await this.visitRepository.remove(visit);
   }
 }

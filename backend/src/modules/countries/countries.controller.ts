@@ -1,7 +1,10 @@
 import { Controller, Get, Param, ParseIntPipe } from '@nestjs/common';
 import { CountriesService } from './countries.service';
 import { Country } from './entities/country.entity';
+import { Public } from '../../common/decorators/public.decorator';
 
+// Shared reference data, not user data — readable without a session.
+@Public()
 @Controller('countries')
 export class CountriesController {
   constructor(private readonly countriesService: CountriesService) {}

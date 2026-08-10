@@ -22,6 +22,7 @@ import { FilterOptionsDto } from './dto/filter-options.dto';
 import { FlightSearchResultDto } from './dto/flight-result.dto';
 import { FlightExplorationResultDto } from './dto/flight-exploration-result.dto';
 import { FlightJourney } from './entities/flight-journey.entity';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
 
 @Controller('flights')
 export class FlightsController {
@@ -60,35 +61,45 @@ export class FlightsController {
   }
 
   @Get()
-  async findAll(): Promise<FlightJourney[]> {
-    return this.flightsService.findAll();
+  async findAll(@CurrentUser('id') userId: number): Promise<FlightJourney[]> {
+    return this.flightsService.findAll(userId);
   }
 
   @Get('stats')
-  async getStats(): Promise<FlightStats> {
-    return this.flightsStatsService.getStats();
+  async getStats(@CurrentUser('id') userId: number): Promise<FlightStats> {
+    return this.flightsStatsService.getStats(userId);
   }
 
   @Get(':id')
-  async findOne(@Param('id', ParseIntPipe) id: number): Promise<FlightJourney> {
-    return this.flightsService.findOne(id);
+  async findOne(
+    @CurrentUser('id') userId: number,
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<FlightJourney> {
+    return this.flightsService.findOne(userId, id);
   }
 
   @Post()
-  async create(@Body() createFlightDto: CreateFlightDto): Promise<FlightJourney> {
-    return this.flightsService.create(createFlightDto);
+  async create(
+    @CurrentUser('id') userId: number,
+    @Body() createFlightDto: CreateFlightDto,
+  ): Promise<FlightJourney> {
+    return this.flightsService.create(userId, createFlightDto);
   }
 
   @Patch(':id')
   async update(
+    @CurrentUser('id') userId: number,
     @Param('id', ParseIntPipe) id: number,
     @Body() updateFlightDto: UpdateFlightDto,
   ): Promise<FlightJourney> {
-    return this.flightsService.update(id, updateFlightDto);
+    return this.flightsService.update(userId, id, updateFlightDto);
   }
 
   @Delete(':id')
-  async remove(@Param('id', ParseIntPipe) id: number): Promise<void> {
-    return this.flightsService.remove(id);
+  async remove(
+    @CurrentUser('id') userId: number,
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<void> {
+    return this.flightsService.remove(userId, id);
   }
 }

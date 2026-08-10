@@ -27,7 +27,18 @@
       "Bash(python -c:*)",
       "Bash(node -e:*)",
       "Bash(npx tsc:*)",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "mcp__playwright__browser_navigate",
+      "mcp__playwright__browser_resize",
+      "mcp__playwright__browser_take_screenshot",
+      "mcp__playwright__browser_evaluate",
+      "mcp__playwright__browser_click",
+      "Bash(mv desktop-home.png mobile-home.png mobile-search.png desktop-flights.png \"C:/Users/dilya/AppData/Local/Temp/claude/C--Users-dilya-my-travel-pans/64de446e-c8d9-4641-9ceb-b68e4c282b6d/scratchpad/\")",
+      "Bash(rm -rf .playwright-mcp)",
+      "Bash(docker compose *)",
+      "mcp__playwright__browser_fill_form",
+      "Bash(sed -i 's/^- \\\\[ \\\\] \\\\*\\\\*1\\\\. Users + auth + scope all data by userId\\\\*\\\\* ← IN PROGRESS$/- [x] **1. Users + auth + scope all data by userId** — DONE, verified \\(see implement doc\\)/' context/PROGRESS.md)",
+      "Bash(sed -i 's/^- \\\\[ \\\\] 2\\\\. Mobile pass/- [ ] **2. Mobile pass** ← IN PROGRESS/' context/PROGRESS.md)"
     ],
     "deny": [],
     "ask": []

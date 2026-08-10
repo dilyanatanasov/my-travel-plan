@@ -93,9 +93,10 @@ export class FlightsStatsService {
     private readonly legRepository: Repository<FlightLeg>,
   ) {}
 
-  async getStats(): Promise<FlightStats> {
-    // Get all journeys with legs
+  async getStats(userId: number): Promise<FlightStats> {
+    // Get this user's journeys with legs
     const journeys = await this.journeyRepository.find({
+      where: { userId },
       relations: ['legs', 'legs.departureAirport', 'legs.arrivalAirport'],
     });
 

@@ -39,3 +39,6 @@ coverage/
 tmp/
 temp/
 *.tmp
+
+# Local DB backups (not for version control)
+context/backups/

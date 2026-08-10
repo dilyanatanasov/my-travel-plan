@@ -9,6 +9,7 @@ import {
 } from 'typeorm';
 import { Country } from '../../countries/entities/country.entity';
 import { FlightJourney } from '../../flights/entities/flight-journey.entity';
+import { User } from '../../users/entities/user.entity';
 
 export type VisitType = 'trip' | 'transit' | 'home';
 export type VisitSource = 'manual' | 'flight';
@@ -17,6 +18,18 @@ export type VisitSource = 'manual' | 'flight';
 export class Visit {
   @PrimaryGeneratedColumn()
   id: number;
+
+  // Nullable only so the auth migration could backfill pre-existing rows.
+  // Every write path sets it; see AuthService.register() claim logic.
+  @Column({ name: 'user_id', nullable: true })
+  userId: number | null;
+
+  @ManyToOne(() => User, (user) => user.visits, {
+    nullable: true,
+    onDelete: 'CASCADE',
+  })
+  @JoinColumn({ name: 'user_id' })
+  user: User | null;
 
   @Column({ name: 'country_id' })
   countryId: number;

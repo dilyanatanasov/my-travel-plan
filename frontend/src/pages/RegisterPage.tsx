@@ -1,0 +1,143 @@
+import { useForm } from 'react-hook-form';
+import { Link, useNavigate } from 'react-router-dom';
+import {
+  useRegisterMutation,
+  type RegisterRequest,
+} from '../features/auth/authApi';
+import AuthLayout from '../features/auth/AuthLayout';
+import {
+  inputClass,
+  inputErrorClass,
+  labelClass,
+  submitClass,
+  fieldErrorClass,
+  getApiErrorMessage,
+} from '../features/auth/authStyles';
+
+function RegisterPage() {
+  const navigate = useNavigate();
+  const [registerUser, { isLoading, error }] = useRegisterMutation();
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<RegisterRequest>();
+
+  const onSubmit = async (values: RegisterRequest) => {
+    try {
+      await registerUser({
+        ...values,
+        displayName: values.displayName?.trim() || undefined,
+      }).unwrap();
+      navigate('/', { replace: true });
+    } catch {
+      // Surfaced below via the `error` from the mutation hook.
+    }
+  };
+
+  return (
+    <AuthLayout
+      title="Create your account"
+      subtitle="Start mapping where you've been"
+      footer={
+        <>
+          Already have an account?{' '}
+          <Link
+            to="/login"
+            className="text-blue-600 hover:text-blue-700 font-medium"
+          >
+            Sign in
+          </Link>
+        </>
+      }
+    >
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
+        {error && (
+          <div
+            role="alert"
+            className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg text-sm"
+          >
+            {getApiErrorMessage(error, 'Could not create your account')}
+          </div>
+        )}
+
+        <div>
+          <label htmlFor="displayName" className={labelClass}>
+            Name <span className="text-gray-400 font-normal">(optional)</span>
+          </label>
+          <input
+            id="displayName"
+            type="text"
+            autoComplete="name"
+            autoFocus
+            className={inputClass}
+            {...register('displayName', {
+              maxLength: { value: 100, message: 'Name is too long' },
+            })}
+          />
+          {errors.displayName && (
+            <p className={fieldErrorClass}>{errors.displayName.message}</p>
+          )}
+        </div>
+
+        <div>
+          <label htmlFor="email" className={labelClass}>
+            Email
+          </label>
+          <input
+            id="email"
+            type="email"
+            autoComplete="email"
+            className={`${inputClass} ${errors.email ? inputErrorClass : ''}`}
+            aria-invalid={Boolean(errors.email)}
+            {...register('email', {
+              required: 'Email is required',
+              pattern: {
+                value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+                message: 'Please enter a valid email address',
+              },
+            })}
+          />
+          {errors.email && (
+            <p className={fieldErrorClass}>{errors.email.message}</p>
+          )}
+        </div>
+
+        <div>
+          <label htmlFor="password" className={labelClass}>
+            Password
+          </label>
+          <input
+            id="password"
+            type="password"
+            autoComplete="new-password"
+            className={`${inputClass} ${errors.password ? inputErrorClass : ''}`}
+            aria-invalid={Boolean(errors.password)}
+            aria-describedby="password-hint"
+            {...register('password', {
+              required: 'Password is required',
+              minLength: {
+                value: 8,
+                message: 'Password must be at least 8 characters',
+              },
+            })}
+          />
+          {errors.password ? (
+            <p className={fieldErrorClass}>{errors.password.message}</p>
+          ) : (
+            <p id="password-hint" className="mt-1 text-sm text-gray-500">
+              At least 8 characters.
+            </p>
+          )}
+        </div>
+
+        <button type="submit" disabled={isLoading} className={submitClass}>
+          {isLoading ? 'Creating account…' : 'Create account'}
+        </button>
+      </form>
+    </AuthLayout>
+  );
+}
+
+export default RegisterPage;

@@ -5,13 +5,28 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   OneToMany,
+  ManyToOne,
+  JoinColumn,
 } from 'typeorm';
 import { FlightLeg } from './flight-leg.entity';
+import { User } from '../../users/entities/user.entity';
 
 @Entity('flight_journeys')
 export class FlightJourney {
   @PrimaryGeneratedColumn()
   id: number;
+
+  // Nullable only so the auth migration could backfill pre-existing rows.
+  // Every write path sets it; see AuthService.register() claim logic.
+  @Column({ name: 'user_id', nullable: true })
+  userId: number | null;
+
+  @ManyToOne(() => User, (user) => user.flightJourneys, {
+    nullable: true,
+    onDelete: 'CASCADE',
+  })
+  @JoinColumn({ name: 'user_id' })
+  user: User | null;
 
   @Column({ name: 'journey_date', type: 'date', nullable: true })
   journeyDate: Date;

@@ -26,25 +26,30 @@ export class FlightsService {
     private readonly visitsService: VisitsService,
   ) {}
 
-  async findAll(): Promise<FlightJourney[]> {
+  async findAll(userId: number): Promise<FlightJourney[]> {
     return this.journeyRepository.find({
+      where: { userId },
       relations: ['legs', 'legs.departureAirport', 'legs.arrivalAirport'],
       order: { journeyDate: 'DESC', createdAt: 'DESC' },
     });
   }
 
-  async findOne(id: number): Promise<FlightJourney> {
+  async findOne(userId: number, id: number): Promise<FlightJourney> {
     const journey = await this.journeyRepository.findOne({
-      where: { id },
+      where: { id, userId },
       relations: ['legs', 'legs.departureAirport', 'legs.arrivalAirport'],
     });
     if (!journey) {
+      // 404 rather than 403 — do not confirm that another user's row exists.
       throw new NotFoundException(`Flight journey with ID ${id} not found`);
     }
     return journey;
   }
 
-  async create(createFlightDto: CreateFlightDto): Promise<FlightJourney> {
+  async create(
+    userId: number,
+    createFlightDto: CreateFlightDto,
+  ): Promise<FlightJourney> {
     // Build legs from either explicit legs or airportIds chain
     let legData: { departureAirportId: number; arrivalAirportId: number }[] = [];
 
@@ -89,6 +94,7 @@ export class FlightsService {
 
     // Create the journey
     const journey = this.journeyRepository.create({
+      userId,
       journeyDate: createFlightDto.journeyDate
         ? new Date(createFlightDto.journeyDate)
         : null,
@@ -121,6 +127,7 @@ export class FlightsService {
 
     // Auto-create visits for countries in this flight
     await this.createVisitsFromLegs(
+      userId,
       legs,
       airportMap,
       savedJourney.id,
@@ -128,7 +135,7 @@ export class FlightsService {
     );
 
     // Return the complete journey with relations
-    return this.findOne(savedJourney.id);
+    return this.findOne(userId, savedJourney.id);
   }
 
   /**
@@ -136,6 +143,7 @@ export class FlightsService {
    * Detects transit countries (consecutive legs in same country)
    */
   private async createVisitsFromLegs(
+    userId: number,
     legs: FlightLeg[],
     airportMap: Map<number, Airport>,
     journeyId: number,
@@ -201,6 +209,7 @@ export class FlightsService {
     // Create visits for each country
     for (const [countryIso, visitType] of countriesInFlight) {
       await this.visitsService.createOrUpdateFromFlight(
+        userId,
         countryIso,
         visitType,
         journeyId,
@@ -209,8 +218,12 @@ export class FlightsService {
     }
   }
 
-  async update(id: number, updateFlightDto: UpdateFlightDto): Promise<FlightJourney> {
-    const journey = await this.findOne(id);
+  async update(
+    userId: number,
+    id: number,
+    updateFlightDto: UpdateFlightDto,
+  ): Promise<FlightJourney> {
+    const journey = await this.findOne(userId, id);
 
     if (updateFlightDto.journeyDate !== undefined) {
       journey.journeyDate = updateFlightDto.journeyDate
@@ -225,11 +238,11 @@ export class FlightsService {
     }
 
     await this.journeyRepository.save(journey);
-    return this.findOne(id);
+    return this.findOne(userId, id);
   }
 
-  async remove(id: number): Promise<void> {
-    const journey = await this.findOne(id);
+  async remove(userId: number, id: number): Promise<void> {
+    const journey = await this.findOne(userId, id);
     await this.journeyRepository.remove(journey);
   }
 }

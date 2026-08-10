@@ -8,7 +8,11 @@ import {
 } from '@nestjs/common';
 import { AirportsService } from './airports.service';
 import { Airport } from './entities/airport.entity';
+import { Public } from '../../common/decorators/public.decorator';
 
+// Shared reference data, not user data — readable without a session.
+// The airport typeahead depends on this.
+@Public()
 @Controller('airports')
 export class AirportsController {
   constructor(private readonly airportsService: AirportsService) {}
