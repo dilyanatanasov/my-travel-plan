@@ -93,7 +93,10 @@
       "mcp__playwright__browser_find",
       "mcp__playwright__browser_type",
       "mcp__playwright__browser_snapshot",
-      "Bash(grep -n \"}\\)}\\\\s*$\\\\|^    </Geographies>\" components/TravelMap/CountriesLayer.tsx)"
+      "Bash(grep -n \"}\\)}\\\\s*$\\\\|^    </Geographies>\" components/TravelMap/CountriesLayer.tsx)",
+      "Bash(git rev-list *)",
+      "Bash(git ls-remote *)",
+      "Bash(git merge *)"
     ],
     "deny": [],
     "ask": []

@@ -40,14 +40,14 @@ const PALETTES: Record<ShareStyle, Palette> = {
     text: '#201e1d',
     muted: '#645c50',
     accent: '#8c491a',
-    mapBg: '#ebddc5',
+    mapBg: '#f5ead8',
   },
   ink: {
     bg: '#201e1d',
     text: '#f9f4ed',
     muted: '#c0b6a5',
     accent: '#f6a06b',
-    mapBg: '#2e2b25',
+    mapBg: '#1a1817',
   },
   editorial: {
     bg: '#f9f4ed',
@@ -149,10 +149,37 @@ function wrap(
 }
 
 /**
- * Draw the map into a box, preserving aspect and centring the overflow.
+ * Draw the map to fit entirely inside a box.
  *
- * The source map is a wide world; the card's map block is much squarer, so
- * cover-and-centre keeps it filled without stretching the geography.
+ * Cover-cropping a 2:1 map into a nearly-square block throws away more than
+ * half its width — which cut the user's countries off the Warm and Ink cards
+ * while Editorial, whose band is close to 2:1, looked right. Now the map is
+ * framed to the traveller's own region, cropping is exactly the wrong move:
+ * there is no filler at the edges to lose.
+ *
+ * Any leftover space is covered by the block's backdrop, which is set to the
+ * map's ocean colour so the fit is invisible.
+ */
+function drawMapContain(
+  ctx: CanvasRenderingContext2D,
+  image: HTMLImageElement,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+) {
+  const scale = Math.min(w / image.width, h / image.height);
+  const dw = image.width * scale;
+  const dh = image.height * scale;
+  ctx.drawImage(image, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh);
+}
+
+/**
+ * Fill a box with the map, cropping the overflow.
+ *
+ * Only for Editorial's full-bleed band, which is close enough to the source's
+ * aspect that the crop takes ocean rather than countries — and where a
+ * letterbox would break the edge-to-edge effect that style exists for.
  */
 function drawMapCover(
   ctx: CanvasRenderingContext2D,
@@ -288,14 +315,17 @@ function drawWarm(
   lines.forEach((line, i) => ctx.fillText(line, pad, pad + 58 + i * size * 1.06));
 
   const factTop = CARD_HEIGHT - 190;
-  const mapTop = pad + 58 + lines.length * size * 1.06 + 44;
-  const mapHeight = factTop - 56 - mapTop;
+  const bandTop = pad + 58 + lines.length * size * 1.06 + 44;
+  const bandHeight = factTop - 56 - bandTop;
+  const mapHeight = Math.min(bandHeight, (inner * map.height) / map.width);
+  const mapTop = bandTop + (bandHeight - mapHeight) / 2;
+
   ctx.save();
   roundedRect(ctx, pad, mapTop, inner, mapHeight, 44);
   ctx.clip();
   ctx.fillStyle = p.mapBg;
   ctx.fillRect(pad, mapTop, inner, mapHeight);
-  drawMapCover(ctx, map, pad, mapTop, inner, mapHeight);
+  drawMapContain(ctx, map, pad, mapTop, inner, mapHeight);
   ctx.restore();
 
   const columnWidth = inner / Math.max(content.facts.length, 1);
@@ -327,14 +357,17 @@ function drawInk(
   ctx.fillText(content.kicker.toUpperCase(), pad + 48, pad + 2);
 
   const heroTop = CARD_HEIGHT - 260;
-  const mapTop = pad + 90;
-  const mapHeight = heroTop - 60 - mapTop;
+  const bandTop = pad + 90;
+  const bandHeight = heroTop - 60 - bandTop;
+  const mapHeight = Math.min(bandHeight, (inner * map.height) / map.width);
+  const mapTop = bandTop + (bandHeight - mapHeight) / 2;
+
   ctx.save();
   roundedRect(ctx, pad, mapTop, inner, mapHeight, 44);
   ctx.clip();
   ctx.fillStyle = p.mapBg;
   ctx.fillRect(pad, mapTop, inner, mapHeight);
-  drawMapCover(ctx, map, pad, mapTop, inner, mapHeight);
+  drawMapContain(ctx, map, pad, mapTop, inner, mapHeight);
   ctx.restore();
 
   const heroSize = fitFont(ctx, content.hero.value, inner, 150, display);
