@@ -42,9 +42,18 @@
 
     <!-- Installable on a phone; logging a flight at the gate is the core use case -->
     <link rel="manifest" href="/manifest.webmanifest" />
-    <meta name="theme-color" content="#2563eb" />
+    <meta name="theme-color" content="#0f766e" />
+    <!--
+      iOS installs via Share > Add to Home Screen and does not require a
+      service worker or HTTPS. These tags are what make it open without Safari
+      chrome. 'default' keeps dark status bar text over our light header;
+      black-translucent would let the page run under the status bar, which
+      needs the safe-area padding the shell already applies.
+    -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="Travels" />
+    <meta name="mobile-web-app-capable" content="yes" />
   </head>
   <body>
     <div id="root"></div>

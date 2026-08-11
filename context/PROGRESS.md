@@ -92,3 +92,19 @@ Docs: `context/research/2026-08-10_user-accounts-auth_research.md`,
   baked into the bundle. Reach it at `http://<your-LAN-IP>:5173`. If the machine's IP changes,
   nothing needs updating for the browser; only the `CORS_ORIGIN` allowlist matters for direct
   (curl/native) API calls.
+
+## PWA install status (2026-08-11)
+
+Manifest, icons (192/512/maskable/apple-touch), theme colour, safe-area padding and a
+service worker (`public/sw.js`, registered in **production builds only** — a SW in dev
+fights Vite HMR) are all in place and served correctly.
+
+Remaining constraint, not a bug: **browsers only register service workers on a secure
+origin.** Over the plain-http LAN address Chrome/Android will not offer to install.
+- **iOS Safari**: works today — Share > Add to Home Screen. No SW or HTTPS required; the
+  `apple-mobile-web-app-*` tags give a full-screen, chrome-less launch.
+- **Android/Chrome**: needs HTTPS. Either deploy, or front the dev server with a tunnel that
+  terminates TLS.
+
+`display: "standalone"` (no browser UI, OS status bar retained) rather than `"fullscreen"`,
+which would also hide the status bar — wrong for an app with its own header.

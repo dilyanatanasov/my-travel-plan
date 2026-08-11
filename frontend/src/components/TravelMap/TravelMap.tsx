@@ -51,6 +51,10 @@ function TravelMap() {
   const [hoveredRoute, setHoveredRoute] = useState<AggregatedRoute | null>(null);
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
 
+  // Collapsed by default: this is a card floating over the map, so opening it
+  // by default would cover the thing the user came to look at.
+  const [isControlPanelOpen, setIsControlPanelOpen] = useState(false);
+
   // The map fills whatever the shell leaves it, so the viewBox follows the
   // measured container rather than a breakpoint preset.
   const { ref: containerRef, viewport } = useMapViewport<HTMLDivElement>();
@@ -262,7 +266,7 @@ function TravelMap() {
       */}
 
       {/* Layers, filters and legend, floating over the canvas */}
-      <div className="absolute top-3 left-3 right-3 md:right-auto md:w-[30rem] z-20 max-h-[calc(100%-6rem)] overflow-y-auto overscroll-contain scrollbar-none">
+      <div className="absolute top-3 left-3 right-3 md:right-auto md:w-[30rem] z-30 max-h-[calc(100%-1.5rem)] overflow-y-auto overscroll-contain scrollbar-none">
         <MapControlPanel
           settings={settings}
           onSettingsChange={setSettings}
@@ -273,10 +277,19 @@ function TravelMap() {
           onFiltersChange={setFilters}
           airports={filterOptions.airports}
           years={filterOptions.years}
+          isOpen={isControlPanelOpen}
+          onOpenChange={setIsControlPanelOpen}
         />
       </div>
 
-      <MapLegend showFlights={settings.showFlights} stats={stats} />
+      {/*
+        An expanded panel is taller than a phone's map canvas, so it would sit
+        on top of the legend and the zoom buttons. Hide them while it is open
+        on small screens rather than let controls stack on controls; both
+        stay put on desktop, where there is room for all three.
+      */}
+      <div className={isControlPanelOpen ? 'hidden lg:contents' : 'contents'}>
+        <MapLegend showFlights={settings.showFlights} stats={stats} />
 
       <MapZoomControls
         zoom={zoom}
@@ -284,8 +297,9 @@ function TravelMap() {
         maxZoom={MAX_ZOOM}
         onZoomIn={() => setZoom((z) => Math.min(z * 1.5, MAX_ZOOM))}
         onZoomOut={() => setZoom((z) => Math.max(z / 1.5, MIN_ZOOM))}
-        onReset={handleResetView}
-      />
+          onReset={handleResetView}
+        />
+      </div>
 
       {/* Route Tooltip */}
       <RouteTooltip route={hoveredRoute} position={tooltipPosition} />

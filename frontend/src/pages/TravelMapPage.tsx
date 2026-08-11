@@ -18,6 +18,7 @@ import {
 } from '../features/visits/visitsApi';
 import { useVisitActions } from '../features/visits/useVisitActions';
 import { useToast } from '../components/Toast/ToastProvider';
+import { useIsDesktop } from '../hooks/useMediaQuery';
 import type { VisitType, Visit } from '../types';
 
 function StatTile({
@@ -42,6 +43,7 @@ function TravelMapPage() {
   // default on desktop because it is the primary action; mobile starts closed
   // so the first thing you see is your map.
   const [activeSection, setActiveSection] = useState<SectionId | null>(null);
+  const isDesktop = useIsDesktop();
 
   const { data: countries = [] } = useGetCountriesQuery();
   const { data: visits = [], isLoading: visitsLoading } = useGetVisitsQuery();
@@ -183,6 +185,13 @@ function TravelMapPage() {
     }
   })();
 
+  const sectionBody = isFullView ? <FlightStats /> : panelContent;
+
+  // On a phone a section takes the whole screen. A half-height sheet left the
+  // forms cramped and the map above it largely covered by the filter card
+  // anyway, so the map was paying rent it could not afford.
+  const showMobileFullSection = !isDesktop && section !== null;
+
   return (
     <div className="h-full flex">
       <SectionRail
@@ -192,56 +201,40 @@ function TravelMapPage() {
 
       <div className="flex-1 min-w-0 flex flex-col">
         <div className="flex-1 min-h-0 flex">
-          {/* Canvas. Statistics is a dashboard, so it takes the whole canvas
-              rather than being squeezed into the panel. */}
           <div className="flex-1 min-w-0 relative">
-            {isFullView ? (
-              <div className="absolute inset-0 overflow-y-auto bg-canvas">
+            {showMobileFullSection || isFullView ? (
+              <div className="absolute inset-0 overflow-y-auto overscroll-contain bg-canvas">
                 <div className="max-w-5xl mx-auto p-4 sm:p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-xl font-bold text-ink">Statistics</h2>
+                  <div className="flex items-center justify-between gap-3 mb-4">
+                    <h2 className="text-xl font-bold text-ink">
+                      {section?.label}
+                    </h2>
                     <button
                       type="button"
                       onClick={() => setActiveSection(null)}
-                      className="min-h-11 px-3 rounded-lg text-sm font-medium text-brand-700 hover:bg-brand-50 focus:outline-none focus:ring-2 focus:ring-brand-500"
+                      className="flex-shrink-0 min-h-11 px-3 rounded-lg text-sm font-medium text-brand-700 hover:bg-brand-50 focus:outline-none focus:ring-2 focus:ring-brand-500"
                     >
                       Back to map
                     </button>
                   </div>
-                  <FlightStats />
+                  {sectionBody}
                 </div>
               </div>
             ) : (
               <>
                 <TravelMap />
-                {/* Only when nothing is open — the sheet would cover it. */}
-                {!section && (
-                  <MapPeekBar
-                    countriesVisited={overviewStats.tripCount}
-                    worldPercent={overviewStats.worldPercent}
-                    flights={flightStats?.totalFlights ?? 0}
-                    onOpenOverview={() => setActiveSection('overview')}
-                  />
-                )}
+                <MapPeekBar
+                  countriesVisited={overviewStats.tripCount}
+                  worldPercent={overviewStats.worldPercent}
+                  flights={flightStats?.totalFlights ?? 0}
+                  onOpenOverview={() => setActiveSection('overview')}
+                />
               </>
-            )}
-
-            {/* Sheet lives inside the canvas box so the map stays visible
-                above it on mobile. */}
-            {section && !isFullView && (
-              <SectionPanel
-                variant="sheet"
-                title={section.label}
-                isOpen
-                onClose={() => setActiveSection(null)}
-              >
-                {panelContent}
-              </SectionPanel>
             )}
           </div>
 
-          {/* Desktop dock renders alongside the canvas, not over it. */}
-          {section && !isFullView && (
+          {/* Desktop keeps the map visible with the section docked beside it. */}
+          {isDesktop && section && !isFullView && (
             <SectionPanel
               variant="dock"
               title={section.label}

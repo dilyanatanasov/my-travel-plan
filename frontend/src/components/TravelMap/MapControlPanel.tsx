@@ -1,4 +1,4 @@
-import { memo, useState, type ReactNode } from 'react';
+import { memo, type ReactNode } from 'react';
 import type { Country, Airport } from '../../types';
 import type { FlightFilters } from '../FlightMap/filterTypes';
 import { DEFAULT_FILTERS, DISTANCE_RANGES, ROUTE_TYPES } from '../FlightMap/filterTypes';
@@ -21,6 +21,10 @@ interface MapControlPanelProps {
   onFiltersChange: (filters: FlightFilters) => void;
   airports: Airport[];
   years: number[];
+  /** Controlled: the map hides the legend and zoom buttons while this is open
+   *  on small screens, where an expanded panel would otherwise cover them. */
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
 }
 
 // 44px minimum touch target; text-base stops iOS zooming the page on focus.
@@ -72,12 +76,9 @@ function MapControlPanel({
   onFiltersChange,
   airports,
   years,
+  isOpen,
+  onOpenChange,
 }: MapControlPanelProps) {
-  // Collapsed by default at every size. This is a card floating over the map
-  // now, not a bar above it, so opening by default would cover the thing the
-  // user came to look at.
-  const [isOpen, setIsOpen] = useState(false);
-
   const activeCount = countActiveFilters(filters);
 
   const handleToggle = (key: keyof TravelMapSettings) => {
@@ -98,7 +99,7 @@ function MapControlPanel({
       {/* Disclosure header */}
       <button
         type="button"
-        onClick={() => setIsOpen((open) => !open)}
+        onClick={() => onOpenChange(!isOpen)}
         aria-expanded={isOpen}
         aria-controls="map-control-panel"
         className="w-full flex items-center justify-between gap-2 min-h-12 px-4 py-2 text-left hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-brand-500"

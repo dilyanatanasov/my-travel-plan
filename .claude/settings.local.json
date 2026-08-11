@@ -58,7 +58,9 @@
       "Bash(echo \"--- old password \\(must fail\\) ---\")",
       "Bash(echo \"--- data intact ---\")",
       "Bash(sed -i 's|^VITE_API_URL=http://localhost:3000/api$|# Relative: the Vite dev server proxies /api to the backend, so the app works\\\\n# from a phone on the LAN without an absolute host baked into the bundle.\\\\nVITE_API_URL=/api|' .env)",
-      "Bash(sed -i 's|^CORS_ORIGIN=http://localhost:5173$|# Browser traffic goes through the Vite proxy \\(same origin\\), so CORS is only\\\\n# needed for direct API calls e.g. curl. LAN origin included for that case.\\\\nCORS_ORIGIN=http://localhost:5173,http://192.168.1.4:5173|' .env)"
+      "Bash(sed -i 's|^CORS_ORIGIN=http://localhost:5173$|# Browser traffic goes through the Vite proxy \\(same origin\\), so CORS is only\\\\n# needed for direct API calls e.g. curl. LAN origin included for that case.\\\\nCORS_ORIGIN=http://localhost:5173,http://192.168.1.4:5173|' .env)",
+      "Bash(sed -i 's|\"background_color\": \"#f9fafb\"|\"background_color\": \"#f6f7f9\"|; s|\"theme_color\": \"#2563eb\"|\"theme_color\": \"#0f766e\"|' public/manifest.webmanifest)",
+      "Bash(sed -i 's|<meta name=\"theme-color\" content=\"#2563eb\" />|<meta name=\"theme-color\" content=\"#0f766e\" />|' index.html)"
     ],
     "deny": [],
     "ask": []

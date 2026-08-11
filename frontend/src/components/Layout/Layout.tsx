@@ -10,7 +10,12 @@ function Layout() {
     // 100dvh, not 100vh — iOS Safari's URL bar makes 100vh taller than what is
     // actually visible, which would push the bottom tab bar off screen.
     <div className="h-[100dvh] min-h-0 flex flex-col overflow-hidden bg-canvas">
-      <header className="flex-shrink-0 bg-surface border-b border-line z-40">
+      {/* Installed as a PWA there is no browser chrome above this, so the
+          header itself has to clear the status bar / notch. */}
+      <header
+        className="flex-shrink-0 bg-surface border-b border-line z-40"
+        style={{ paddingTop: 'env(safe-area-inset-top)' }}
+      >
         <div className="px-3 sm:px-4 lg:px-6 h-14 sm:h-16 flex items-center justify-between gap-3">
           <Link to="/" className="flex flex-col justify-center min-h-11 min-w-0">
             <h1 className="text-lg sm:text-xl font-bold text-ink leading-tight">
