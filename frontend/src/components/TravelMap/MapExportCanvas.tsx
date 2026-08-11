@@ -48,14 +48,20 @@ interface MapExportCanvasProps {
 function MapExportCanvas({ theme }: MapExportCanvasProps) {
   const outer = useTheme();
 
-  if (theme && theme !== outer.resolved) {
-    return (
-      <ThemeContext.Provider value={{ ...outer, resolved: theme }}>
-        <MapExportCanvasInner />
-      </ThemeContext.Provider>
-    );
-  }
-  return <MapExportCanvasInner />;
+  /*
+    The provider is always rendered, even when the theme already matches.
+    Branching between a wrapped and an unwrapped child changes the element
+    type at that position, so React unmounts and rebuilds the whole map —
+    which threw away the loaded geography every time the card style changed,
+    and left the render polling a detached SVG until it timed out.
+  */
+  return (
+    <ThemeContext.Provider
+      value={{ ...outer, resolved: theme ?? outer.resolved }}
+    >
+      <MapExportCanvasInner />
+    </ThemeContext.Provider>
+  );
 }
 
 function MapExportCanvasInner() {

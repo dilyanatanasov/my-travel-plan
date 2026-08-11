@@ -103,7 +103,11 @@ function SharePanel() {
       const deadline = Date.now() + 6000;
       for (;;) {
         const found = document.getElementById(EXPORT_SVG_ID) as SVGSVGElement | null;
-        if (found || Date.now() > deadline || cancelled) return found;
+        // isConnected guards against grabbing a node mid-remount: a detached
+        // SVG never loads geography, so we would wait for it until timeout.
+        if ((found && found.isConnected) || Date.now() > deadline || cancelled) {
+          return found;
+        }
         await new Promise((resolve) => setTimeout(resolve, 80));
       }
     };
