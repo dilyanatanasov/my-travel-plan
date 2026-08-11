@@ -19,6 +19,7 @@ import MapControlPanel, { type TravelMapSettings } from './MapControlPanel';
 import MapZoomControls from './MapZoomControls';
 import MapLegend from './MapLegend';
 import { useMapViewport } from './useMapViewport';
+import { useMediaQuery } from '../../hooks/useMediaQuery';
 import { MAP } from '../../theme/mapColors';
 import { buildCountryDisplayMap } from './countryColors';
 import CountriesLayer from './CountriesLayer';
@@ -54,6 +55,11 @@ function TravelMap() {
   // Collapsed by default: this is a card floating over the map, so opening it
   // by default would cover the thing the user came to look at.
   const [isControlPanelOpen, setIsControlPanelOpen] = useState(false);
+
+  // The legend and zoom buttons share the canvas with the control panel. They
+  // only need to yield when the viewport is too short for both to fit.
+  const hasVerticalRoom = useMediaQuery('(min-height: 700px)');
+  const showCornerControls = !isControlPanelOpen || hasVerticalRoom;
 
   // The map fills whatever the shell leaves it, so the viewBox follows the
   // measured container rather than a breakpoint preset.
@@ -266,7 +272,9 @@ function TravelMap() {
       */}
 
       {/* Layers, filters and legend, floating over the canvas */}
-      <div className="absolute top-3 left-3 right-3 md:right-auto md:w-[30rem] z-30 max-h-[calc(100%-1.5rem)] overflow-y-auto overscroll-contain scrollbar-none">
+      {/* No scrolling here: the panel caps and scrolls its own content, so the
+          header stays pinned instead of scrolling away with it. */}
+      <div className="absolute top-3 left-3 right-3 md:right-auto md:w-[30rem] z-30">
         <MapControlPanel
           settings={settings}
           onSettingsChange={setSettings}
@@ -283,13 +291,14 @@ function TravelMap() {
       </div>
 
       {/*
-        An expanded panel is taller than a phone's map canvas, so it would sit
-        on top of the legend and the zoom buttons. Hide them while it is open
-        on small screens rather than let controls stack on controls; both
-        stay put on desktop, where there is room for all three.
+        The panel caps its own height, so on a normal phone it clears the
+        legend and zoom buttons and all three can coexist. Only on genuinely
+        short viewports — a landscape phone, where the canvas is ~280px — is
+        there not enough room, and there the corner controls yield.
       */}
-      <div className={isControlPanelOpen ? 'hidden lg:contents' : 'contents'}>
-        <MapLegend showFlights={settings.showFlights} stats={stats} />
+      {showCornerControls && (
+        <>
+          <MapLegend showFlights={settings.showFlights} stats={stats} />
 
       <MapZoomControls
         zoom={zoom}
@@ -297,9 +306,10 @@ function TravelMap() {
         maxZoom={MAX_ZOOM}
         onZoomIn={() => setZoom((z) => Math.min(z * 1.5, MAX_ZOOM))}
         onZoomOut={() => setZoom((z) => Math.max(z / 1.5, MIN_ZOOM))}
-          onReset={handleResetView}
-        />
-      </div>
+            onReset={handleResetView}
+          />
+        </>
+      )}
 
       {/* Route Tooltip */}
       <RouteTooltip route={hoveredRoute} position={tooltipPosition} />

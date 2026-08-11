@@ -46,4 +46,31 @@ body {
   .scrollbar-none::-webkit-scrollbar {
     display: none;
   }
+
+  /*
+    Deliberately visible scrollbar, for panels whose content is clipped. A
+    hidden scrollbar there is a trap: nothing indicates there is more below,
+    and on a mouse-only desktop there is no swipe to discover it with.
+  */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(var(--color-border-strong)) transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 8px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: rgb(var(--color-border-strong));
+    border-radius: 9999px;
+    /* Inset the thumb from the panel edge */
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background-color: rgb(var(--color-ink-subtle));
+    background-clip: content-box;
+  }
 }

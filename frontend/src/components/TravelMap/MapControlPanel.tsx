@@ -95,14 +95,14 @@ function MapControlPanel({
   };
 
   return (
-    <div className="rounded-xl border border-line bg-surface/95 backdrop-blur shadow-lg overflow-hidden">
-      {/* Disclosure header */}
+    <div className="rounded-xl border border-line bg-surface/95 backdrop-blur shadow-lg overflow-hidden flex flex-col">
+      {/* Header stays put; only the content below it scrolls. */}
       <button
         type="button"
         onClick={() => onOpenChange(!isOpen)}
         aria-expanded={isOpen}
         aria-controls="map-control-panel"
-        className="w-full flex items-center justify-between gap-2 min-h-12 px-4 py-2 text-left hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-brand-500"
+        className="flex-shrink-0 w-full flex items-center justify-between gap-2 min-h-12 px-4 py-2 text-left hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-brand-500"
       >
         <span className="flex items-center gap-2 text-sm font-medium text-gray-700">
           <svg
@@ -145,9 +145,12 @@ function MapControlPanel({
       </button>
 
       {isOpen && (
+        // Capped and scrollable, with a visible bar. Left uncapped the open
+        // panel ran most of the height of a phone and sat over the legend and
+        // zoom controls.
         <div
           id="map-control-panel"
-          className="px-4 pb-3 space-y-3 border-t border-gray-100"
+          className="flex-1 min-h-0 overflow-y-auto overscroll-contain scrollbar-thin max-h-[38vh] sm:max-h-[42vh] lg:max-h-[55vh] px-4 pb-3 space-y-3 border-t border-line"
         >
           {/* Layers + home country, each on its own full-width row: sharing a
               two-column grid left the toggle labels about 76px wide. */}
