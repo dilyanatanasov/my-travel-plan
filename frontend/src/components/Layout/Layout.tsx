@@ -28,7 +28,7 @@ function Layout() {
               </h1>
               {/* Subtitle only where there is room for it */}
               <p className="hidden lg:block text-xs text-ink-subtle leading-tight">
-                Every country you&rsquo;ve been to
+                You leave a trail. See it.
               </p>
             </span>
           </Link>
