@@ -42,3 +42,6 @@ temp/
 
 # Local DB backups (not for version control)
 context/backups/
+
+# Playwright MCP scratch output
+.playwright-mcp/
