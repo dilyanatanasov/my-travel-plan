@@ -66,6 +66,33 @@ body {
   }
 }
 
+/*
+  Select fields with a drawn chevron.
+
+  The native arrow sits hard against the right border and its spacing cannot
+  be controlled with padding, so it looked cramped and differed per browser.
+  appearance:none removes it; the chevron below is an inline SVG background
+  with real breathing room, identical everywhere.
+*/
+@layer components {
+  .select-field {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236b7280' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.7rem center;
+    background-size: 1.1em 1.1em;
+    /* Room for the chevron so long option text never runs under it. */
+    padding-right: 2.4rem;
+  }
+
+  /* Edge/IE draw their own arrow on top of ours. */
+  .select-field::-ms-expand {
+    display: none;
+  }
+}
+
 @layer utilities {
   /* Horizontal scroll strips scroll by swipe; the bar itself is visual noise. */
   .scrollbar-none {

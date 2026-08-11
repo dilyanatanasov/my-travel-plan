@@ -66,7 +66,18 @@
       "Bash(rm -f export-fixed.png stats-mobile.png)",
       "Bash(echo \"=== verify against backup ===\")",
       "Bash(rm -f journey-highlight.png)",
-      "Bash(rm -f peek-stacked.png)"
+      "Bash(rm -f peek-stacked.png)",
+      "Bash(chmod +x setup-ssl.sh frontend/docker-entrypoint.d/10-select-nginx-template.sh)",
+      "Bash(DOMAIN=localhost docker build -f frontend/Dockerfile -t tt-frontend-prod:test ./frontend)",
+      "Bash(docker rm *)",
+      "Bash(docker run *)",
+      "Bash(docker build *)",
+      "Bash(node -)",
+      "Bash(chmod +x scripts/backup-db.sh)",
+      "Bash(./scripts/backup-db.sh dev *)",
+      "Bash(docker volume *)",
+      "Bash(docker rmi *)",
+      "Bash(rm -f ui-fixes.png)"
     ],
     "deny": [],
     "ask": []

@@ -139,8 +139,12 @@ function ShareMenu() {
         onClick={() => setIsOpen((open) => !open)}
         aria-haspopup="menu"
         aria-expanded={isOpen}
-        className="flex items-center gap-2 min-h-11 px-3 rounded-lg border border-line text-ink-muted hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-brand-500"
+        // Square and centred while icon-only. With horizontal padding and no
+        // label the 20px glyph had 2px of slack and read as clipped.
+        className="flex items-center justify-center gap-2 w-11 h-11 sm:w-auto sm:px-3 rounded-lg border border-line text-ink-muted hover:bg-surface-sunken focus:outline-none focus:ring-2 focus:ring-brand-500"
       >
+        {/* Upload-style share arrow: fewer strokes than the three-node glyph
+            and much more legible at 20px. */}
         <svg
           className="w-5 h-5 flex-shrink-0"
           fill="none"
@@ -151,8 +155,8 @@ function ShareMenu() {
           <path
             strokeLinecap="round"
             strokeLinejoin="round"
-            strokeWidth={2}
-            d="M8.684 13.342a3 3 0 100-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684zm0-12.632a3 3 0 105.368-2.684 3 3 0 00-5.368 2.684z"
+            strokeWidth={1.8}
+            d="M12 15V3m0 0L8 7m4-4l4 4M4 13v5a2 2 0 002 2h12a2 2 0 002-2v-5"
           />
         </svg>
         <span className="hidden sm:inline text-sm font-medium">Share</span>

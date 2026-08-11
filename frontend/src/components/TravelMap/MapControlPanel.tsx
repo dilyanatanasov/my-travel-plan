@@ -29,8 +29,8 @@ interface MapControlPanelProps {
 
 // 44px minimum touch target; text-base stops iOS zooming the page on focus.
 const selectClass =
-  'min-h-11 w-full text-base sm:text-sm border border-gray-300 rounded-lg px-3 ' +
-  'bg-white focus:outline-none focus:ring-2 focus:ring-brand-500';
+  'select-field min-h-11 w-full text-base sm:text-sm border border-line rounded-lg pl-3 ' +
+  'bg-surface text-ink focus:outline-none focus:ring-2 focus:ring-brand-500';
 
 const fieldLabelClass = 'block text-xs font-medium text-gray-500 mb-1';
 
