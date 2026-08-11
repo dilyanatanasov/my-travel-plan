@@ -23,6 +23,8 @@ import MapLegend from './MapLegend';
 import { useMapViewport } from './useMapViewport';
 import { useMapFocus } from '../../features/map/MapFocusContext';
 import { useMapColors } from '../../theme/mapColors';
+import CountryTooltip from './CountryTooltip';
+import { useMediaQuery } from '../../hooks/useMediaQuery';
 import { buildCountryDisplayMap } from './countryColors';
 import CountriesLayer from './CountriesLayer';
 import type { AggregatedRoute } from '../FlightMap/routeUtils';
@@ -65,6 +67,26 @@ function TravelMap() {
   // Collapsed by default: this is a card floating over the map, so opening it
   // by default would cover the thing the user came to look at.
   const [isControlPanelOpen, setIsControlPanelOpen] = useState(false);
+
+  /**
+   * Hover only exists on a pointer that can hover. On touch the browser fires
+   * synthetic mouse events on tap, which made the cursor-following route
+   * tooltip flash in a spot the finger was already covering — and the same
+   * information is already in the card at the bottom.
+   */
+  const canHover = useMediaQuery('(pointer: fine)');
+  const [hoveredCountry, setHoveredCountry] = useState<string | null>(null);
+
+  const handleCountryHover = useCallback(
+    (name: string | null, event?: React.MouseEvent) => {
+      if (!canHover) return;
+      setHoveredCountry(name);
+      if (event && name) {
+        setTooltipPosition({ x: event.clientX, y: event.clientY });
+      }
+    },
+    [canHover]
+  );
 
 
   // The map fills whatever the shell leaves it, so the viewBox follows the
@@ -304,11 +326,11 @@ function TravelMap() {
 
   const handleMouseMove = useCallback(
     (event: React.MouseEvent) => {
-      if (hoveredRoute) {
+      if (hoveredRoute || hoveredCountry) {
         setTooltipPosition({ x: event.clientX, y: event.clientY });
       }
     },
-    [hoveredRoute]
+    [hoveredRoute, hoveredCountry]
   );
 
   /**
@@ -397,6 +419,7 @@ function TravelMap() {
             countryDisplayMap={countryDisplayMap}
             showVisitColors={settings.showCountries}
             onCountryClick={handleCountryClick}
+            onCountryHover={canHover ? handleCountryHover : undefined}
           />
 
           {/* Flight Routes */}
@@ -491,8 +514,15 @@ function TravelMap() {
         />
       )}
 
-      {/* Route Tooltip */}
-      <RouteTooltip route={hoveredRoute} position={tooltipPosition} />
+      {/* Hover-only. On touch the route's details are in the card instead. */}
+      {canHover && (
+        <>
+          <RouteTooltip route={hoveredRoute} position={tooltipPosition} />
+          {!hoveredRoute && (
+            <CountryTooltip name={hoveredCountry} position={tooltipPosition} />
+          )}
+        </>
+      )}
     </div>
   );
 }

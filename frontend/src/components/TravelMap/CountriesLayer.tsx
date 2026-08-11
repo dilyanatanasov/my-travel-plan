@@ -18,6 +18,11 @@ interface CountriesLayerProps {
   showVisitColors?: boolean;
   /** Omit to render a read-only map — used by the public shared view. */
   onCountryClick?: (isoCode: string) => void;
+  /**
+   * Hover reporting for the country tooltip. Omitted on touch, where there is
+   * no hover and a cursor-following label has nothing to follow.
+   */
+  onCountryHover?: (name: string | null, event?: React.MouseEvent) => void;
 }
 
 /**
@@ -28,13 +33,22 @@ function CountriesLayer({
   countryDisplayMap,
   showVisitColors = true,
   onCountryClick,
+  onCountryHover,
 }: CountriesLayerProps) {
   const isInteractive = Boolean(onCountryClick);
   const { map: colors, hover, pressed } = useMapColors();
 
   return (
     <Geographies geography={GEO_URL}>
-      {({ geographies }: { geographies: { id: string; rsmKey: string }[] }) =>
+      {({
+        geographies,
+      }: {
+        geographies: {
+          id: string;
+          rsmKey: string;
+          properties?: { name?: string };
+        }[];
+      }) =>
         geographies.map((geo) => {
           const numericCode = String(parseInt(geo.id, 10));
           const isoCode = numericToAlpha3[numericCode];
@@ -63,6 +77,10 @@ function CountriesLayer({
               onClick={() => {
                 if (clickable && isoCode) onCountryClick?.(isoCode);
               }}
+              onMouseEnter={(event) =>
+                onCountryHover?.(geo.properties?.name ?? null, event)
+              }
+              onMouseLeave={() => onCountryHover?.(null)}
               style={{
                 default: {
                   fill: fillColor,

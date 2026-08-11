@@ -135,3 +135,26 @@ which would also hide the status bar — wrong for an app with its own header.
 3. **Move "Home country" out of the filter panel into Settings.** Everything else in that
    panel is a view toggle; home country is account state, and changing it rewrites a visit's
    type. A destructive control should not look like a harmless one.
+
+## Naming decision (2026-08-11)
+
+**Contrail** — chosen. The trail a plane leaves, which is literally what the map draws.
+Rejected: Great Circle (two words, weak as a domain), Wayfare (safer if the product grows
+well beyond flights, but less distinctive).
+
+Logo: the agreed mark is an arc between two waypoints — hollow origin dot, solid destination
+dot — because it stays legible at favicon size where a plane or a globe turns to mush. Uses
+the existing teal. Not yet applied; the current icon set is still the generic globe.
+
+Renaming touches: `index.html` title/meta, `manifest.webmanifest` name/short_name, the
+header wordmark in `Layout.tsx`, the auth screens, `public/*` icons, and the OG image.
+Sensible to do in one pass alongside buying the domain, since `setup-ssl.sh` needs that too.
+
+## Platform decision (2026-08-11)
+
+**Stay web / PWA.** The deciding argument is monetisation: Apple takes 15–30% of in-app
+subscriptions, and the plan is to fund this with subs and paid exports. Web plus Stripe keeps
+~97%. Revisit only for automatic flight detection (reading boarding-pass emails or calendar
+in the background), which is the one feature that genuinely wants native. The API is already
+a separate backend, so a native client would reuse all of it — the decision does not get
+more expensive by waiting.
