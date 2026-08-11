@@ -45,3 +45,6 @@ context/backups/
 
 # Playwright MCP scratch output
 .playwright-mcp/
+
+# Agent worktrees are throwaway checkouts, not project files.
+.claude/worktrees/
