@@ -144,11 +144,23 @@ well beyond flights, but less distinctive).
 
 Logo: the agreed mark is an arc between two waypoints — hollow origin dot, solid destination
 dot — because it stays legible at favicon size where a plane or a globe turns to mush. Uses
-the existing teal. Not yet applied; the current icon set is still the generic globe.
+the existing teal.
 
-Renaming touches: `index.html` title/meta, `manifest.webmanifest` name/short_name, the
-header wordmark in `Layout.tsx`, the auth screens, `public/*` icons, and the OG image.
-Sensible to do in one pass alongside buying the domain, since `setup-ssl.sh` needs that too.
+**APPLIED 2026-08-11.** Tagline: "You leave a trail. See it." — header subtitle, tab title
+and OG card; the meta description stays descriptive, since that is the slot search engines
+read. Icons regenerated from `BrandMark` geometry (favicon.svg, 192, 512, maskable 512,
+apple-touch 180, og-image 1200x630). The service worker cache key was renamed as well as
+bumped so existing installs evict the old brand's icons.
+
+Two geometry details worth not relearning: the arc is trimmed along the curve with
+`getPointAtLength`, not along the straight chord (chord-trimming left the tangent pointing
+the wrong way, so it read as passing the ring rather than leaving it), and it stops 5.2
+units out — inside the ring's stroke band so the two read as one shape, but far enough that
+the round cap does not plug the hole. `BrandMark` crops to `viewBox="10 10 44 44"`; reusing
+the favicon's 64-unit box rendered it at half its tile size.
+
+Deliberately not renamed: container, database and volume names. Renaming recreates
+containers, and the DB volume is not worth risking for a cosmetic change.
 
 ## Platform decision (2026-08-11)
 
