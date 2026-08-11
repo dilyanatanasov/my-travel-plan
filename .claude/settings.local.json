@@ -53,7 +53,12 @@
       "Bash(sed -i 's|className=\"min-h-screen bg-canvas flex flex-col justify-center px-4 py-12\"|className=\"scroll-page bg-canvas flex flex-col justify-center px-4 py-12\"|' features/auth/AuthLayout.tsx)",
       "Bash(sed -i 's|className=\"min-h-screen bg-canvas flex items-center justify-center\"|className=\"scroll-page bg-canvas flex items-center justify-center\"|' features/auth/RequireAuth.tsx)",
       "Bash(sed -i 's|className=\"min-h-screen bg-canvas\"|className=\"scroll-page bg-canvas\"|; s|className=\"min-h-screen bg-canvas flex items-center justify-center px-4\"|className=\"scroll-page bg-canvas flex items-center justify-center px-4\"|' pages/SharedMapPage.tsx)",
-      "Bash(sed -i 's|className=\"min-h-screen bg-gray-50\"|className=\"scroll-page bg-gray-50\"|' pages/FlightSearchPage.tsx)"
+      "Bash(sed -i 's|className=\"min-h-screen bg-gray-50\"|className=\"scroll-page bg-gray-50\"|' pages/FlightSearchPage.tsx)",
+      "Bash(echo \"--- new password ---\")",
+      "Bash(echo \"--- old password \\(must fail\\) ---\")",
+      "Bash(echo \"--- data intact ---\")",
+      "Bash(sed -i 's|^VITE_API_URL=http://localhost:3000/api$|# Relative: the Vite dev server proxies /api to the backend, so the app works\\\\n# from a phone on the LAN without an absolute host baked into the bundle.\\\\nVITE_API_URL=/api|' .env)",
+      "Bash(sed -i 's|^CORS_ORIGIN=http://localhost:5173$|# Browser traffic goes through the Vite proxy \\(same origin\\), so CORS is only\\\\n# needed for direct API calls e.g. curl. LAN origin included for that case.\\\\nCORS_ORIGIN=http://localhost:5173,http://192.168.1.4:5173|' .env)"
     ],
     "deny": [],
     "ask": []

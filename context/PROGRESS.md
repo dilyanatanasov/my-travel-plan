@@ -88,3 +88,7 @@ Docs: `context/research/2026-08-10_user-accounts-auth_research.md`,
   visits draw 23 shapes. `countries-50m` would fix it.
 - **Backend watcher** now uses polling (`nest-cli.json`), same fix as Vite. Both dev servers
   pick up host edits; no more mystery stale routes.
+- **Opening the app from a phone** works via the Vite `/api` proxy — no absolute API host is
+  baked into the bundle. Reach it at `http://<your-LAN-IP>:5173`. If the machine's IP changes,
+  nothing needs updating for the browser; only the `CORS_ORIGIN` allowlist matters for direct
+  (curl/native) API calls.

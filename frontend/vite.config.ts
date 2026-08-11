@@ -12,6 +12,22 @@ export default defineConfig({
   server: {
     host: '0.0.0.0',
     port: 5173,
+    /**
+     * Proxy the API through the dev server so the frontend can call a relative
+     * /api. Without this the API base URL has to be an absolute host baked
+     * into the bundle, which breaks the moment the page is opened from
+     * anything other than the machine running it — on a phone, "localhost" is
+     * the phone. Going through the same origin also means no CORS and no
+     * cross-site cookie rules to satisfy.
+     *
+     * Target is the compose service name, since Vite runs inside the network.
+     */
+    proxy: {
+      '/api': {
+        target: 'http://backend:3000',
+        changeOrigin: true,
+      },
+    },
     watch: {
       // Filesystem events do not cross a Windows/macOS Docker bind mount, so
       // without polling the container never sees host edits and HMR silently

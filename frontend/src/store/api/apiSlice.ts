@@ -6,9 +6,10 @@ import type {
 } from '@reduxjs/toolkit/query';
 
 const rawBaseQuery = fetchBaseQuery({
-  baseUrl: import.meta.env.VITE_API_URL || 'http://localhost:3000/api',
-  // Required for the httpOnly auth cookie to be sent cross-origin
-  // (the dev frontend is :5173, the API is :3000).
+  // Relative by default: the dev server proxies /api to the backend, so the
+  // app works from any host or device without an absolute URL baked into the
+  // bundle. Override only when the API is genuinely on another origin.
+  baseUrl: import.meta.env.VITE_API_URL || '/api',
   credentials: 'include',
 });
 
