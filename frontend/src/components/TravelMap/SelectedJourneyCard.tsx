@@ -51,6 +51,9 @@ function SelectedJourneyCard({ journey, onClose }: SelectedJourneyCardProps) {
     <div
       role="status"
       aria-live="polite"
+      // The card sits inside the map, whose container clears the selection on
+      // any unhandled click. Without this, reading the card would dismiss it.
+      onClick={(event) => event.stopPropagation()}
       className="absolute z-20 left-3 right-3 sm:right-auto sm:max-w-sm bottom-20 lg:bottom-4 lg:left-auto lg:right-20 rounded-xl border border-line bg-surface/95 backdrop-blur shadow-lg px-3 py-2.5"
     >
       <div className="flex items-start justify-between gap-2">

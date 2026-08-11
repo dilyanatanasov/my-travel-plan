@@ -96,6 +96,8 @@ function TravelMap() {
    */
   const pointerDownAtRef = useRef<{ x: number; y: number } | null>(null);
   const wasDragRef = useRef(false);
+  /** Set by handlers that acted on a click, so the container does not also clear. */
+  const clickConsumedRef = useRef(false);
 
   const handlePointerDownCapture = useCallback((event: React.PointerEvent) => {
     pointerDownAtRef.current = { x: event.clientX, y: event.clientY };
@@ -130,8 +132,32 @@ function TravelMap() {
     setCenter(defaultCenter);
   }, [defaultCenter]);
 
+  const clearSelection = useCallback(() => {
+    clickConsumedRef.current = true;
+    setSelectedJourney(null);
+  }, []);
+
+  /**
+   * Anything inside the map that did not deliberately handle the click clears
+   * the selection.
+   *
+   * Previously only the ocean rect and countries cleared, so a tap that
+   * landed on an airport dot — a circle with no handler — was swallowed and
+   * the highlight appeared stuck. Handling it at the container means every
+   * gap in the map behaves the same way, including gaps added later.
+   */
+  const handleContainerClick = useCallback(() => {
+    const consumed = clickConsumedRef.current;
+    clickConsumedRef.current = false;
+    if (consumed || wasDragRef.current) return;
+    setSelectedJourney(null);
+  }, []);
+
   const handleSelectRoute = useCallback((route: AggregatedRoute) => {
     if (wasDragRef.current) return;
+    // Stops the container handler below from immediately clearing what this
+    // click just selected.
+    clickConsumedRef.current = true;
     // A route can belong to several journeys; the most recent is the most
     // likely thing someone is asking about.
     const journey = [...route.flights].sort((a, b) => {
@@ -211,17 +237,16 @@ function TravelMap() {
       // guard, dragging the map to look around silently toggled a country.
       if (wasDragRef.current) return;
 
-      // While a journey is highlighted, the map is in "reading" mode: a tap
-      // anywhere dismisses the highlight rather than editing your countries.
-      // Tapping a thin route and missing it should not add a country.
-      if (selectedJourney) {
-        setSelectedJourney(null);
-        return;
-      }
+      // While a journey is highlighted the map is in "reading" mode: a tap
+      // dismisses the highlight rather than editing your countries, so
+      // missing a thin route cannot silently add one. The container handler
+      // does the clearing; this just declines to toggle.
+      if (selectedJourney) return;
 
       const countryId = countryByIsoCode.get(isoCode);
       if (!countryId) return;
 
+      clickConsumedRef.current = true;
       const existingVisit = visitByCountryId.get(countryId);
       if (existingVisit) {
         await removeVisitWithUndo(existingVisit);
@@ -297,6 +322,7 @@ function TravelMap() {
       onMouseMove={handleMouseMove}
       onPointerDownCapture={handlePointerDownCapture}
       onClickCapture={handleClickCapture}
+      onClick={handleContainerClick}
     >
       {/* Map fills the canvas; chrome floats over it. */}
       <ComposableMap
@@ -326,12 +352,8 @@ function TravelMap() {
             width={width * 5}
             height={height * 5}
             fill={MAP.ocean}
-            // Tapping open water clears a selection — the most instinctive
-            // way out, alongside Escape, the card's close button, and
-            // clicking the highlighted route itself.
-            onClick={() => {
-              if (!wasDragRef.current) setSelectedJourney(null);
-            }}
+            // Clearing is handled once at the container, so open water needs
+            // no handler of its own.
             style={{ cursor: selectedJourney ? 'pointer' : 'default' }}
           />
 
@@ -343,26 +365,33 @@ function TravelMap() {
           />
 
           {/* Flight Routes */}
-          {settings.showFlights &&
-            // While a journey is selected the other routes are hidden
-            // outright rather than dimmed: with 49 of them the selected one
-            // was still lost in the crowd.
-            (selectedJourney ? (
-              <JourneyHighlight
-                journey={selectedJourney}
-                sizeScale={markerScale}
-                onClear={() => setSelectedJourney(null)}
-              />
-            ) : (
+          {settings.showFlights && (
+            <>
+              {/*
+                The other routes stay mounted while a journey is selected, at
+                a tenth of their opacity. Unmounting them looked cleaner but
+                left nothing to click, so switching journeys was impossible —
+                a tap where another route sits did nothing, or cleared, and
+                the old highlight appeared to be stuck.
+              */}
               <FlightRoutes
                 routes={routes}
                 maxCount={maxRouteCount}
-                hoveredRouteKey={hoveredRoute?.key || null}
-                onHover={handleRouteHover}
+                hoveredRouteKey={selectedJourney ? null : hoveredRoute?.key || null}
+                onHover={selectedJourney ? () => undefined : handleRouteHover}
                 onSelect={handleSelectRoute}
                 sizeScale={markerScale}
+                faded={Boolean(selectedJourney)}
               />
-            ))}
+              {selectedJourney && (
+                <JourneyHighlight
+                  journey={selectedJourney}
+                  sizeScale={markerScale}
+                  onClear={clearSelection}
+                />
+              )}
+            </>
+          )}
 
           {/* Airport Markers */}
           {settings.showAirports && settings.showFlights && (

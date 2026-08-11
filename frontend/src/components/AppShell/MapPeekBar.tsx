@@ -26,30 +26,28 @@ function MapPeekBar({
       onClick={onOpenOverview}
       className="lg:hidden absolute inset-x-0 bottom-0 z-10 min-h-14 px-4 flex items-center justify-between gap-3 bg-surface/95 backdrop-blur border-t border-line text-left focus:outline-none focus:ring-2 focus:ring-inset focus:ring-brand-500"
     >
-      <span className="flex items-baseline gap-3 min-w-0">
-        <span className="flex items-baseline gap-1">
-          <span className="text-lg font-bold text-ink">{countriesVisited}</span>
-          <span className="text-xs text-ink-muted">countries</span>
+      {/*
+        Each stat stacks its number over its label. Side by side they ran out
+        of room and wrapped; stacked, they fit the same bar height because the
+        two lines together are shorter than one line of 18px text plus its
+        leading.
+      */}
+      <span className="flex items-center gap-5 min-w-0">
+        <span className="flex flex-col leading-none">
+          <span className="text-base font-bold text-ink">{countriesVisited}</span>
+          <span className="text-[11px] text-ink-muted mt-0.5">countries</span>
         </span>
-        <span className="text-line-strong" aria-hidden="true">
-          ·
-        </span>
-        <span className="flex items-baseline gap-1">
-          <span className="text-lg font-bold text-brand-700">
+        <span className="flex flex-col leading-none">
+          <span className="text-base font-bold text-brand-700">
             {worldPercent}%
           </span>
-          <span className="text-xs text-ink-muted">of world</span>
+          <span className="text-[11px] text-ink-muted mt-0.5">of world</span>
         </span>
         {flights > 0 && (
-          <>
-            <span className="text-line-strong" aria-hidden="true">
-              ·
-            </span>
-            <span className="flex items-baseline gap-1">
-              <span className="text-lg font-bold text-ink">{flights}</span>
-              <span className="text-xs text-ink-muted">flights</span>
-            </span>
-          </>
+          <span className="flex flex-col leading-none">
+            <span className="text-base font-bold text-ink">{flights}</span>
+            <span className="text-[11px] text-ink-muted mt-0.5">flights</span>
+          </span>
         )}
       </span>
       <svg

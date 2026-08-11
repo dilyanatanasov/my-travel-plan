@@ -13,8 +13,12 @@ interface FlightRoutesProps {
   sizeScale?: number;
   /** Omit to render non-interactive routes, as the public shared map does. */
   onSelect?: (route: AggregatedRoute) => void;
-  /** Routes belonging to the selected journey are dimmed here and redrawn on top. */
-  dimmedRouteKeys?: Set<string>;
+  /**
+   * When a journey is selected the other routes fade almost to nothing so the
+   * selection stands alone — but they stay clickable, so switching to another
+   * journey is one tap rather than "clear, then click again".
+   */
+  faded?: boolean;
 }
 
 function FlightRoutes({
@@ -24,7 +28,7 @@ function FlightRoutes({
   onHover,
   sizeScale = 1,
   onSelect,
-  dimmedRouteKeys,
+  faded = false,
 }: FlightRoutesProps) {
   const { projection } = useMapContext();
   const { k: zoom } = useZoomPanContext();
@@ -51,9 +55,6 @@ function FlightRoutes({
           isHovered ? baseStrokeWidth * 1.6 : baseStrokeWidth,
           zoom
         );
-        // A selected journey redraws its own legs on top, so fade the
-        // aggregate versions to stop the two fighting each other.
-        const isDimmed = dimmedRouteKeys?.has(route.key) ?? false;
 
         return (
           <g key={route.key}>
@@ -78,7 +79,7 @@ function FlightRoutes({
               stroke={isHovered ? MAP.routeHighlight : MAP.route}
               strokeWidth={strokeWidth}
               strokeLinecap="round"
-              strokeOpacity={isDimmed ? 0.15 : isHovered ? 1 : 0.65}
+              strokeOpacity={faded ? 0.1 : isHovered ? 1 : 0.65}
               pointerEvents="none"
               style={{
                 transition:
