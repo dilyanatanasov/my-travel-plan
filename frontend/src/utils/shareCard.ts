@@ -179,12 +179,25 @@ function drawMapCover(
  * countries-110m carries ~177 features, so a threshold well above the number
  * of routes anyone will have distinguishes land from lines without needing to
  * reach inside react-simple-maps.
+ *
+ * The timeout is generous because the geography comes from a CDN on a cold
+ * load. A short one meant the very first visit to Share timed out and
+ * dead-ended, while every later visit worked from the browser cache — which
+ * reads as "it only breaks the first time".
  */
 const MIN_GEOGRAPHY_PATHS = 60;
 
-async function waitForGeography(svg: SVGSVGElement, timeoutMs = 6000) {
+async function waitForGeography(svg: SVGSVGElement, timeoutMs = 30000) {
   const deadline = Date.now() + timeoutMs;
-  while (svg.querySelectorAll('path').length < MIN_GEOGRAPHY_PATHS) {
+  const ready = () =>
+    svg.querySelectorAll('path').length >= MIN_GEOGRAPHY_PATHS &&
+    // The canvas frames itself on the user's countries once their centroids
+    // are known. Without waiting for that we would capture the unframed
+    // first paint — the whole globe — and the card would disagree with the
+    // map the user was just looking at.
+    svg.getAttribute('data-framed') === '1';
+
+  while (!ready()) {
     if (Date.now() > deadline) {
       throw new ShareCardError(
         'The map is still loading — try again in a moment',
@@ -192,6 +205,9 @@ async function waitForGeography(svg: SVGSVGElement, timeoutMs = 6000) {
     }
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
+
+  // One frame for the reframed view to paint before it is serialised.
+  await new Promise((resolve) => requestAnimationFrame(resolve));
 }
 
 export async function renderShareCard(

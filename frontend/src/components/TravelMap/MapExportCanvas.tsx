@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { ComposableMap, ZoomableGroup } from 'react-simple-maps';
 import { useGetVisitsQuery } from '../../features/visits/visitsApi';
 import { useGetFlightsQuery } from '../../features/flights/flightsApi';
@@ -11,6 +11,7 @@ import FlightRoutes from '../FlightMap/FlightRoutes';
 import AirportMarkers from '../FlightMap/AirportMarkers';
 import CountriesLayer from './CountriesLayer';
 import { buildCountryDisplayMap } from './countryColors';
+import { fitToPoints, type LonLat } from './fitBounds';
 import { useMapColors } from '../../theme/mapColors';
 import { ThemeContext, useTheme } from '../../features/theme/ThemeContext';
 import type { ResolvedTheme } from '../../features/theme/ThemeContext';
@@ -78,6 +79,30 @@ function MapExportCanvasInner() {
   const airportVisitCounts = useMemo(() => countAirportVisits(flights), [flights]);
   const maxRouteCount = Math.max(...routes.map((r) => r.count), 1);
 
+  /*
+    Frame the card on where the user has been, exactly as the live map does.
+    A shared image of the whole globe with three dots over Belgium says far
+    less than one framed on the trip.
+
+    fill is tighter than the live map's: the card has no floating controls to
+    dodge, so the geography can run closer to the edges.
+  */
+  const [countryCentroids, setCountryCentroids] = useState<Map<string, LonLat>>(
+    new Map(),
+  );
+  const hasCountries = countryDisplayMap.size > 0;
+  const centroidsSettled = !hasCountries || countryCentroids.size > 0;
+
+  const framing = useMemo(() => {
+    const points: LonLat[] = airports.map((a) => [a.longitude, a.latitude]);
+    for (const [iso, info] of countryDisplayMap) {
+      if (info.visitType === 'transit') continue;
+      const centroid = countryCentroids.get(iso);
+      if (centroid) points.push(centroid);
+    }
+    return fitToPoints(points, { maxZoom: 3.2, fill: 0.82 });
+  }, [airports, countryDisplayMap, countryCentroids]);
+
   return (
     <div
       aria-hidden="true"
@@ -89,9 +114,13 @@ function MapExportCanvasInner() {
         width={EXPORT_WIDTH}
         height={EXPORT_HEIGHT}
         projectionConfig={{ rotate: [-10, 0, 0], scale: EXPORT_SCALE }}
+        data-framed={centroidsSettled ? '1' : '0'}
         style={{ width: EXPORT_WIDTH, height: EXPORT_HEIGHT }}
       >
-        <ZoomableGroup zoom={1} center={[0, 0]}>
+        <ZoomableGroup
+          zoom={framing?.zoom ?? 1}
+          center={framing?.center ?? [0, 0]}
+        >
           <rect
             x={-EXPORT_WIDTH}
             y={-EXPORT_HEIGHT}
@@ -99,7 +128,10 @@ function MapExportCanvasInner() {
             height={EXPORT_HEIGHT * 3}
             fill={colors.ocean}
           />
-          <CountriesLayer countryDisplayMap={countryDisplayMap} />
+          <CountriesLayer
+            countryDisplayMap={countryDisplayMap}
+            onCentroids={setCountryCentroids}
+          />
           {routes.length > 0 && (
             <FlightRoutes
               routes={routes}

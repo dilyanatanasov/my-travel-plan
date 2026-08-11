@@ -41,6 +41,8 @@ function SharePanel() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isRendering, setIsRendering] = useState(true);
   const [renderError, setRenderError] = useState<string | null>(null);
+  // Bumped to force the render effect to run again after a failure.
+  const [retryToken, setRetryToken] = useState(0);
 
   // Held so the buttons can act on exactly what is on screen, rather than
   // rendering a second time and risking a different result.
@@ -48,13 +50,21 @@ function SharePanel() {
 
   const { user, isGuest } = useAuth();
   const { showToast } = useToast();
-  const { data: visits = [] } = useGetVisitsQuery();
-  const { data: flightStats } = useGetFlightStatsQuery();
+  const { data: visits = [], isLoading: visitsLoading } = useGetVisitsQuery();
+  const { data: flightStats, isLoading: statsLoading } = useGetFlightStatsQuery();
+  const isLoadingData = visitsLoading || statsLoading;
   const { data: shareStatus } = useGetShareStatusQuery(undefined, {
     skip: isGuest,
   });
   const [enableShare, { isLoading: isEnabling }] = useEnableShareMutation();
   const [disableShare, { isLoading: isDisabling }] = useDisableShareMutation();
+
+  const countriesCount = visits.filter((visit) => {
+    const type = visit.visitType || 'trip';
+    return type === 'trip' || type === 'home';
+  }).length;
+  const hasSomethingToShow =
+    countriesCount > 0 || (flightStats?.totalFlights ?? 0) > 0;
 
   const content = useMemo<ShareContent>(() => {
     const countries = visits.filter((visit) => {
@@ -113,6 +123,7 @@ function SharePanel() {
     };
 
     const render = async () => {
+      if (isLoadingData || !hasSomethingToShow) return;
       setIsRendering(true);
       setRenderError(null);
 
@@ -146,7 +157,7 @@ function SharePanel() {
       cancelled = true;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [content, style]);
+  }, [content, style, retryToken, isLoadingData, hasSomethingToShow]);
 
   const filename = `contrail-${style}.png`;
 
@@ -220,6 +231,26 @@ function SharePanel() {
     }
   };
 
+  if (isLoadingData) {
+    return (
+      <div className="max-w-md mx-auto">
+        <div className="aspect-[4/5] rounded-2xl border border-line bg-surface-sunken animate-pulse" />
+      </div>
+    );
+  }
+
+  if (!hasSomethingToShow) {
+    return (
+      <div className="max-w-md mx-auto bg-surface border border-line rounded-2xl px-6 py-12 text-center shadow-sm">
+        <h3 className="text-base font-semibold text-ink">Nothing to share yet</h3>
+        <p className="text-sm text-ink-muted mt-1.5 leading-relaxed">
+          Mark a country on the map or log a flight, and your card appears here
+          ready to post.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-5 max-w-md mx-auto">
       {/* Off-screen source for the card. */}
@@ -264,9 +295,19 @@ function SharePanel() {
             className="w-full h-full object-cover"
           />
         )}
-        {(isRendering || renderError) && (
-          <div className="absolute inset-0 flex items-center justify-center bg-surface-sunken/80 text-sm text-ink-muted px-6 text-center">
-            {renderError ?? 'Drawing your card…'}
+        {((isRendering && !previewUrl) || renderError) && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-surface-sunken/80 text-sm text-ink-muted px-6 text-center">
+            <span>{renderError ?? 'Drawing your card…'}</span>
+            {/* A dead end is worse than a slow render: always offer the retry. */}
+            {renderError && (
+              <button
+                type="button"
+                onClick={() => setRetryToken((n) => n + 1)}
+                className="min-h-10 px-4 rounded-xl bg-brand-600 text-white text-sm font-medium hover:bg-brand-700"
+              >
+                Try again
+              </button>
+            )}
           </div>
         )}
       </div>

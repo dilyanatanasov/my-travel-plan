@@ -1,7 +1,7 @@
 import { memo } from 'react';
 import { useMapContext, useZoomPanContext } from 'react-simple-maps';
 import type { Airport } from '../../types';
-import { getZoomAdjustedSize } from './routeUtils';
+import { getZoomAdjustedSize, getZoomEmphasisedSize } from './routeUtils';
 import { useMapColors } from '../../theme/mapColors';
 
 interface AirportMarkersProps {
@@ -21,6 +21,16 @@ function AirportMarkers({
   const { map: colors } = useMapColors();
   const { projection } = useMapContext();
   const { k: zoom } = useZoomPanContext();
+
+  /*
+    Past this zoom the map has stopped being a world overview and become a
+    regional one, where the question changes from "where have I been" to
+    "which airport is that". Below it, labelling 39 airports clustered over
+    Europe would be a wall of text.
+  */
+  const showLabels = zoom >= 2.5;
+  // City names need more room than a 3-letter code, so they wait for more zoom.
+  const useCityNames = zoom >= 4.5;
 
   // Calculate max visit count for scaling
   const maxVisits = Math.max(...Array.from(visitCounts.values()), 1);
@@ -46,12 +56,18 @@ function AirportMarkers({
         const [x, y] = coords;
         const isHighlighted = highlightedAirports.includes(airport.iataCode);
         const baseRadius = getRadius(airport.iataCode);
-        const radius = getZoomAdjustedSize(baseRadius, zoom);
+        // Emphasised rather than merely constant: zooming in is a request for
+        // detail, and a dot that holds exactly still reads as less important
+        // the closer you get to it.
+        const radius = getZoomEmphasisedSize(baseRadius, zoom);
         const strokeWidth = getZoomAdjustedSize(0.7 * sizeScale, zoom);
         const highlightOffset = getZoomAdjustedSize(3, zoom);
         const highlightStroke = getZoomAdjustedSize(2, zoom);
-        const fontSize = getZoomAdjustedSize(10, zoom);
-        const labelOffset = getZoomAdjustedSize(baseRadius + 5, zoom);
+        const fontSize = getZoomAdjustedSize(isHighlighted ? 11 : 10, zoom);
+        const labelOffset = radius + getZoomAdjustedSize(6, zoom);
+        const label = useCityNames
+          ? airport.city || airport.iataCode
+          : airport.iataCode;
 
         return (
           <g key={airport.iataCode}>
@@ -84,18 +100,28 @@ function AirportMarkers({
                 transition: 'fill 0.15s',
               }}
             />
-            {/* IATA label for highlighted airports */}
-            {isHighlighted && (
+            {/*
+              Labels appear once zoomed in, and always for a highlighted
+              airport. paintOrder + a stroke in the ocean colour gives each
+              one a halo, which is what keeps it readable where it crosses a
+              coastline or another route rather than needing a solid plate
+              behind it.
+            */}
+            {(showLabels || isHighlighted) && (
               <text
                 x={x}
                 y={y - labelOffset}
                 textAnchor="middle"
                 fontSize={fontSize}
-                fontWeight="bold"
+                fontWeight={isHighlighted ? 700 : 600}
                 fill={colors.label}
+                stroke={colors.ocean}
+                strokeWidth={getZoomAdjustedSize(2.5, zoom)}
+                paintOrder="stroke"
+                strokeLinejoin="round"
                 style={{ pointerEvents: 'none' }}
               >
-                {airport.iataCode}
+                {label}
               </text>
             )}
           </g>

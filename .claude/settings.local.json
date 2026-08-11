@@ -92,7 +92,8 @@
       "Bash(xargs tail -6)",
       "mcp__playwright__browser_find",
       "mcp__playwright__browser_type",
-      "mcp__playwright__browser_snapshot"
+      "mcp__playwright__browser_snapshot",
+      "Bash(grep -n \"}\\)}\\\\s*$\\\\|^    </Geographies>\" components/TravelMap/CountriesLayer.tsx)"
     ],
     "deny": [],
     "ask": []

@@ -1,5 +1,6 @@
-import { memo } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 import { Geographies, Geography } from 'react-simple-maps';
+import { geoCentroid } from 'd3-geo';
 import { numericToAlpha3 } from './isoCodes';
 import {
   getCountryColor,
@@ -12,6 +13,33 @@ import { useMapColors } from '../../theme/mapColors';
 export const GEO_URL =
   'https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json';
 
+/*
+  Fetch the world once per page, not once per mount.
+
+  <Geographies geography={url}> refetches whenever it mounts, and the shell
+  unmounts the map to show a full-screen section — so opening Share threw the
+  world away and asked for it again, leaving the share card waiting on a
+  network round trip that the map had already completed. Handing the parsed
+  object to <Geographies> instead skips fetching entirely.
+
+  A module-level promise, so concurrent mounts share one request.
+*/
+let geographyPromise: Promise<unknown> | null = null;
+
+export function loadGeography(): Promise<unknown> {
+  geographyPromise ??= fetch(GEO_URL)
+    .then((response) => {
+      if (!response.ok) throw new Error(`Geography fetch failed: ${response.status}`);
+      return response.json();
+    })
+    .catch((error) => {
+      // Do not cache a failure: the next mount should be able to retry.
+      geographyPromise = null;
+      throw error;
+    });
+  return geographyPromise;
+}
+
 interface CountriesLayerProps {
   countryDisplayMap: Map<string, CountryDisplayInfo>;
   /** When false, every country renders as plain land. */
@@ -23,6 +51,15 @@ interface CountriesLayerProps {
    * no hover and a cursor-following label has nothing to follow.
    */
   onCountryHover?: (name: string | null, event?: React.MouseEvent) => void;
+  /**
+   * Reports each country's centroid once the geography has loaded, keyed by
+   * alpha-3.
+   *
+   * Countries carry no coordinates in our database — only the TopoJSON knows
+   * where they are — so anything that needs to frame a view around visited
+   * countries has to learn it from here.
+   */
+  onCentroids?: (centroids: Map<string, [number, number]>) => void;
 }
 
 /**
@@ -34,12 +71,37 @@ function CountriesLayer({
   showVisitColors = true,
   onCountryClick,
   onCountryHover,
+  onCentroids,
 }: CountriesLayerProps) {
   const isInteractive = Boolean(onCountryClick);
+  // Reported once per geography load, not once per render.
+  const reportedRef = useRef(false);
+
+  const [geography, setGeography] = useState<unknown>(null);
+  useEffect(() => {
+    let active = true;
+    loadGeography()
+      .then((data) => {
+        if (active) setGeography(data);
+      })
+      .catch(() => {
+        /* The map simply stays empty; there is no useful recovery here. */
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
   const { map: colors, hover, pressed } = useMapColors();
 
+  /*
+    Render nothing until the world has arrived. An empty placeholder topology
+    is not a safe stand-in: Geographies reads the first object's type and
+    throws on undefined, which took the whole map down.
+  */
+  if (!geography) return null;
+
   return (
-    <Geographies geography={GEO_URL}>
+    <Geographies geography={geography}>
       {({
         geographies,
       }: {
@@ -48,8 +110,24 @@ function CountriesLayer({
           rsmKey: string;
           properties?: { name?: string };
         }[];
-      }) =>
-        geographies.map((geo) => {
+      }) => {
+        if (onCentroids && !reportedRef.current && geographies.length > 0) {
+          reportedRef.current = true;
+          const centroids = new Map<string, [number, number]>();
+          for (const geo of geographies) {
+            const iso = numericToAlpha3[String(parseInt(geo.id, 10))];
+            if (!iso) continue;
+            const centre = geoCentroid(geo as never);
+            if (Number.isFinite(centre[0]) && Number.isFinite(centre[1])) {
+              centroids.set(iso, [centre[0], centre[1]]);
+            }
+          }
+          // Deferred: this runs inside Geographies' render callback, and
+          // setting parent state during render warns and can loop.
+          queueMicrotask(() => onCentroids(centroids));
+        }
+
+        return geographies.map((geo) => {
           const numericCode = String(parseInt(geo.id, 10));
           const isoCode = numericToAlpha3[numericCode];
           const displayInfo = isoCode
@@ -108,8 +186,8 @@ function CountriesLayer({
               }}
             />
           );
-        })
-      }
+        });
+      }}
     </Geographies>
   );
 }

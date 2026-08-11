@@ -28,6 +28,7 @@ import { useMediaQuery } from '../../hooks/useMediaQuery';
 import { buildCountryDisplayMap } from './countryColors';
 import CountriesLayer from './CountriesLayer';
 import type { AggregatedRoute } from '../FlightMap/routeUtils';
+import { fitToPoints, type LonLat } from './fitBounds';
 
 
 const MIN_ZOOM = 1;
@@ -101,8 +102,21 @@ function TravelMap() {
   // Track whether the user has moved the map; until then, follow the
   // breakpoint's default centre rather than stranding a phone off-centre.
   const [hasMovedMap, setHasMovedMap] = useState(false);
+
   const defaultCenter = isNarrow ? NARROW_CENTER : DESKTOP_CENTER;
-  const effectiveCenter = hasMovedMap ? center : defaultCenter;
+
+  /*
+    The view the map opened with, so Reset can return to it.
+
+    A ref rather than state: it is computed further down, after the airports
+    and country centroids it depends on, but Reset is defined up here. Reading
+    it through a ref avoids reordering half the component around a callback
+    that only fires on a button press.
+  */
+  const openingViewRef = useRef<{ center: LonLat; zoom: number }>({
+    center: defaultCenter,
+    zoom: MIN_ZOOM,
+  });
 
   // The journey highlighted by clicking one of its routes.
   const [selectedJourney, setSelectedJourney] = useState<FlightJourney | null>(
@@ -165,12 +179,13 @@ function TravelMap() {
   );
 
   const handleResetView = useCallback(() => {
-    setZoom(MIN_ZOOM);
     // Back to the view the map opened with, not [0,0] — otherwise "reset"
     // lands somewhere the user has never seen.
+    const opening = openingViewRef.current;
+    setZoom(opening.zoom);
     setHasMovedMap(false);
-    setCenter(defaultCenter);
-  }, [defaultCenter]);
+    setCenter(opening.center);
+  }, []);
 
   const clearSelection = useCallback(() => {
     clickConsumedRef.current = true;
@@ -371,6 +386,42 @@ function TravelMap() {
     return airports.filter((airport) => onJourney.has(airport.iataCode));
   }, [airports, selectedJourney, highlightedAirports]);
 
+  /*
+    Frame the opening view around where the user has actually been.
+
+    A world map centred on the Atlantic is the right default for someone with
+    no data and the wrong one for everyone else: a person who has only flown
+    around Europe opened the app to a globe with their entire life in one
+    corner. Centroids arrive with the geography, so this settles a moment
+    after first paint rather than blocking it.
+  */
+  const [countryCentroids, setCountryCentroids] = useState<
+    Map<string, LonLat>
+  >(new Map());
+
+  const dataFraming = useMemo(() => {
+    const points: LonLat[] = [];
+    for (const airport of airports) {
+      points.push([airport.longitude, airport.latitude]);
+    }
+    for (const [iso, info] of countryDisplayMap) {
+      // Transit-only countries are places you changed planes in, not places
+      // you would call "been to" — they should not drag the frame.
+      if (info.visitType === 'transit') continue;
+      const centroid = countryCentroids.get(iso);
+      if (centroid) points.push(centroid);
+    }
+    // maxZoom 3 keeps some surrounding context: a frame pulled tight around
+    // two neighbouring countries loses the sense of where in the world it is.
+    return fitToPoints(points, { maxZoom: 3, fill: isNarrow ? 0.55 : 0.7 });
+  }, [airports, countryDisplayMap, countryCentroids, isNarrow]);
+
+  const openingCenter = dataFraming?.center ?? defaultCenter;
+  const openingZoom = dataFraming?.zoom ?? MIN_ZOOM;
+  openingViewRef.current = { center: openingCenter, zoom: openingZoom };
+  const effectiveCenter = hasMovedMap ? center : openingCenter;
+  const effectiveZoom = hasMovedMap ? zoom : openingZoom;
+
   return (
     <div
       ref={containerRef}
@@ -392,7 +443,7 @@ function TravelMap() {
         className="w-full h-full"
       >
         <ZoomableGroup
-          zoom={zoom}
+          zoom={effectiveZoom}
           center={effectiveCenter}
           minZoom={MIN_ZOOM}
           maxZoom={MAX_ZOOM}
@@ -420,6 +471,7 @@ function TravelMap() {
             showVisitColors={settings.showCountries}
             onCountryClick={handleCountryClick}
             onCountryHover={canHover ? handleCountryHover : undefined}
+            onCentroids={setCountryCentroids}
           />
 
           {/* Flight Routes */}

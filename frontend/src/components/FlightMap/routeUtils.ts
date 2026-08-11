@@ -160,13 +160,35 @@ export function projectCoordinates(
 }
 
 /**
- * Adjust a size value to remain visually constant regardless of zoom level.
- * Divides by zoom factor and clamps to a minimum SVG size.
+ * Keep a size visually constant as the map zooms.
+ *
+ * Everything inside ZoomableGroup is multiplied by the zoom factor when it is
+ * drawn, so dividing by that factor first cancels it out and the result is a
+ * constant number of screen pixels.
+ *
+ * There is deliberately no floor. The old one clamped at 0.5 *user* units,
+ * which the zoom then multiplied back up: a 2px dot held 2px on screen until
+ * zoom 4, then grew — 4px at zoom 8, 8px at 16. Dots swelled exactly when you
+ * were zooming in to see detail underneath them. A floor cannot protect
+ * against disappearing here anyway, because the screen size never changes.
  */
-export function getZoomAdjustedSize(
+export function getZoomAdjustedSize(size: number, zoom: number): number {
+  return size / zoom;
+}
+
+/**
+ * Grow a size gently as the map zooms in, in screen pixels.
+ *
+ * For things that should become *more* prominent close up rather than merely
+ * holding still — airport dots, once you have zoomed past the point where the
+ * map is a world overview and become a regional one. Logarithmic so it never
+ * runs away: at zoom 8 a 2px dot is about 3px, not 16.
+ */
+export function getZoomEmphasisedSize(
   size: number,
   zoom: number,
-  minSize: number = 0.5
+  strength = 0.35
 ): number {
-  return Math.max(size / zoom, minSize);
+  const growth = 1 + Math.log2(Math.max(zoom, 1)) * strength;
+  return (size * growth) / zoom;
 }
