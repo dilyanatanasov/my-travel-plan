@@ -19,7 +19,6 @@ import MapControlPanel, { type TravelMapSettings } from './MapControlPanel';
 import MapZoomControls from './MapZoomControls';
 import MapLegend from './MapLegend';
 import { useMapViewport } from './useMapViewport';
-import { useMediaQuery } from '../../hooks/useMediaQuery';
 import { MAP } from '../../theme/mapColors';
 import { buildCountryDisplayMap } from './countryColors';
 import CountriesLayer from './CountriesLayer';
@@ -28,6 +27,14 @@ import type { AggregatedRoute } from '../FlightMap/routeUtils';
 
 const MIN_ZOOM = 1;
 const MAX_ZOOM = 8;
+
+/**
+ * Slightly west of centre, so the landmass sits right of the controls pinned
+ * to the top-left. Longitude only: the map always overflows horizontally (see
+ * useMapViewport), so panning sideways never exposes an edge, whereas a
+ * vertical offset would open a gap on a portrait canvas.
+ */
+const INITIAL_CENTER: [number, number] = [-12, 0];
 
 const DEFAULT_SETTINGS: TravelMapSettings = {
   showCountries: true,
@@ -56,10 +63,6 @@ function TravelMap() {
   // by default would cover the thing the user came to look at.
   const [isControlPanelOpen, setIsControlPanelOpen] = useState(false);
 
-  // The legend and zoom buttons share the canvas with the control panel. They
-  // only need to yield when the viewport is too short for both to fit.
-  const hasVerticalRoom = useMediaQuery('(min-height: 700px)');
-  const showCornerControls = !isControlPanelOpen || hasVerticalRoom;
 
   // The map fills whatever the shell leaves it, so the viewBox follows the
   // measured container rather than a breakpoint preset.
@@ -67,12 +70,8 @@ function TravelMap() {
   const { width, height, scale } = viewport;
 
   // Zoom is controlled so the +/- buttons and d3's own gestures stay in sync.
-  const [zoom, setZoom] = useState(1);
-  // Start slightly west of centre so the landmass sits right of the controls
-  // pinned to the top-left. Longitude only: the map always overflows
-  // horizontally (see useMapViewport), so panning sideways never exposes an
-  // edge, whereas a vertical offset would open a gap on a portrait canvas.
-  const [center, setCenter] = useState<[number, number]>([-12, 0]);
+  const [zoom, setZoom] = useState(MIN_ZOOM);
+  const [center, setCenter] = useState<[number, number]>(INITIAL_CENTER);
 
   const handleMoveEnd = useCallback(
     (position: { coordinates: [number, number]; zoom: number }) => {
@@ -83,8 +82,10 @@ function TravelMap() {
   );
 
   const handleResetView = useCallback(() => {
-    setZoom(1);
-    setCenter([0, 0]);
+    setZoom(MIN_ZOOM);
+    // Back to the view the map opened with, not [0,0] — otherwise "reset"
+    // lands somewhere the user has never seen.
+    setCenter(INITIAL_CENTER);
   }, []);
 
   // Build country display map from visits
@@ -291,14 +292,13 @@ function TravelMap() {
       </div>
 
       {/*
-        The panel caps its own height, so on a normal phone it clears the
-        legend and zoom buttons and all three can coexist. Only on genuinely
-        short viewports — a landscape phone, where the canvas is ~280px — is
-        there not enough room, and there the corner controls yield.
+        Always visible. The panel caps its own height, so it clears these
+        rather than needing them hidden. On a landscape phone the canvas is
+        short enough that an open panel can still reach the legend, which is
+        accepted: the panel is dismissible and this is a rare orientation for
+        a world map.
       */}
-      {showCornerControls && (
-        <>
-          <MapLegend showFlights={settings.showFlights} stats={stats} />
+      <MapLegend showFlights={settings.showFlights} stats={stats} />
 
       <MapZoomControls
         zoom={zoom}
@@ -306,10 +306,8 @@ function TravelMap() {
         maxZoom={MAX_ZOOM}
         onZoomIn={() => setZoom((z) => Math.min(z * 1.5, MAX_ZOOM))}
         onZoomOut={() => setZoom((z) => Math.max(z / 1.5, MIN_ZOOM))}
-            onReset={handleResetView}
-          />
-        </>
-      )}
+        onReset={handleResetView}
+      />
 
       {/* Route Tooltip */}
       <RouteTooltip route={hoveredRoute} position={tooltipPosition} />
