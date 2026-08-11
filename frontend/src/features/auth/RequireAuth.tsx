@@ -1,6 +1,5 @@
-import { useEffect, useRef } from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
-import { useAuth, useCreateGuestMutation, hasKnownAccount } from './authApi';
+import { useAuth, hasKnownAccount } from './authApi';
 
 function LoadingScreen({ message }: { message: string }) {
   return (
@@ -39,9 +38,10 @@ function LoadingScreen({ message }: { message: string }) {
 /**
  * Gate for every route that renders user data.
  *
- * Signing up is not a prerequisite for using the app: an unrecognised visitor
- * is given an anonymous guest session and dropped straight onto the map. The
- * account only becomes necessary to keep that map permanently or to share it.
+ * Signing up is not a prerequisite for using the app, and neither is having a
+ * session: an unrecognised visitor is dropped straight onto the map with no
+ * account at all. The account row is created lazily by the base query the
+ * first time they write something, so looking around costs nothing.
  *
  * While /auth/me is in flight we render a placeholder rather than acting on
  * the result, otherwise a hard refresh would bounce a signed-in user before
@@ -50,33 +50,15 @@ function LoadingScreen({ message }: { message: string }) {
 function RequireAuth() {
   const { isAuthenticated, isLoading } = useAuth();
   const location = useLocation();
-  const [createGuest, { isError: guestFailed }] = useCreateGuestMutation();
-
-  // A device that has held an account gets the login screen instead of a new
-  // guest map, because a fresh empty map is indistinguishable from data loss.
-  const returning = hasKnownAccount();
-  const shouldCreateGuest = !isLoading && !isAuthenticated && !returning;
-
-  // Ref rather than mutation state: React 18 StrictMode runs effects twice in
-  // development, and without this that means two accounts for one visitor.
-  const requestedRef = useRef(false);
-
-  useEffect(() => {
-    if (shouldCreateGuest && !requestedRef.current) {
-      requestedRef.current = true;
-      void createGuest();
-    }
-  }, [shouldCreateGuest, createGuest]);
 
   if (isLoading) {
     return <LoadingScreen message="Loading your map…" />;
   }
 
-  if (!isAuthenticated) {
-    if (returning || guestFailed) {
-      return <Navigate to="/login" replace state={{ from: location.pathname }} />;
-    }
-    return <LoadingScreen message="Setting up your map…" />;
+  // A device that has held an account gets the login screen rather than an
+  // empty map, because a fresh empty map is indistinguishable from data loss.
+  if (!isAuthenticated && hasKnownAccount()) {
+    return <Navigate to="/login" replace state={{ from: location.pathname }} />;
   }
 
   return <Outlet />;

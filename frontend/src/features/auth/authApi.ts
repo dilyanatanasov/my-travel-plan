@@ -1,4 +1,8 @@
 import { apiSlice } from '../../store/api/apiSlice';
+import { rememberAccount } from './accountMemory';
+
+// Re-exported so existing callers keep their import path.
+export { hasKnownAccount, rememberAccount, forgetAccount } from './accountMemory';
 
 export interface AuthUser {
   id: number;
@@ -8,42 +12,6 @@ export interface AuthUser {
   /** True until the account is claimed with an email and password. */
   isGuest: boolean;
   createdAt: string;
-}
-
-/*
-  Remembers that this device has signed in at least once.
-
-  Without it, an expired session on a returning user's device would be
-  indistinguishable from a first visit, and RequireAuth would silently hand
-  them a fresh empty guest map — which looks exactly like their travel history
-  being deleted. Knowing an account exists, we send them to /login instead.
-*/
-const ACCOUNT_KNOWN_KEY = 'contrail-account-known';
-
-export function hasKnownAccount(): boolean {
-  try {
-    return localStorage.getItem(ACCOUNT_KNOWN_KEY) === '1';
-  } catch {
-    // Private mode or blocked storage: fall back to guest, never to a
-    // redirect loop.
-    return false;
-  }
-}
-
-export function rememberAccount(): void {
-  try {
-    localStorage.setItem(ACCOUNT_KNOWN_KEY, '1');
-  } catch {
-    /* non-fatal */
-  }
-}
-
-export function forgetAccount(): void {
-  try {
-    localStorage.removeItem(ACCOUNT_KNOWN_KEY);
-  } catch {
-    /* non-fatal */
-  }
 }
 
 export interface RegisterRequest {
@@ -142,14 +110,32 @@ export const {
  * rather than a parallel Redux slice that could drift out of sync.
  */
 export function useAuth() {
-  const { data, isLoading, isFetching, isError } = useGetAuthProfileQuery();
+  const { data, isLoading, isError } = useGetAuthProfileQuery();
   return {
     user: data?.user ?? null,
     isAuthenticated: Boolean(data?.user) && !isError,
-    /** Signed in, but anonymously — their data is not recoverable yet. */
-    isGuest: Boolean(data?.user?.isGuest),
+    /*
+      "Has no real account" — true for an anonymous visitor with no session
+      at all as well as for a guest session. Both need the same treatment:
+      the save-your-map prompt, and no access to sharing. Since guest rows are
+      now created lazily on first write, the no-session case is the common
+      one and must not be treated as "signed in".
+    */
+    isGuest: !data?.user || Boolean(data.user.isGuest),
     // Only the first resolution should block rendering; background refetches
     // must not flash the loading screen.
-    isLoading: isLoading || (isFetching && data === undefined),
+    /*
+      RTK's own isLoading, and nothing else: it means "first load, no data
+      yet" and is already false for background refetches.
+
+      This used to be OR'd with `isFetching && data === undefined` to avoid a
+      flash. For a signed-in user that clause was harmless, because data
+      arrives once and stays. For an anonymous visitor /auth/me never
+      succeeds, so data is permanently undefined and the clause was
+      permanently true — the app pinned itself to the loading screen and
+      hammered the API. It only surfaced once anonymous visitors stopped
+      being redirected to /login.
+    */
+    isLoading,
   };
 }

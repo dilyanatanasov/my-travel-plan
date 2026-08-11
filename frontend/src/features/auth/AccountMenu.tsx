@@ -30,11 +30,9 @@ function AccountMenu() {
     };
   }, [isOpen]);
 
-  if (!user) return null;
-
-  // A guest has no email, so there is no initial to show and nothing to
-  // address them by.
-  const label = user.displayName || user.email || 'Guest';
+  // No early return on a missing user: an anonymous visitor has no session
+  // yet and still needs the save-your-map prompt. isGuest covers both cases.
+  const label = user?.displayName || user?.email || 'Guest';
   const initial = label.charAt(0).toUpperCase();
 
   const handleLogout = async () => {
@@ -131,9 +129,9 @@ function AccountMenu() {
           ) : (
             <div className="px-3 py-2 border-b border-line">
               <p className="text-sm font-medium text-ink truncate">
-                {user.displayName || 'Signed in'}
+                {user?.displayName || 'Signed in'}
               </p>
-              <p className="text-xs text-ink-muted truncate">{user.email}</p>
+              <p className="text-xs text-ink-muted truncate">{user?.email}</p>
             </div>
           )}
 
