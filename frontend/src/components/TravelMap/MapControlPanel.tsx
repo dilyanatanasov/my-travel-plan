@@ -1,4 +1,4 @@
-import { memo, type ReactNode } from 'react';
+import { memo } from 'react';
 import type { Country, Airport } from '../../types';
 import type { FlightFilters } from '../FlightMap/filterTypes';
 import { DEFAULT_FILTERS, DISTANCE_RANGES, ROUTE_TYPES } from '../FlightMap/filterTypes';
@@ -34,30 +34,72 @@ const selectClass =
 
 const fieldLabelClass = 'block text-xs font-medium map-glass-muted mb-1';
 
-/** Checkbox stays 16px visually, but the whole 44px-tall label is the hit area. */
-function ToggleRow({
-  checked,
+/**
+ * What the map draws, as one single-select control.
+ *
+ * These three views map onto the existing boolean settings rather than
+ * replacing them, so the legend, the PNG/video export and everything else
+ * downstream keep reading the same shape. Airports ride with routes: an
+ * airport dot with no route to belong to is noise, and the design treats
+ * them as one layer.
+ */
+const MAP_VIEWS = [
+  { id: 'all', label: 'Everything', settings: { showCountries: true, showFlights: true, showAirports: true } },
+  { id: 'flights', label: 'Flights', settings: { showCountries: false, showFlights: true, showAirports: true } },
+  { id: 'countries', label: 'Countries', settings: { showCountries: true, showFlights: false, showAirports: false } },
+] as const;
+
+function activeView(settings: TravelMapSettings) {
+  const match = MAP_VIEWS.find(
+    (view) =>
+      view.settings.showCountries === settings.showCountries &&
+      view.settings.showFlights === settings.showFlights &&
+      view.settings.showAirports === settings.showAirports
+  );
+  // A combination from before this control existed (or a saved one) has no
+  // segment; highlighting nothing is honest, and picking any segment fixes it.
+  return match?.id ?? null;
+}
+
+/** Single-select track: the raised pill is the selection, not a tick box. */
+function MapViewSwitch({
+  settings,
   onChange,
-  children,
 }: {
-  checked: boolean;
-  onChange: () => void;
-  children: ReactNode;
+  settings: TravelMapSettings;
+  onChange: (settings: TravelMapSettings) => void;
 }) {
+  const active = activeView(settings);
   return (
-    // inline-flex so the labels size to their text and wrap naturally instead
-    // of being squeezed into equal grid columns.
-    <label className="map-glass-hover inline-flex items-center gap-2 min-h-11 px-2 rounded-lg cursor-pointer">
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={onChange}
-        className="w-4 h-4 flex-shrink-0 text-brand-600 rounded focus:ring-brand-500"
-      />
-      <span className="text-sm select-none">{children}</span>
-    </label>
+    <div
+      role="radiogroup"
+      aria-label="Show on map"
+      className="flex gap-1 p-1 rounded-xl bg-current/10"
+    >
+      {MAP_VIEWS.map((view) => {
+        const isActive = active === view.id;
+        return (
+          <button
+            key={view.id}
+            type="button"
+            role="radio"
+            aria-checked={isActive}
+            onClick={() => onChange({ ...view.settings })}
+            className={`flex-1 min-h-10 px-2 rounded-lg text-sm font-medium transition-colors
+              focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 ${
+              isActive
+                ? 'bg-brand-600 text-white shadow-sm'
+                : 'map-glass-hover'
+            }`}
+          >
+            {view.label}
+          </button>
+        );
+      })}
+    </div>
   );
 }
+
 
 /**
  * Layer toggles, home country and flight filters behind a single disclosure.
@@ -80,10 +122,6 @@ function MapControlPanel({
   onOpenChange,
 }: MapControlPanelProps) {
   const activeCount = countActiveFilters(filters);
-
-  const handleToggle = (key: keyof TravelMapSettings) => {
-    onSettingsChange({ ...settings, [key]: !settings[key] });
-  };
 
   const handleContinentToggle = (continent: Continent) => {
     onFiltersChange({
@@ -162,26 +200,7 @@ function MapControlPanel({
           <div className="space-y-2 pt-2">
             <div>
               <span className={fieldLabelClass}>Show on map</span>
-              <div className="flex flex-wrap gap-x-2 -mx-2">
-                <ToggleRow
-                  checked={settings.showCountries}
-                  onChange={() => handleToggle('showCountries')}
-                >
-                  Countries
-                </ToggleRow>
-                <ToggleRow
-                  checked={settings.showFlights}
-                  onChange={() => handleToggle('showFlights')}
-                >
-                  Flight routes
-                </ToggleRow>
-                <ToggleRow
-                  checked={settings.showAirports}
-                  onChange={() => handleToggle('showAirports')}
-                >
-                  Airports
-                </ToggleRow>
-              </div>
+              <MapViewSwitch settings={settings} onChange={onSettingsChange} />
             </div>
 
             <div>

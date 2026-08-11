@@ -1,4 +1,5 @@
 import { useGetFlightStatsQuery } from '../../features/flights/flightsApi';
+import YearBarChart from './YearBarChart';
 import StatsCard from './StatsCard';
 
 function FlightStats() {
@@ -84,23 +85,25 @@ function FlightStats() {
       </div>
 
       {/* Creative Stats */}
-      <div className="bg-gradient-to-r from-brand-500 to-purple-600 rounded-xl p-6 text-white">
+      <div className="bg-panel-accent rounded-2xl p-6 text-white shadow-md">
         <h3 className="text-lg font-semibold mb-4">Fun Facts</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <p className="text-brand-100 text-sm">Distance to Moon</p>
+            <p className="text-white/75 text-sm">Distance to Moon</p>
             <p className="text-2xl font-bold">{stats.moonDistancePercent.toFixed(1)}%</p>
           </div>
           <div>
-            <p className="text-brand-100 text-sm">If you walked instead...</p>
+            <p className="text-white/75 text-sm">If you walked instead...</p>
             <p className="text-2xl font-bold">{stats.walkingYears.toFixed(1)} years</p>
           </div>
           <div>
-            <p className="text-brand-100 text-sm">Earth Circumferences</p>
+            <p className="text-white/75 text-sm">Earth Circumferences</p>
             <p className="text-2xl font-bold">{stats.earthCircumferences.toFixed(2)}×</p>
           </div>
         </div>
       </div>
+
+      <YearBarChart byYear={stats.byYear} strongestYear={stats.strongestYear} />
 
       {/* Records */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

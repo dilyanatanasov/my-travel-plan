@@ -23,6 +23,8 @@ export default {
           900: token('brand-900'),
         },
         canvas: token('canvas'),
+        // Filled panel that always carries white text; see tokens.css.
+        'panel-accent': token('panel-accent'),
         surface: {
           DEFAULT: token('surface'),
           sunken: token('surface-sunken'),
@@ -50,6 +52,27 @@ export default {
           DEFAULT: token('danger'),
           soft: token('danger-soft'),
         },
+      },
+
+      /*
+        Shape. Tailwind's defaults are noticeably squarer than the rest of
+        this app now reads; redefining the scale here rounds every existing
+        rounded-lg / rounded-2xl at once, with no component edits and no risk
+        of missing one.
+      */
+      borderRadius: {
+        lg: '0.75rem',
+        xl: '1.125rem',
+        '2xl': '1.5rem',
+        '3xl': '2rem',
+      },
+
+      // Depth comes from the theme-aware strings in tokens.css.
+      boxShadow: {
+        sm: 'var(--shadow-sm)',
+        DEFAULT: 'var(--shadow-md)',
+        md: 'var(--shadow-md)',
+        lg: 'var(--shadow-lg)',
       },
     },
   },

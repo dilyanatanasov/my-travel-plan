@@ -53,6 +53,24 @@
   /* Feedback */
   --color-danger: 220 38 38;
   --color-danger-soft: 254 242 242;
+
+  /*
+    Elevation. Full shadow strings rather than a colour, because light and
+    dark need different alphas, not just a different hue: on a dark surface a
+    shadow at light-mode opacity is invisible, so depth has to come from a
+    harder, larger shadow. Warm near-black instead of pure black — a neutral
+    shadow over a warm surface reads as grey dirt.
+  */
+  /*
+    A filled panel that carries white text. Deliberately NOT a rung of the
+    brand ramp: that ramp inverts between themes, so any rung readable with
+    white text in one theme is unreadable in the other.
+  */
+  --color-panel-accent: 15 118 110;
+
+  --shadow-sm: 0 1px 2px rgb(46 43 37 / 0.14);
+  --shadow-md: 0 3px 10px rgb(46 43 37 / 0.16);
+  --shadow-lg: 0 12px 32px rgb(46 43 37 / 0.22);
 }
 
 /**
@@ -93,4 +111,12 @@
 
   --color-danger: 248 113 113;
   --color-danger-soft: 60 20 24;
+
+  /* Harder and deeper: dark surfaces separate by contrast, not by tint. */
+  /* Slightly deeper so the panel still separates from a dark canvas. */
+  --color-panel-accent: 13 100 94;
+
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.40);
+  --shadow-md: 0 4px 12px rgb(0 0 0 / 0.45);
+  --shadow-lg: 0 16px 40px rgb(0 0 0 / 0.55);
 }

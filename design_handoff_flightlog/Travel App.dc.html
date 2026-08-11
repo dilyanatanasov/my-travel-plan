@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caprasimo&family=Figtree:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/d3@7.9.0/dist/d3.min.js" integrity="sha384-CjloA8y00+1SDAUkjs099PVfnY2KmDC2BZnws9kh8D/lX1s46w6EPhpXdqMfjK6i" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/topojson-client@3.1.0/dist/topojson-client.min.js" integrity="sha384-Ukv1p/xTma6P4/2bY5KzWBw+ydSpXmhCMtyciIQVDJ1RmOxtCYNMF1uXT9T63H67" crossorigin="anonymous"></script>
+<style>
+  body { margin: 0; background: #f5ead8; font-family: "Figtree", system-ui, sans-serif; color: #201e1d; }
+  a { color: #8c491a; }
+  a:hover { color: #b2622d; }
+  * { box-sizing: border-box; }
+  ::selection { background: #ffe1d0; }
+  .scr::-webkit-scrollbar { width: 0; height: 0; }
+  input, button, select { font-family: inherit; }
+  input:focus-visible, button:focus-visible { outline: 2px solid #c67139; outline-offset: 2px; }
+</style>
+</helmet>
+
+<div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;gap:26px;padding:44px 24px 64px;background:#f5ead8">
+
+  <div style="width:100%;max-width:430px;display:flex;flex-direction:column;gap:6px">
+    <div style="font:600 11px/1.2 ui-monospace,Menlo,monospace;letter-spacing:.09em;text-transform:uppercase;color:#82796a">Prototype · iOS &amp; Android · Organic</div>
+    <div style="font-family:'Caprasimo',system-ui,sans-serif;font-size:34px;line-height:1.05;letter-spacing:-.01em">Flightlog</div>
+    <div style="font-size:14px;line-height:1.5;color:#645c50;max-width:38ch;text-wrap:pretty">Five screens, live. Tap the bar to move between them — the map filters, the flight sheet saves, the search runs, the share card has three directions.</div>
+  </div>
+
+  <div style="padding:13px;background:#201e1d;border-radius:54px;box-shadow:0 12px 32px color-mix(in srgb,#2e2b25 22%,transparent)">
+    <div style="position:relative;width:390px;height:844px;border-radius:42px;overflow:hidden;background:#f5ead8;display:flex;flex-direction:column">
+
+      <div style="position:absolute;top:0;left:0;right:0;height:52px;z-index:5;display:flex;align-items:center;justify-content:space-between;padding:0 26px;font-size:13px;font-weight:700;pointer-events:none">
+        <span>9:41</span>
+        <span style="display:flex;align-items:center;gap:5px">
+          <span style="width:16px;height:9px;border:1.5px solid #201e1d;border-radius:3px;display:block"></span>
+          <span style="width:8px;height:8px;border-radius:999px;background:#201e1d;display:block"></span>
+        </span>
+      </div>
+
+      <div class="scr" style="flex:1;overflow-y:auto;overflow-x:hidden;padding:60px 0 104px">
+
+        <!-- MAP -->
+        <sc-if value="{{ isMap }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex;flex-direction:column;gap:18px">
+          <div style="padding:0 22px;display:flex;flex-direction:column;gap:4px">
+            <div style="font-family:'Caprasimo',system-ui,sans-serif;font-size:29px;line-height:1.08;letter-spacing:-.01em">Where you've been</div>
+            <div style="font-size:13.5px;color:#645c50">21 countries · 34 flights · 214,860 km</div>
+          </div>
+
+          <div style="display:flex;gap:8px;padding:0 22px;overflow-x:auto">
+            <button onClick="{{ setFilterAll }}" style="{{ chipAll }}">Everything</button>
+            <button onClick="{{ setFilterFlights }}" style="{{ chipFlights }}">Flights only</button>
+            <button onClick="{{ setFilterCountries }}" style="{{ chipCountries }}">Countries only</button>
+          </div>
+
+          <div style="margin:0 16px;border-radius:28px;overflow:hidden;background:#ebddc5;box-shadow:0 1px 2px color-mix(in srgb,#2e2b25 14%,transparent);position:relative">
+            <div style="height:320px">
+              <x-import component-from-global-scope="travel-world-map" from="./world-map.js" visited="{{ visitedJson }}" routes="{{ routesJson }}" land="#e3d5bd" visitedfill="#f6a06b" strokecolor="rgba(32,30,29,0.13)" arc="#b2622d" dot="#8c491a" hint-size="100%,320px"></x-import>
+            </div>
+            <div style="position:absolute;left:14px;bottom:14px;display:flex;gap:6px;flex-wrap:wrap">
+              <span style="display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:999px;background:rgba(249,244,237,.9);font-size:11px;font-weight:600"><span style="width:9px;height:9px;border-radius:3px;background:#f6a06b;display:block"></span>Visited</span>
+              <span style="display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:999px;background:rgba(249,244,237,.9);font-size:11px;font-weight:600"><span style="width:14px;height:2px;border-radius:999px;background:#b2622d;display:block"></span>Route</span>
+            </div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:0 22px">
+            <div style="background:#f9f4ed;border-radius:20px;padding:14px 14px 16px;display:flex;flex-direction:column;gap:2px">
+              <div style="font-family:'Caprasimo',system-ui,sans-serif;font-size:24px">34</div>
+              <div style="font-size:11px;color:#645c50;line-height:1.3">flights<br>logged</div>
+            </div>
+            <div style="background:#f9f4ed;border-radius:20px;padding:14px 14px 16px;display:flex;flex-direction:column;gap:2px">
+              <div style="font-family:'Caprasimo',system-ui,sans-serif;font-size:24px">29</div>
+              <div style="font-size:11px;color:#645c50;line-height:1.3">airports<br>touched</div>
+            </div>
+            <div style="background:#f9f4ed;border-radius:20px;padding:14px 14px 16px;display:flex;flex-direction:column;gap:2px">
+              <div style="font-family:'Caprasimo',system-ui,sans-serif;font-size:24px">5.4×</div>
+              <div style="font-size:11px;color:#645c50;line-height:1.3">around<br>the Earth</div>
+            </div>
+          </div>
+
+          <div style="padding:0 22px;display:flex;flex-direction:column;gap:10px">
+            <div style="display:flex;align-items:baseline;justify-content:space-between">
+              <div style="font-weight:700;font-size:15px">Latest</div>
+              <button onClick="{{ goFlights }}" style="border:0;background:transparent;padding:0;font-size:13px;font-weight:600;color:#8c491a;cursor:pointer">All flights</button>
+            </div>
+            <div style="background:#f9f4ed;border-radius:22px;padding:15px 16px;display:flex;flex-direction:column;gap:6px">
+              <div style="font:700 17px ui-monospace,Menlo,monospace">SOF → AMS → KEF</div>
+              <div style="font-size:12.5px;color:#645c50">12 Jun 2026 · 4,720 km · 2 flights</div>
+            </div>
+          </div>
+        </div>
+        </sc-if>
+
+        <!-- FLIGHTS -->
+        <sc-if value="{{ isFlights }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <div style="padding:0 22px;display:flex;flex-direction:column;gap:4px">
+            <div style="font-family:'Caprasimo',system-ui,sans-serif;font-size:29px;line-height:1.08">Flights</div>
+            <div style="font-size:13.5px;color:#645c50">{{ journeyCount }} journeys · newest first</div>
+          </div>
+
+          <div style="display:flex;gap:8px;padding:0 22px;overflow-x:auto">
+            <button onClick="{{ setYearAll }}" style="{{ yearAll }}">All years</button>
+            <button onClick="{{ setYear2026 }}" style="{{ year2026 }}">2026</button>
+            <button onClick="{{ setYear2025 }}" style="{{ year2025 }}">2025</button>
+            <button onClick="{{ setYear2024 }}" style="{{ year2024 }}">2024</button>
+          </div>
+
+          <div style="padding:0 16px;display:flex;flex-direction:column;gap:10px">
+            <sc-for list="{{ shownJourneys }}" as="j" hint-placeholder-count="4">
+              <div style="background:#f9f4ed;border-radius:24px;padding:16px 18px;display:flex;flex-direction:column;gap:8px;box-shadow:0 1px 2px color-mix(in srgb,#2e2b25 14%,transparent)">
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                  <span style="font:700 17px ui-monospace,Menlo,monospace">{{ j.route }}</span>
+                  <sc-if value="{{ j.isRoundTrip }}" hint-placeholder-val="{{ false }}">
+                    <span style="padding:3px 9px;border-radius:999px;background:#e1eecc;color:#3d472b;font-size:10.5px;font-weight:700;letter-spacing:.02em">ROUND TRIP</span>
+                  </sc-if>
+                </div>
+                <div style="font-size:12.5px;color:#645c50">{{ j.meta }}</div>
+                <sc-if value="{{ j.notes }}" hint-placeholder-val="{{ false }}">
+                  <div style="font-size:13px;color:#474238;line-height:1.45;text-wrap:pretty">{{ j.notes }}</div>
+                </sc-if>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+        <div style="position:absolute;right:18px;bottom:118px;z-index:6">
+          <button onClick="{{ openSheet }}" style="border:0;cursor:pointer;padding:14px 20px;border-radius:999px;background:#c67139;color:#fff;font-size:14.5px;font-weight:700;box-shadow:0 3px 10px color-mix(in srgb,#2e2b25 16%,transparent)" style-hover="background:#b2622d">Add flight</button>
+        </div>
+        </sc-if>
+
+        <!-- STATS -->
+        <sc-if value="{{ isStats }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;gap:18px">
+          <div style="padding:0 22px;display:flex;flex-direction:column;gap:4px">
+            <div style="font-family:'Caprasimo',system-ui,sans-serif;font-size:29px;line-height:1.08">Your year in air</div>
+            <div style="font-size:13.5px;color:#645c50">Everything logged, since 2019</div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 16px">
+            <div style="background:#f9f4ed;border-radius:22px;padding:16px">
+              <div style="font-size:11.5px;font-weight:600;color:#645c50;letter-spacing:.03em;text-transform:uppercase">Distance</div>
+              <div style="font-family:'Caprasimo',system-ui,sans-serif;font-size:26px;line-height:1.2;margin-top:4px">214,860</div>
+              <div style="font-size:12px;color:#645c50">km flown</div>
+            </div>
+            <div style="background:#f9f4ed;border-radius:22px;padding:16px">
+              <div style="font-size:11.5px;font-weight:600;color:#645c50;letter-spacing:.03em;text-transform:uppercase">Time aloft</div>
+              <div style="font-family:'Caprasimo',system-ui,sans-serif;font-size:26px;line-height:1.2;margin-top:4px">~268 h</div>
+              <div style="font-size:12px;color:#645c50">11 days in the sky</div>
+            </div>
+          </div>
+
+          <div style="margin:0 16px;border-radius:28px;padding:20px;background:#7a8a5e;color:#f0fae1;display:flex;flex-direction:column;gap:14px">
+            <div style="font-family:'Caprasimo',system-ui,sans-serif;font-size:20px">Fun facts</div>
+            <div style="display:flex;flex-direction:column;gap:12px">
+              <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px">
+                <span style="font-size:13px;opacity:.85">Of the way to the Moon</span>
+                <span style="font-size:18px;font-weight:800">0.06%</span>
+              </div>
+              <div style="height:1px;background:rgba(240,250,225,.25)"></div>
+              <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px">
+                <span style="font-size:13px;opacity:.85">If you had walked it</span>
+                <span style="font-size:18px;font-weight:800">5.4 years</span>
+              </div>
+              <div style="height:1px;background:rgba(240,250,225,.25)"></div>
+              <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px">
+                <span style="font-size:13px;opacity:.85">Times around the Earth</span>
+                <span style="font-size:18px;font-weight:800">5.36×</span>
+              </div>
+            </div>
+          </div>
+
+          <div style="padding:0 22px;display:flex;flex-direction:column;gap:12px">
+            <div style="font-weight:700;font-size:15px">Flights by year</div>
+            <div style="display:flex;align-items:flex-end;gap:10px;height:132px">
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:7px"><div style="width:100%;height:38px;border-radius:12px 12px 6px 6px;background:#ffc6a5"></div><div style="font-size:11px;color:#645c50">'22</div></div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:7px"><div style="width:100%;height:56px;border-radius:12px 12px 6px 6px;background:#ffc6a5"></div><div style="font-size:11px;color:#645c50">'23</div></div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:7px"><div style="width:100%;height:74px;border-radius:12px 12px 6px 6px;background:#f6a06b"></div><div style="font-size:11px;color:#645c50">'24</div></div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:7px"><div style="width:100%;height:92px;border-radius:12px 12px 6px 6px;background:#d67f48"></div><div style="font-size:11px;color:#645c50">'25</div></div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:7px"><div style="width:100%;height:110px;border-radius:12px 12px 6px 6px;background:#b2622d"></div><div style="font-size:11px;font-weight:700">'26</div></div>
+            </div>
+            <div style="font-size:12.5px;color:#645c50">2026 is your strongest year: 11 flights, 62,400 km.</div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 16px">
+            <div style="background:#f9f4ed;border-radius:22px;padding:16px;display:flex;flex-direction:column;gap:3px">
+              <div style="font-size:11.5px;font-weight:600;color:#645c50;text-transform:uppercase;letter-spacing:.03em">Longest</div>
+              <div style="font:700 16px ui-monospace,Menlo,monospace">VAR → BKK</div>
+              <div style="font-size:12px;color:#645c50">Varna to Bangkok</div>
+              <div style="font-size:13.5px;font-weight:700;color:#8c491a">8,240 km</div>
+            </div>
+            <div style="background:#f9f4ed;border-radius:22px;padding:16px;display:flex;flex-direction:column;gap:3px">
+              <div style="font-size:11.5px;font-weight:600;color:#645c50;text-transform:uppercase;letter-spacing:.03em">Shortest</div>
+              <div style="font:700 16px ui-monospace,Menlo,monospace">SOF → OTP</div>
+              <div style="font-size:12px;color:#645c50">Sofia to Bucharest</div>
+              <div style="font-size:13.5px;font-weight:700;color:#56633f">294 km</div>
+            </div>
+          </div>
+
+          <div style="padding:0 22px;display:flex;flex-direction:column;gap:10px">
+            <div style="font-weight:700;font-size:15px">Most visited airports</div>
+            <div style="display:flex;flex-wrap:wrap;gap:8px">
+              <span style="display:inline-flex;align-items:center;gap:7px;padding:8px 12px;border-radius:999px;background:#eee7db;font-size:12.5px"><b style="font-family:ui-monospace,Menlo,monospace">SOF</b><span style="color:#645c50">Sofia</span><b style="color:#8c491a">18×</b></span>
+              <span style="display:inline-flex;align-items:center;gap:7px;padding:8px 12px;border-radius:999px;background:#eee7db;font-size:12.5px"><b style="font-family:ui-monospace,Menlo,monospace">IST</b><span style="color:#645c50">İstanbul</span><b style="color:#8c491a">9×</b></span>
+              <span style="display:inline-flex;align-items:center;gap:7px;padding:8px 12px;border-radius:999px;background:#eee7db;font-size:12.5px"><b style="font-family:ui-monospace,Menlo,monospace">AMS</b><span style="color:#645c50">Amsterdam</span><b style="color:#8c491a">6×</b></span>
+              <span style="display:inline-flex;align-items:center;gap:7px;padding:8px 12px;border-radius:999px;background:#eee7db;font-size:12.5px"><b style="font-family:ui-monospace,Menlo,monospace">VAR</b><span style="color:#645c50">Varna</span><b style="color:#8c491a">5×</b></span>
+            </div>
+          </div>
+        </div>
+        </sc-if>
+
+        <!-- SEARCH -->
+        <sc-if value="{{ isSearch }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <div style="padding:0 22px;display:flex;flex-direction:column;gap:4px">
+            <div style="font-family:'Caprasimo',system-ui,sans-serif;font-size:29px;line-height:1.08">Smart search</div>
+            <div style="font-size:13.5px;color:#645c50">Flexible dates, scored by price, speed and sanity</div>
+          </div>
+
+          <div style="margin:0 16px;background:#f9f4ed;border-radius:28px;padding:18px;display:flex;flex-direction:column;gap:14px">
+            <div style="display:flex;gap:10px">
+              <label style="flex:1;display:flex;flex-direction:column;gap:6px">
+                <span style="font-size:11.5px;font-weight:600;color:#645c50;text-transform:uppercase;letter-spacing:.03em">From</span>
+                <input value="{{ origin }}" onChange="{{ setOrigin }}" style="width:100%;padding:12px 14px;border-radius:999px;border:1.5px solid #dcd3c4;background:#fff;font:700 15px ui-monospace,Menlo,monospace">
+              </label>
+              <label style="flex:1;display:flex;flex-direction:column;gap:6px">
+                <span style="font-size:11.5px;font-weight:600;color:#645c50;text-transform:uppercase;letter-spacing:.03em">To</span>
+                <input value="{{ destination }}" onChange="{{ setDestination }}" style="width:100%;padding:12px 14px;border-radius:999px;border:1.5px solid #dcd3c4;background:#fff;font:700 15px ui-monospace,Menlo,monospace">
+              </label>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:7px">
+              <span style="font-size:11.5px;font-weight:600;color:#645c50;text-transform:uppercase;letter-spacing:.03em">When</span>
+              <div style="display:flex;gap:6px;background:#eee7db;padding:4px;border-radius:999px">
+                <button onClick="{{ setDateSpecific }}" style="{{ segSpecific }}">Exact</button>
+                <button onClick="{{ setDateMonth }}" style="{{ segMonth }}">Month</button>
+                <button onClick="{{ setDateRange }}" style="{{ segRange }}">Range</button>
+                <button onClick="{{ setDateWeekends }}" style="{{ segWeekends }}">Weekends</button>
+              </div>
+            </div>
+
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+              <span style="font-size:13px;color:#474238">{{ whenLabel }}</span>
+              <span style="font-size:13px;font-weight:700">5–9 nights</span>
+            </div>
+
+            <button onClick="{{ runSearch }}" style="border:0;cursor:pointer;width:100%;padding:15px;border-radius:999px;background:#c67139;color:#fff;font-size:15px;font-weight:700" style-hover="background:#b2622d">{{ searchLabel }}</button>
+          </div>
+
+          <sc-if value="{{ searched }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;flex-direction:column;gap:16px">
+            <div style="padding:0 22px;display:flex;flex-direction:column;gap:10px">
+              <div style="font-weight:700;font-size:15px">Price across March</div>
+              <div style="display:flex;align-items:flex-end;gap:5px;height:84px">
+                <div style="flex:1;height:44px;border-radius:8px;background:#ffc6a5"></div>
+                <div style="flex:1;height:62px;border-radius:8px;background:#ffc6a5"></div>
+                <div style="flex:1;height:30px;border-radius:8px;background:#7a8a5e"></div>
+                <div style="flex:1;height:52px;border-radius:8px;background:#ffc6a5"></div>
+                <div style="flex:1;height:70px;border-radius:8px;background:#ffc6a5"></div>
+                <div style="flex:1;height:84px;border-radius:8px;background:#f6a06b"></div>
+                <div style="flex:1;height:56px;border-radius:8px;background:#ffc6a5"></div>
+                <div style="flex:1;height:38px;border-radius:8px;background:#ffc6a5"></div>
+              </div>
+              <div style="display:flex;justify-content:space-between;font-size:11px;color:#645c50"><span>2 Mar</span><span>Cheapest: 9–14 Mar</span><span>30 Mar</span></div>
+            </div>
+
+            <div style="margin:0 16px;border-radius:28px;padding:18px;background:#402310;color:#ffe1d0;display:flex;flex-direction:column;gap:12px">
+              <div style="display:flex;align-items:center;gap:8px">
+                <span style="padding:4px 10px;border-radius:999px;background:#f6a06b;color:#402310;font-size:10.5px;font-weight:800;letter-spacing:.04em">RECOMMENDED</span>
+                <span style="font-size:12px;opacity:.75">score 92</span>
+              </div>
+              <div style="font:700 20px ui-monospace,Menlo,monospace;color:#fff">SOF → LIS</div>
+              <div style="font-size:13px;opacity:.85">9–14 Mar · 5 nights · 1 stop in VIE · 6 h 45 m</div>
+              <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:12px">
+                <div style="font-family:'Caprasimo',system-ui,sans-serif;font-size:30px;color:#fff">€212</div>
+                <button style="border:0;cursor:pointer;padding:12px 18px;border-radius:999px;background:#f5ead8;color:#201e1d;font-size:13.5px;font-weight:700" style-hover="background:#fff">Open deal</button>
+              </div>
+            </div>
+
+            <div style="padding:0 16px;display:flex;flex-direction:column;gap:10px">
+              <div style="background:#f9f4ed;border-radius:24px;padding:16px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px">
+                <div style="display:flex;flex-direction:column;gap:3px">
+                  <div style="display:flex;align-items:center;gap:7px"><span style="padding:3px 9px;border-radius:999px;background:#e1eecc;color:#3d472b;font-size:10.5px;font-weight:700">CHEAPEST</span></div>
+                  <div style="font:700 15px ui-monospace,Menlo,monospace">SOF → IST → LIS</div>
+                  <div style="font-size:12px;color:#645c50">11–16 Mar · 9 h 20 m · long layover</div>
+                </div>
+                <div style="font-family:'Caprasimo',system-ui,sans-serif;font-size:22px">€178</div>
+              </div>
+              <div style="background:#f9f4ed;border-radius:24px;padding:16px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px">
+                <div style="display:flex;flex-direction:column;gap:3px">
+                  <div style="display:flex;align-items:center;gap:7px"><span style="padding:3px 9px;border-radius:999px;background:#ffe1d0;color:#8c491a;font-size:10.5px;font-weight:700">FASTEST</span></div>
+                  <div style="font:700 15px ui-monospace,Menlo,monospace">SOF → LIS</div>
+                  <div style="font-size:12px;color:#645c50">20–25 Mar · 4 h 55 m · direct</div>
+                </div>
+                <div style="font-family:'Caprasimo',system-ui,sans-serif;font-size:22px">€341</div>
+              </div>
+            </div>
+
+            <div style="margin:0 22px;padding:14px 16px;border-radius:22px;background:#f0fae1;font-size:13px;line-height:1.5;color:#3d472b;text-wrap:pretty">Shifting two days earlier saves €34 and one stop. Prices for this route have been falling for three weeks.</div>
+          </div>
+          </sc-if>
+        </div>
+        </sc-if>
+
+        <!-- SHARE -->
+        <sc-if value="{{ isShare }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <div style="padding:0 22px;display:flex;flex-direction:column;gap:4px">
+            <div style="font-family:'Caprasimo',system-ui,sans-serif;font-size:29px;line-height:1.08">Share your map</div>
+            <div style="font-size:13.5px;color:#645c50">Three directions — pick one, it exports 1080×1350</div>
+          </div>
+
+          <div style="display:flex;gap:8px;padding:0 22px">
+            <button onClick="{{ setStyleWarm }}" style="{{ styWarm }}">Warm</button>
+            <button onClick="{{ setStyleInk }}" style="{{ styInk }}">Ink</button>
+            <button onClick="{{ setStyleEditorial }}" style="{{ styEditorial }}">Editorial</button>
+          </div>
+
+          <div style="padding:0 22px">
+            <sc-if value="{{ isWarm }}" hint-placeholder-val="{{ true }}">
+            <div style="border-radius:28px;overflow:hidden;background:#f5ead8;box-shadow:0 12px 32px color-mix(in srgb,#2e2b25 22%,transparent);padding:22px;display:flex;flex-direction:column;gap:14px">
+              <div style="font:600 10.5px ui-monospace,Menlo,monospace;letter-spacing:.12em;color:#8c491a">2026 · FLIGHTLOG</div>
+              <div style="font-family:'Caprasimo',system-ui,sans-serif;font-size:34px;line-height:1;letter-spacing:-.01em">21 countries<br>and counting</div>
+              <div style="border-radius:22px;overflow:hidden;background:#ebddc5;height:190px">
+                <x-import component-from-global-scope="travel-world-map" from="./world-map.js" visited="{{ visitedJson }}" routes="{{ routesJson }}" land="#e3d5bd" visitedfill="#d67f48" strokecolor="rgba(32,30,29,0.10)" arc="#8c491a" dot="#402310" hint-size="100%,190px"></x-import>
+              </div>
+              <div style="display:flex;gap:22px">
+                <div><div style="font-family:'Caprasimo',system-ui,sans-serif;font-size:22px">214,860</div><div style="font-size:11px;color:#645c50">km</div></div>
+                <div><div style="font-family:'Caprasimo',system-ui,sans-serif;font-size:22px">34</div><div style="font-size:11px;color:#645c50">flights</div></div>
+                <div><div style="font-family:'Caprasimo',system-ui,sans-serif;font-size:22px">5.4×</div><div style="font-size:11px;color:#645c50">the Earth</div></div>
+              </div>
+            </div>
+            </sc-if>
+
+            <sc-if value="{{ isInk }}" hint-placeholder-val="{{ false }}">
+            <div style="border-radius:28px;overflow:hidden;background:#201e1d;color:#f9f4ed;box-shadow:0 12px 32px color-mix(in srgb,#2e2b25 22%,transparent);padding:22px;display:flex;flex-direction:column;gap:16px">
+              <div style="display:flex;align-items:center;justify-content:space-between">
+                <div style="font:600 10.5px ui-monospace,Menlo,monospace;letter-spacing:.12em;color:#f6a06b">FLIGHTLOG</div>
+                <div style="width:26px;height:26px;border-radius:999px;background:#c67139"></div>
+              </div>
+              <div style="border-radius:20px;overflow:hidden;background:#2e2b25;height:230px">
+                <x-import component-from-global-scope="travel-world-map" from="./world-map.js" visited="{{ visitedJson }}" routes="{{ routesJson }}" land="#3a352d" visitedfill="#8c491a" strokecolor="rgba(249,244,237,0.10)" arc="#f6a06b" dot="#ffc6a5" hint-size="100%,230px"></x-import>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:4px">
+                <div style="font-family:'Caprasimo',system-ui,sans-serif;font-size:44px;line-height:.95;color:#fff">214,860</div>
+                <div style="font-size:12.5px;letter-spacing:.05em;color:#c0b6a5;text-transform:uppercase">kilometres · 21 countries · 29 airports</div>
+              </div>
+            </div>
+            </sc-if>
+
+            <sc-if value="{{ isEditorial }}" hint-placeholder-val="{{ false }}">
+            <div style="border-radius:28px;overflow:hidden;background:#f9f4ed;box-shadow:0 12px 32px color-mix(in srgb,#2e2b25 22%,transparent);display:flex;flex-direction:column">
+              <div style="background:#7a8a5e;height:210px">
+                <x-import component-from-global-scope="travel-world-map" from="./world-map.js" visited="{{ visitedJson }}" routes="{{ routesJson }}" land="#8fa073" visitedfill="#f0fae1" strokecolor="rgba(39,46,27,0.18)" arc="#402310" dot="#201e1d" hint-size="100%,210px"></x-import>
+              </div>
+              <div style="padding:20px 22px 24px;display:flex;flex-direction:column;gap:12px">
+                <div style="font-family:'Caprasimo',system-ui,sans-serif;font-size:26px;line-height:1.05">Six years,<br>five continents</div>
+                <div style="height:1px;background:rgba(32,30,29,.16)"></div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:12.5px;color:#474238">
+                  <div><b style="display:block;font-size:17px;color:#201e1d">34</b>flights logged</div>
+                  <div><b style="display:block;font-size:17px;color:#201e1d">268 h</b>time aloft</div>
+                  <div><b style="display:block;font-size:17px;color:#201e1d">VAR → BKK</b>longest hop</div>
+                  <div><b style="display:block;font-size:17px;color:#201e1d">2026</b>busiest year</div>
+                </div>
+              </div>
+            </div>
+            </sc-if>
+          </div>
+
+          <div style="display:flex;gap:10px;padding:0 22px">
+            <button style="flex:1;border:0;cursor:pointer;padding:14px;border-radius:999px;background:#c67139;color:#fff;font-size:14.5px;font-weight:700" style-hover="background:#b2622d">Save image</button>
+            <button style="flex:1;cursor:pointer;padding:14px;border-radius:999px;background:transparent;border:1.5px solid #c67139;color:#8c491a;font-size:14.5px;font-weight:700" style-hover="background:#ffe1d0">Story</button>
+          </div>
+        </div>
+        </sc-if>
+
+      </div>
+
+      <!-- ADD FLIGHT SHEET -->
+      <sc-if value="{{ sheetOpen }}" hint-placeholder-val="{{ false }}">
+      <div style="position:absolute;inset:0;z-index:20;background:rgba(32,30,29,.42);display:flex;align-items:flex-end" onClick="{{ closeSheet }}">
+        <div onClick="{{ stop }}" style="width:100%;background:#f9f4ed;border-radius:34px 34px 42px 42px;padding:20px 22px 28px;display:flex;flex-direction:column;gap:16px">
+          <div style="width:44px;height:5px;border-radius:999px;background:#dcd3c4;align-self:center"></div>
+          <div style="font-family:'Caprasimo',system-ui,sans-serif;font-size:23px">Add a flight</div>
+
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <span style="font-size:11.5px;font-weight:600;color:#645c50;text-transform:uppercase;letter-spacing:.03em">Route</span>
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:12px;border-radius:22px;background:#eee7db;min-height:56px">
+              <sc-for list="{{ stops }}" as="s" hint-placeholder-count="2">
+                <span style="padding:8px 12px;border-radius:999px;background:#fff;font:700 14px ui-monospace,Menlo,monospace;box-shadow:0 1px 2px color-mix(in srgb,#2e2b25 14%,transparent)">{{ s }}</span>
+              </sc-for>
+              <span style="font-size:13px;color:#82796a">{{ stopsHint }}</span>
+            </div>
+            <div style="display:flex;gap:7px;flex-wrap:wrap">
+              <sc-for list="{{ quickAirports }}" as="a" hint-placeholder-count="6">
+                <button onClick="{{ a.add }}" style="cursor:pointer;padding:8px 12px;border-radius:999px;border:1.5px solid #dcd3c4;background:transparent;font:700 13px ui-monospace,Menlo,monospace;color:#474238" style-hover="background:#ffe1d0;border-color:#f6a06b">{{ a.code }}</button>
+              </sc-for>
+              <button onClick="{{ clearStops }}" style="cursor:pointer;padding:8px 12px;border-radius:999px;border:0;background:transparent;font-size:13px;font-weight:600;color:#8c491a">Clear</button>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:10px;align-items:flex-end">
+            <label style="flex:1;display:flex;flex-direction:column;gap:6px">
+              <span style="font-size:11.5px;font-weight:600;color:#645c50;text-transform:uppercase;letter-spacing:.03em">Date</span>
+              <input type="date" value="{{ newDate }}" onChange="{{ setNewDate }}" style="width:100%;padding:12px 14px;border-radius:999px;border:1.5px solid #dcd3c4;background:#fff;font-size:14px">
+            </label>
+            <button onClick="{{ toggleRound }}" style="{{ roundBtn }}">Round trip</button>
+          </div>
+
+          <button onClick="{{ saveFlight }}" style="border:0;cursor:pointer;width:100%;padding:16px;border-radius:999px;background:#c67139;color:#fff;font-size:15.5px;font-weight:700" style-hover="background:#b2622d">Save flight</button>
+        </div>
+      </div>
+      </sc-if>
+
+      <!-- TAB BAR -->
+      <div style="position:absolute;left:0;right:0;bottom:0;z-index:10;background:rgba(249,244,237,.94);border-top:1px solid rgba(32,30,29,.10);padding:10px 8px 22px;display:flex;align-items:flex-end;justify-content:space-around">
+        <button onClick="{{ goMap }}" style="{{ tabMap }}">
+          <span style="width:18px;height:18px;border-radius:999px;border:2.75px solid currentColor;display:block"></span>Map
+        </button>
+        <button onClick="{{ goFlights }}" style="{{ tabFlights }}">
+          <span style="width:15px;height:15px;border-radius:4px;background:currentColor;display:block;transform:rotate(45deg)"></span>Flights
+        </button>
+        <button onClick="{{ goStats }}" style="{{ tabStats }}">
+          <span style="display:flex;align-items:flex-end;gap:2.5px;height:18px"><span style="width:3.5px;height:9px;border-radius:2px;background:currentColor"></span><span style="width:3.5px;height:14px;border-radius:2px;background:currentColor"></span><span style="width:3.5px;height:18px;border-radius:2px;background:currentColor"></span></span>Stats
+        </button>
+        <button onClick="{{ goSearch }}" style="{{ tabSearch }}">
+          <span style="width:18px;height:18px;border-radius:999px;border:2.75px solid currentColor;border-bottom-right-radius:2px;display:block"></span>Search
+        </button>
+        <button onClick="{{ goShare }}" style="{{ tabShare }}">
+          <span style="width:16px;height:16px;border-radius:5px;border:2.75px solid currentColor;display:block"></span>Share
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <div style="width:100%;max-width:430px;font-size:12.5px;line-height:1.6;color:#645c50;text-wrap:pretty">Next steps: a passport-stamp variant of the share card, an empty-first-run state, and the transit vs trip distinction on the map (the API already carries it).</div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{}">
+const AIRPORTS = {
+  SOF: [23.41, 42.69], VAR: [27.83, 43.23], IST: [28.75, 41.28], AMS: [4.76, 52.31],
+  KEF: [-22.60, 63.99], BKK: [100.75, 13.69], VIE: [16.57, 48.12], BCN: [2.08, 41.30],
+  DXB: [55.36, 25.25], SGN: [106.66, 10.82], MUC: [11.79, 48.35], JFK: [-73.78, 40.64],
+  LIS: [-9.13, 38.77], CUN: [-86.87, 21.04], RAK: [-8.03, 31.61], ATH: [23.95, 37.94],
+  CPH: [12.65, 55.62], OTP: [26.10, 44.57], NRT: [140.39, 35.77], LHR: [-0.45, 51.47]
+};
+
+const VISITED = ['Bulgaria', 'Turkey', 'Netherlands', 'Iceland', 'Thailand', 'Austria', 'Spain',
+  'United Arab Emirates', 'Vietnam', 'Germany', 'United States of America', 'Portugal', 'Mexico',
+  'Morocco', 'Greece', 'Denmark', 'Romania', 'Japan', 'United Kingdom', 'France', 'Italy'];
+
+const JOURNEYS = [
+  { id: 6, date: '2026-06-12', stops: ['SOF', 'AMS', 'KEF'], km: 4720, isRoundTrip: false, notes: 'Ring road in a week. Midnight sun at 1am.' },
+  { id: 5, date: '2026-03-02', stops: ['VAR', 'IST', 'BKK'], km: 17340, isRoundTrip: true, notes: '' },
+  { id: 4, date: '2025-11-08', stops: ['SOF', 'VIE'], km: 780, isRoundTrip: true, notes: 'Two nights, one museum.' },
+  { id: 3, date: '2025-08-21', stops: ['SOF', 'BCN'], km: 3980, isRoundTrip: true, notes: '' },
+  { id: 2, date: '2025-05-14', stops: ['SOF', 'DXB', 'SGN'], km: 9860, isRoundTrip: false, notes: 'Long layover, worth it for the skyline.' },
+  { id: 1, date: '2024-12-27', stops: ['VAR', 'MUC', 'JFK'], km: 8120, isRoundTrip: true, notes: '' }
+];
+
+const CHIP_BASE = 'cursor:pointer;flex:none;padding:9px 14px;border-radius:999px;font-size:13px;font-weight:600;border:1.5px solid #dcd3c4;background:transparent;color:#474238';
+const CHIP_ON = 'cursor:pointer;flex:none;padding:9px 14px;border-radius:999px;font-size:13px;font-weight:600;border:1.5px solid #c67139;background:#c67139;color:#fff';
+const SEG_BASE = 'cursor:pointer;flex:1;padding:9px 4px;border-radius:999px;font-size:12.5px;font-weight:600;border:0;background:transparent;color:#645c50';
+const SEG_ON = 'cursor:pointer;flex:1;padding:9px 4px;border-radius:999px;font-size:12.5px;font-weight:700;border:0;background:#f9f4ed;color:#201e1d;box-shadow:0 1px 2px color-mix(in srgb,#2e2b25 14%,transparent)';
+const TAB_BASE = 'cursor:pointer;border:0;background:transparent;display:flex;flex-direction:column;align-items:center;gap:6px;padding:4px 6px;font-size:10.5px;font-weight:600;color:#82796a';
+const TAB_ON = 'cursor:pointer;border:0;background:transparent;display:flex;flex-direction:column;align-items:center;gap:6px;padding:4px 6px;font-size:10.5px;font-weight:700;color:#b2622d';
+
+const WHEN = {
+  specific: '14 March 2027, return 19 March',
+  month: 'Anywhere in March 2027',
+  range: '1 March – 12 April 2027',
+  weekends: 'Weekends only, next 3 months'
+};
+
+class Component extends DCLogic {
+  state = {
+    screen: 'map', mapFilter: 'all', year: 'all',
+    journeys: JOURNEYS, sheetOpen: false, stops: ['SOF'], newDate: '2026-08-14', round: false,
+    origin: 'SOF', destination: 'LIS', dateType: 'month', searched: false,
+    cardStyle: 'warm'
+  };
+
+  go = (screen) => () => this.setState({ screen, sheetOpen: false });
+
+  routes() {
+    const out = [];
+    this.state.journeys.forEach((j) => {
+      for (let i = 0; i < j.stops.length - 1; i++) {
+        const from = AIRPORTS[j.stops[i]], to = AIRPORTS[j.stops[i + 1]];
+        if (from && to) out.push({ from, to });
+      }
+    });
+    return out;
+  }
+
+  fmt(dateStr) {
+    const d = new Date(dateStr);
+    return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  }
+
+  renderVals() {
+    const s = this.state;
+    const chip = (on) => (on ? CHIP_ON : CHIP_BASE);
+    const seg = (on) => (on ? SEG_ON : SEG_BASE);
+    const tab = (on) => (on ? TAB_ON : TAB_BASE);
+
+    const shown = s.journeys.filter((j) => s.year === 'all' || j.date.slice(0, 4) === s.year);
+
+    return {
+      isMap: s.screen === 'map', isFlights: s.screen === 'flights', isStats: s.screen === 'stats',
+      isSearch: s.screen === 'search', isShare: s.screen === 'share',
+      goMap: this.go('map'), goFlights: this.go('flights'), goStats: this.go('stats'),
+      goSearch: this.go('search'), goShare: this.go('share'),
+      tabMap: tab(s.screen === 'map'), tabFlights: tab(s.screen === 'flights'),
+      tabStats: tab(s.screen === 'stats'), tabSearch: tab(s.screen === 'search'),
+      tabShare: tab(s.screen === 'share'),
+
+      visitedJson: JSON.stringify(s.mapFilter === 'flights' ? [] : VISITED),
+      routesJson: JSON.stringify(s.mapFilter === 'countries' ? [] : this.routes()),
+      chipAll: chip(s.mapFilter === 'all'), chipFlights: chip(s.mapFilter === 'flights'),
+      chipCountries: chip(s.mapFilter === 'countries'),
+      setFilterAll: () => this.setState({ mapFilter: 'all' }),
+      setFilterFlights: () => this.setState({ mapFilter: 'flights' }),
+      setFilterCountries: () => this.setState({ mapFilter: 'countries' }),
+
+      journeyCount: s.journeys.length,
+      shownJourneys: shown.map((j) => ({
+        route: j.stops.join(' → '),
+        isRoundTrip: j.isRoundTrip,
+        notes: j.notes || null,
+        meta: this.fmt(j.date) + ' · ' + j.km.toLocaleString('en-US') + ' km · ' +
+          (j.stops.length - 1) + (j.stops.length - 1 === 1 ? ' flight' : ' flights')
+      })),
+      yearAll: chip(s.year === 'all'), year2026: chip(s.year === '2026'),
+      year2025: chip(s.year === '2025'), year2024: chip(s.year === '2024'),
+      setYearAll: () => this.setState({ year: 'all' }),
+      setYear2026: () => this.setState({ year: '2026' }),
+      setYear2025: () => this.setState({ year: '2025' }),
+      setYear2024: () => this.setState({ year: '2024' }),
+
+      sheetOpen: s.sheetOpen,
+      openSheet: () => this.setState({ sheetOpen: true }),
+      closeSheet: () => this.setState({ sheetOpen: false }),
+      stop: (e) => e.stopPropagation(),
+      stops: s.stops,
+      stopsHint: s.stops.length < 2 ? 'add the next airport' : '',
+      quickAirports: ['AMS', 'IST', 'LHR', 'CDG', 'ATH', 'OTP', 'DXB', 'JFK'].map((code) => ({
+        code,
+        add: () => this.setState((st) => ({ stops: st.stops.concat([code]) }))
+      })),
+      clearStops: () => this.setState({ stops: ['SOF'] }),
+      newDate: s.newDate,
+      setNewDate: (e) => this.setState({ newDate: e.target.value }),
+      round: s.round,
+      roundBtn: s.round ? CHIP_ON : CHIP_BASE,
+      toggleRound: () => this.setState((st) => ({ round: !st.round })),
+      saveFlight: () => this.setState((st) => {
+        if (st.stops.length < 2) return { sheetOpen: false };
+        let km = 0;
+        for (let i = 0; i < st.stops.length - 1; i++) {
+          const a = AIRPORTS[st.stops[i]], b = AIRPORTS[st.stops[i + 1]];
+          if (a && b) {
+            const R = 6371, toRad = Math.PI / 180;
+            const dLat = (b[1] - a[1]) * toRad, dLon = (b[0] - a[0]) * toRad;
+            const h = Math.sin(dLat / 2) ** 2 +
+              Math.cos(a[1] * toRad) * Math.cos(b[1] * toRad) * Math.sin(dLon / 2) ** 2;
+            km += Math.round(2 * R * Math.asin(Math.sqrt(h)));
+          }
+        }
+        const j = { id: Date.now(), date: st.newDate, stops: st.stops, km: km * (st.round ? 2 : 1), isRoundTrip: st.round, notes: '' };
+        return { journeys: [j].concat(st.journeys), sheetOpen: false, stops: ['SOF'], round: false, screen: 'flights', year: 'all' };
+      }),
+
+      origin: s.origin, destination: s.destination,
+      setOrigin: (e) => this.setState({ origin: e.target.value.toUpperCase() }),
+      setDestination: (e) => this.setState({ destination: e.target.value.toUpperCase() }),
+      segSpecific: seg(s.dateType === 'specific'), segMonth: seg(s.dateType === 'month'),
+      segRange: seg(s.dateType === 'range'), segWeekends: seg(s.dateType === 'weekends'),
+      setDateSpecific: () => this.setState({ dateType: 'specific' }),
+      setDateMonth: () => this.setState({ dateType: 'month' }),
+      setDateRange: () => this.setState({ dateType: 'range' }),
+      setDateWeekends: () => this.setState({ dateType: 'weekends' }),
+      whenLabel: WHEN[s.dateType],
+      searched: s.searched,
+      searchLabel: s.searched ? 'Search again' : 'Explore 128 options',
+      runSearch: () => this.setState({ searched: true }),
+
+      isWarm: s.cardStyle === 'warm', isInk: s.cardStyle === 'ink', isEditorial: s.cardStyle === 'editorial',
+      styWarm: chip(s.cardStyle === 'warm'), styInk: chip(s.cardStyle === 'ink'),
+      styEditorial: chip(s.cardStyle === 'editorial'),
+      setStyleWarm: () => this.setState({ cardStyle: 'warm' }),
+      setStyleInk: () => this.setState({ cardStyle: 'ink' }),
+      setStyleEditorial: () => this.setState({ cardStyle: 'editorial' })
+    };
+  }
+}
+
+</script>
+</body>
+</html>
