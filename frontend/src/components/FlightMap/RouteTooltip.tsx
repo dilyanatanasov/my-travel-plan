@@ -22,7 +22,7 @@ function RouteTooltip({ route, position }: RouteTooltipProps) {
     >
       <div className="bg-gray-900 text-white px-3 py-2 rounded-lg shadow-lg text-sm">
         {/* Route */}
-        <div className="font-semibold text-blue-300">
+        <div className="font-semibold text-map-route">
           {departure.iataCode} → {arrival.iataCode}
         </div>
 

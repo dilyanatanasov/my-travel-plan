@@ -55,6 +55,17 @@ export default {
       },
 
       /*
+        Type. Figtree carries the interface; Caprasimo is display only —
+        it has one weight, no italic and very tight counters, so it is
+        unreadable below about 18px and must never become the body face.
+      */
+      fontFamily: {
+        sans: ['Figtree', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        display: ['Caprasimo', 'Georgia', 'serif'],
+        mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
+      },
+
+      /*
         Shape. Tailwind's defaults are noticeably squarer than the rest of
         this app now reads; redefining the scale here rounds every existing
         rounded-lg / rounded-2xl at once, with no component edits and no risk

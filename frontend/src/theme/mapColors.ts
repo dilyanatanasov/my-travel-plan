@@ -43,67 +43,67 @@ export interface MapStatePalette {
 }
 
 const DARK: MapPalette = {
-  ocean: '#0a1020',
-  land: '#293a53',
-  countryBorder: '#3a4d6b',
-  home: '#a78bfa',
-  visited: '#34d399',
-  transit: '#fcd34d',
-  route: '#60a5fa',
-  routeHighlight: '#bfdbfe',
-  selected: '#fb7185',
-  selectedGlow: '#f43f5e',
-  airportFill: '#ffffff',
-  airportRing: '#0a1020',
-  label: '#e2e8f0',
+  ocean: '#1a1817',
+  land: '#3a352d',
+  countryBorder: '#4a443a',
+  home: '#ffe1d0',
+  visited: '#b2622d',
+  transit: '#aebf92',
+  route: '#f6a06b',
+  routeHighlight: '#ffe1d0',
+  selected: '#e8836a',
+  selectedGlow: '#c8543a',
+  airportFill: '#f9f4ed',
+  airportRing: '#201e1d',
+  label: '#eee7db',
 };
 
 const DARK_HOVER: MapStatePalette = {
-  home: '#c4b5fd',
-  visited: '#6ee7b7',
-  transit: '#fde68a',
-  land: '#38496a',
+  home: '#fff2eb',
+  visited: '#d67f48',
+  transit: '#ccdbb2',
+  land: '#474238',
 };
 
 const DARK_PRESSED: MapStatePalette = {
-  home: '#ddd6fe',
-  visited: '#a7f3d0',
-  transit: '#fef3c7',
-  land: '#45587c',
+  home: '#ffffff',
+  visited: '#f6a06b',
+  transit: '#e1eecc',
+  land: '#544d42',
 };
 
 const LIGHT: MapPalette = {
-  ocean: '#e8f0f7',
-  land: '#cbd5e1',
-  countryBorder: '#ffffff',
+  ocean: '#f5ead8',
+  land: '#e3d5bd',
+  countryBorder: '#f5ead8',
   // Darker than the dark theme's equivalents: these sit on pale land, so they
   // must descend in lightness rather than climb.
-  home: '#6d28d9',
-  visited: '#059669',
-  transit: '#d97706',
-  route: '#1d4ed8',
-  routeHighlight: '#1e293b',
-  selected: '#e11d48',
-  selectedGlow: '#fb7185',
+  home: '#402310',
+  visited: '#f6a06b',
+  transit: '#8fa073',
+  route: '#8c491a',
+  routeHighlight: '#402310',
+  selected: '#a82d26',
+  selectedGlow: '#d67f48',
   // Inverted from dark: a dark dot with a white ring reads on pale land the
   // way a white dot with a dark ring reads on a dark ocean.
-  airportFill: '#0f172a',
-  airportRing: '#ffffff',
-  label: '#0f172a',
+  airportFill: '#8c491a',
+  airportRing: '#f9f4ed',
+  label: '#201e1d',
 };
 
 const LIGHT_HOVER: MapStatePalette = {
-  home: '#5b21b6',
-  visited: '#047857',
-  transit: '#b45309',
-  land: '#94a3b8',
+  home: '#643312',
+  visited: '#d67f48',
+  transit: '#728157',
+  land: '#dcd3c4',
 };
 
 const LIGHT_PRESSED: MapStatePalette = {
-  home: '#4c1d95',
-  visited: '#065f46',
-  transit: '#92400e',
-  land: '#64748b',
+  home: '#2a1508',
+  visited: '#b2622d',
+  transit: '#56633f',
+  land: '#c0b6a5',
 };
 
 export interface MapColors {

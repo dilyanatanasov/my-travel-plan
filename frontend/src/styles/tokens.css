@@ -1,5 +1,5 @@
 /**
- * Design tokens.
+ * Design tokens — the Organic design system.
  *
  * Values are bare RGB triplets ("13 148 136") rather than hex so Tailwind can
  * compose them with an alpha channel — `bg-brand-600/50` only works if the
@@ -9,50 +9,73 @@
  * react-simple-maps takes colour strings in JS, not classes. That file is the
  * source of truth for anything the map draws; these variables exist so the
  * legend swatches and badges can match without a JS round-trip.
+ *
+ * The palette comes from design_handoff_flightlog: a warm cream ground with a
+ * terracotta accent and sage as the second voice. The handoff only specifies
+ * a light theme, so the dark one below is derived from its "Ink" share card
+ * (#201e1d ground, #2e2b25 surfaces) rather than invented from scratch.
  */
 :root {
-  /* Accent — teal. Deliberately not blue: blue means "flight route" on the map
-     and nothing else, which is what stops the old five-meanings-of-blue problem. */
-  --color-brand-50: 240 253 250;
-  --color-brand-100: 204 251 241;
-  --color-brand-200: 153 246 228;
-  --color-brand-300: 94 234 212;
-  --color-brand-400: 45 212 191;
-  --color-brand-500: 20 184 166;
-  /* 600 is the filled-button background. Teal-600 (#0d9488) only reaches
-     3.74:1 against white text, under the 4.5:1 AA threshold, so the ramp is
-     shifted a step darker from here down. Fixing it in the token keeps every
-     call site as bg-brand-600. */
-  --color-brand-600: 15 118 110;
-  --color-brand-700: 17 94 89;
-  --color-brand-800: 19 78 74;
-  --color-brand-900: 15 61 58;
+  /*
+    Accent — terracotta. Warm rather than teal, which is the single biggest
+    reason the Organic palette reads as inviting instead of clinical.
 
-  /* Surfaces */
-  --color-canvas: 246 247 249;
-  --color-surface: 255 255 255;
-  --color-surface-sunken: 241 245 249;
-  --color-border: 229 231 235;
-  --color-border-strong: 203 213 225;
+    600 is the filled-button background and is deliberately a step darker
+    than the handoff's own accent-600 (#b2622d): that value reaches only
+    4.49:1 against white text, a hair under the 4.5:1 AA threshold. Fixing it
+    in the token keeps every call site as bg-brand-600.
+  */
+  --color-brand-50: 255 247 242;
+  --color-brand-100: 255 242 235;
+  --color-brand-200: 255 225 208;
+  --color-brand-300: 255 198 165;
+  --color-brand-400: 246 160 107;
+  --color-brand-500: 214 127 72;
+  --color-brand-600: 156 82 32;
+  --color-brand-700: 140 73 26;
+  --color-brand-800: 100 51 18;
+  --color-brand-900: 64 35 16;
 
-  /* Text ramp */
-  --color-ink: 17 24 39;
-  --color-ink-muted: 75 85 99;
-  --color-ink-subtle: 148 163 184;
+  /* Surfaces — cream ground, lighter cards sitting on it. */
+  --color-canvas: 245 234 216;
+  --color-surface: 249 244 237;
+  --color-surface-sunken: 238 231 219;
+  --color-border: 220 211 196;
+  --color-border-strong: 192 182 165;
 
-  /* Map semantics. Ordered by lightness (home darkest -> ocean lightest) so the
-     map survives greyscale and every common colour vision deficiency. */
-  --color-map-home: 109 40 217;
-  --color-map-visited: 5 150 105;
-  --color-map-transit: 251 191 36;
-  --color-map-land: 203 213 225;
-  --color-map-ocean: 238 244 248;
-  --color-map-route: 29 78 216;
-  --color-map-airport-ring: 15 23 42;
+  /* Text ramp, from the neutral scale. */
+  --color-ink: 32 30 29;
+  --color-ink-muted: 100 92 80;
+  --color-ink-subtle: 111 103 90;
 
-  /* Feedback */
-  --color-danger: 220 38 38;
-  --color-danger-soft: 254 242 242;
+  /*
+    Map semantics. Still ordered by lightness (home darkest -> ocean lightest)
+    so the map survives greyscale and every common colour vision deficiency —
+    that ordering is what makes it readable, not the hues themselves.
+
+    Transit is sage rather than another step of terracotta: it sits between
+    route and visited in luminance, and a different hue keeps it from reading
+    as "slightly visited".
+  */
+  --color-map-home: 64 35 16;
+  --color-map-route: 140 73 26;
+  --color-map-transit: 143 160 115;
+  --color-map-visited: 246 160 107;
+  --color-map-land: 227 213 189;
+  --color-map-ocean: 245 234 216;
+  --color-map-airport-ring: 32 30 29;
+
+  /* Feedback — warmed so it belongs to the same family. */
+  --color-danger: 168 45 38;
+  --color-danger-soft: 255 237 232;
+
+  /*
+    A filled panel that carries white text. Deliberately NOT a rung of the
+    brand ramp: that ramp inverts between themes, so any rung readable with
+    white text in one theme is unreadable in the other. Sage, which is the
+    handoff's own choice for its filled fact block.
+  */
+  --color-panel-accent: 86 99 63;
 
   /*
     Elevation. Full shadow strings rather than a colour, because light and
@@ -61,13 +84,6 @@
     harder, larger shadow. Warm near-black instead of pure black — a neutral
     shadow over a warm surface reads as grey dirt.
   */
-  /*
-    A filled panel that carries white text. Deliberately NOT a rung of the
-    brand ramp: that ramp inverts between themes, so any rung readable with
-    white text in one theme is unreadable in the other.
-  */
-  --color-panel-accent: 15 118 110;
-
   --shadow-sm: 0 1px 2px rgb(46 43 37 / 0.14);
   --shadow-md: 0 3px 10px rgb(46 43 37 / 0.16);
   --shadow-lg: 0 12px 32px rgb(46 43 37 / 0.22);
@@ -80,42 +96,53 @@
  * exactly what the token work was for.
  */
 .dark {
-  --color-canvas: 9 14 26;
-  --color-surface: 20 29 46;
-  --color-surface-sunken: 30 41 61;
-  --color-border: 39 52 74;
-  --color-border-strong: 62 79 106;
+  --color-canvas: 32 30 29;
+  --color-surface: 46 43 37;
+  --color-surface-sunken: 58 53 45;
+  --color-border: 71 66 56;
+  --color-border-strong: 100 92 80;
 
-  --color-ink: 241 245 249;
-  --color-ink-muted: 176 190 209;
-  --color-ink-subtle: 130 146 168;
+  --color-ink: 249 244 237;
+  --color-ink-muted: 192 182 165;
+  --color-ink-subtle: 161 151 134;
 
-  /* The accent has to move: brand-600 is chosen for white text on a light
-     page and is far too dark to read against a dark surface. These are the
-     lighter steps of the same teal ramp, so the hue is unchanged. */
-  --color-brand-50: 12 42 42;
-  --color-brand-100: 15 60 58;
-  --color-brand-500: 45 212 191;
-  --color-brand-600: 45 212 191;
-  --color-brand-700: 94 234 212;
-  --color-brand-800: 153 246 228;
+  /*
+    The accent has to move: brand-600 is chosen for white text on a light
+    page and is far too dark to read against a dark surface. These are the
+    lighter steps of the same terracotta ramp, so the hue is unchanged.
 
-  /* Map semantics on light panels: brighter, matching what the dark map
-     canvas draws. */
-  --color-map-home: 167 139 250;
-  --color-map-visited: 52 211 153;
-  --color-map-transit: 252 211 77;
-  --color-map-route: 96 165 250;
-  --color-map-land: 41 58 83;
-  --color-map-ocean: 10 16 32;
+    600 stays a mid-tone rather than going as light as the rest, because it
+    is the filled-button background and the app puts white text on it. The
+    previous teal theme set it to the same bright value as brand-500, which
+    left white text at roughly 1.9:1 — invisible. This value clears AA.
+  */
+  --color-brand-50: 45 25 14;
+  --color-brand-100: 64 35 16;
+  --color-brand-500: 246 160 107;
+  --color-brand-600: 168 88 38;
+  --color-brand-700: 246 160 107;
+  --color-brand-800: 255 198 165;
 
-  --color-danger: 248 113 113;
-  --color-danger-soft: 60 20 24;
+  /*
+    Map semantics on light panels: brighter, matching what the dark map
+    canvas draws. Luminance order is preserved, inverted — on a dark ground
+    the land must be darker than what sits on it.
+  */
+  --color-map-home: 255 225 208;
+  --color-map-route: 246 160 107;
+  --color-map-transit: 174 191 146;
+  --color-map-visited: 178 98 45;
+  --color-map-land: 58 53 45;
+  --color-map-ocean: 26 24 23;
+  --color-map-airport-ring: 249 244 237;
+
+  --color-danger: 240 138 120;
+  --color-danger-soft: 66 28 24;
+
+  /* Deeper sage so the filled panel still separates from a dark canvas. */
+  --color-panel-accent: 61 71 43;
 
   /* Harder and deeper: dark surfaces separate by contrast, not by tint. */
-  /* Slightly deeper so the panel still separates from a dark canvas. */
-  --color-panel-accent: 13 100 94;
-
   --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.40);
   --shadow-md: 0 4px 12px rgb(0 0 0 / 0.45);
   --shadow-lg: 0 16px 40px rgb(0 0 0 / 0.55);

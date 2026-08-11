@@ -23,7 +23,7 @@ function Layout() {
               <BrandMark className="w-5 h-5" />
             </span>
             <span className="flex flex-col justify-center min-w-0">
-              <h1 className="text-lg sm:text-xl font-bold text-ink leading-tight">
+              <h1 className="font-display font-normal text-xl sm:text-2xl text-ink leading-tight">
                 Contrail
               </h1>
               {/* Subtitle only where there is room for it */}

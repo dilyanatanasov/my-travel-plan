@@ -36,13 +36,30 @@
     />
     <meta name="twitter:image" content="/og-image.png" />
 
+    <!--
+      Organic's two typefaces: Caprasimo for display numbers and screen
+      titles, Figtree for everything else. preconnect because the font CSS
+      and the font files come from two different origins, and without it the
+      second DNS+TLS handshake happens only after the first stylesheet lands.
+      display=swap so text paints in the fallback immediately rather than
+      leaving headings blank while the font downloads.
+    -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Caprasimo&family=Figtree:wght@400;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+
     <!-- Icons -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 
     <!-- Installable on a phone; logging a flight at the gate is the core use case -->
     <link rel="manifest" href="/manifest.webmanifest" />
-    <meta name="theme-color" content="#0f766e" />
+    <!-- Browser chrome matches the ground, per theme. -->
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f5ead8" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#201e1d" />
     <!--
       iOS installs via Share > Add to Home Screen and does not require a
       service worker or HTTPS. These tags are what make it open without Safari

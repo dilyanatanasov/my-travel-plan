@@ -99,35 +99,37 @@ select option {
   */
   /* Light theme: pale glass over a pale map. */
   .map-glass {
-    background-color: rgb(255 255 255 / 0.72);
+    background-color: rgb(var(--color-surface) / 0.72);
     backdrop-filter: blur(16px) saturate(140%);
     -webkit-backdrop-filter: blur(16px) saturate(140%);
-    border-color: rgb(15 23 42 / 0.1);
-    color: rgb(15 23 42);
+    border-color: rgb(var(--color-ink) / 0.1);
+    color: rgb(var(--color-ink));
   }
 
   .map-glass-hover:hover {
-    background-color: rgb(15 23 42 / 0.06);
+    background-color: rgb(var(--color-ink) / 0.06);
   }
 
   .map-glass-muted {
-    color: rgb(71 85 105);
+    color: rgb(var(--color-ink-muted));
   }
 
   /* Dark theme: the map is near-black, so white cards would read as holes
      punched in it. */
   .dark .map-glass {
-    background-color: rgb(15 23 42 / 0.64);
-    border-color: rgb(255 255 255 / 0.12);
-    color: rgb(226 232 240);
+    /* Canvas, not surface: the panel has to sink into the near-black map
+       rather than sit on it as a lighter slab. */
+    background-color: rgb(var(--color-canvas) / 0.72);
+    border-color: rgb(var(--color-ink) / 0.12);
+    color: rgb(var(--color-ink));
   }
 
   .dark .map-glass-hover:hover {
-    background-color: rgb(255 255 255 / 0.08);
+    background-color: rgb(var(--color-ink) / 0.08);
   }
 
   .dark .map-glass-muted {
-    color: rgb(148 163 184);
+    color: rgb(var(--color-ink-muted));
   }
 
 
@@ -135,7 +137,7 @@ select option {
     -webkit-appearance: none;
     -moz-appearance: none;
     appearance: none;
-    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236b7280' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23645c50' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: right 0.7rem center;
     background-size: 1.1em 1.1em;
@@ -150,29 +152,29 @@ select option {
 
   /* Form controls inside map glass. */
   .map-glass-field {
-    background-color: rgb(255 255 255 / 0.75);
-    border-color: rgb(15 23 42 / 0.14);
-    color: rgb(15 23 42);
+    background-color: rgb(var(--color-surface) / 0.85);
+    border-color: rgb(var(--color-ink) / 0.14);
+    color: rgb(var(--color-ink));
   }
 
   .map-glass-field option {
-    background-color: #ffffff;
-    color: #0f172a;
+    background-color: rgb(var(--color-surface));
+    color: rgb(var(--color-ink));
   }
 
   .dark .map-glass-field {
-    background-color: rgb(255 255 255 / 0.06);
-    border-color: rgb(255 255 255 / 0.14);
-    color: rgb(241 245 249);
+    background-color: rgb(var(--color-ink) / 0.08);
+    border-color: rgb(var(--color-ink) / 0.16);
+    color: rgb(var(--color-ink));
     /* Lighter chevron, or it disappears against the dark field. */
-    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23c0b6a5' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
   }
 
   /* Native option lists are drawn by the OS and ignore the control's colour,
      so they must be set explicitly or become white-on-white. */
   .dark .map-glass-field option {
-    background-color: #16213a;
-    color: #f1f5f9;
+    background-color: rgb(var(--color-surface));
+    color: rgb(var(--color-ink));
   }
 }
 

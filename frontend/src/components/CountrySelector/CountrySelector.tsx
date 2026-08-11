@@ -60,7 +60,7 @@ function CountrySelector({ countries, visitedCountryIds, onToggleCountry }: Coun
                   <span
                     className={`text-xs px-2 py-1 rounded ${
                       isVisited
-                        ? 'bg-green-100 text-green-700'
+                        ? 'bg-brand-100 text-brand-700'
                         : 'bg-surface-sunken text-ink-muted'
                     }`}
                   >

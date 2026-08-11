@@ -87,7 +87,8 @@
       "mcp__playwright__browser_run_code_unsafe",
       "Bash(xargs echo \"commits ahead of main:\")",
       "Bash(echo \"=== 4. guest registers \\(same cookie\\) ===\")",
-      "Bash(xargs tail -5)"
+      "Bash(xargs tail -5)",
+      "Bash(grep -v \"//\")"
     ],
     "deny": [],
     "ask": []

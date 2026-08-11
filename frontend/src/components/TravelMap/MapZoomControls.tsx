@@ -11,7 +11,8 @@ interface MapZoomControlsProps {
 
 const buttonClass =
   'w-11 h-11 flex items-center justify-center map-glass map-glass-hover ' +
-  'focus:outline-none focus:ring-2 focus:ring-inset focus:ring-brand-400 ' +
+  'first:rounded-t-lg last:rounded-b-lg ' +
+  'focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-400 ' +
   'disabled:opacity-35';
 
 /**
@@ -34,6 +35,39 @@ function MapZoomControls({
   return (
     // bottom-20 on mobile clears the peek bar pinned to the canvas floor.
     <div className="absolute bottom-20 lg:bottom-4 right-3 z-20 flex flex-col rounded-lg overflow-hidden shadow-lg border border-current/15 divide-y divide-current/15">
+      {/*
+        Reset renders first, above the +/- pair.
+
+        The stack is anchored by its bottom edge, so appending a third button
+        grew the container upward and shifted + and - up under the cursor the
+        moment you first zoomed. Putting the conditional button at the top
+        means the two permanent ones never move.
+      */}
+      {!isDefaultView && (
+        <button
+          type="button"
+          onClick={onReset}
+          className={buttonClass}
+          aria-label="Reset map view"
+          title="Reset view"
+        >
+          <svg
+            className="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+            />
+          </svg>
+        </button>
+      )}
+
       <button
         type="button"
         onClick={onZoomIn}
@@ -80,30 +114,6 @@ function MapZoomControls({
         </svg>
       </button>
 
-      {!isDefaultView && (
-        <button
-          type="button"
-          onClick={onReset}
-          className={buttonClass}
-          aria-label="Reset map view"
-          title="Reset view"
-        >
-          <svg
-            className="w-5 h-5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-            aria-hidden="true"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-            />
-          </svg>
-        </button>
-      )}
     </div>
   );
 }

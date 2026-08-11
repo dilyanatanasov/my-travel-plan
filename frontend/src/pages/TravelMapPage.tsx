@@ -212,7 +212,7 @@ function TravelMapPage() {
               <div className="absolute inset-0 overflow-y-auto overscroll-contain bg-canvas">
                 <div className="max-w-5xl mx-auto p-4 sm:p-6">
                   <div className="flex items-center justify-between gap-3 mb-4">
-                    <h2 className="text-xl font-bold text-ink">
+                    <h2 className="font-display font-normal text-2xl text-ink">
                       {section?.label}
                     </h2>
                     <button

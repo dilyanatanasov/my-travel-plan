@@ -17,7 +17,7 @@ function AuthLayout({ title, subtitle, children, footer }: AuthLayoutProps) {
           <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-brand-600 text-white mb-4">
             <BrandMark className="w-8 h-8" />
           </div>
-          <h1 className="text-2xl font-bold text-ink">{title}</h1>
+          <h1 className="font-display font-normal text-3xl text-ink">{title}</h1>
           <p className="text-ink-muted mt-1">{subtitle}</p>
         </div>
 

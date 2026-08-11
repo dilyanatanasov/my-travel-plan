@@ -15,10 +15,10 @@ function ThemeSwatch({ mode }: { mode: ThemePreference }) {
   // A miniature of the app: canvas, a surface card, and the accent.
   const tones =
     mode === 'dark'
-      ? { canvas: '#090e1a', surface: '#141d2e', accent: '#2dd4bf' }
+      ? { canvas: '#201e1d', surface: '#2e2b25', accent: '#f6a06b' }
       : mode === 'light'
-        ? { canvas: '#f6f7f9', surface: '#ffffff', accent: '#0f766e' }
-        : { canvas: '#f6f7f9', surface: '#141d2e', accent: '#14b8a6' };
+        ? { canvas: '#f5ead8', surface: '#f9f4ed', accent: '#9c5220' }
+        : { canvas: '#f5ead8', surface: '#2e2b25', accent: '#d67f48' };
 
   return (
     <span

@@ -7,10 +7,20 @@ interface StatsCardProps {
 }
 
 const colorClasses = {
-  blue: 'bg-brand-50 text-brand-600',
-  green: 'bg-green-50 text-green-600',
-  purple: 'bg-purple-50 text-purple-600',
-  orange: 'bg-orange-50 text-orange-600',
+  /*
+    One chip treatment, not four. The Organic system has a single accent, and
+    four differently-coloured discs read as decoration competing with the
+    numbers they sit beside.
+
+    brand-700 for the glyph exploits the ramp's inversion rather than fighting
+    it: dark terracotta on a pale tint in light mode, pale terracotta on a
+    dark tint in dark mode, legible in both without a single override. The
+    previous bg-brand-50 was near-black in dark mode and swallowed the icon.
+  */
+  blue: 'bg-brand-500/15 text-brand-700',
+  green: 'bg-brand-500/15 text-brand-700',
+  purple: 'bg-brand-500/15 text-brand-700',
+  orange: 'bg-brand-500/15 text-brand-700',
   pink: 'bg-pink-50 text-pink-600',
 };
 
@@ -33,7 +43,7 @@ function StatsCard({
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="text-xs sm:text-sm text-ink-muted mb-1">{title}</p>
-          <p className="text-lg sm:text-2xl font-bold text-ink whitespace-nowrap">
+          <p className="font-display font-normal text-xl sm:text-3xl text-ink whitespace-nowrap">
             {value}
           </p>
           {subtitle && (

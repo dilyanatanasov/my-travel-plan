@@ -2,6 +2,28 @@ import { useGetFlightStatsQuery } from '../../features/flights/flightsApi';
 import YearBarChart from './YearBarChart';
 import StatsCard from './StatsCard';
 
+/** Shared shell for "nothing here yet" and "that did not load". */
+function EmptyState({ title, body }: { title: string; body: string }) {
+  return (
+    <div className="bg-surface border border-line rounded-2xl px-6 py-12 text-center shadow-sm">
+      <span className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-surface-sunken text-ink-subtle mb-4">
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={1.8}
+            d="M3 13h2l1 2h12l1-2h2M5 19h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
+          />
+        </svg>
+      </span>
+      <h3 className="text-base font-semibold text-ink">{title}</h3>
+      <p className="text-sm text-ink-muted mt-1.5 max-w-sm mx-auto leading-relaxed">
+        {body}
+      </p>
+    </div>
+  );
+}
+
 function FlightStats() {
   const { data: stats, isLoading, error } = useGetFlightStatsQuery();
 
@@ -15,12 +37,27 @@ function FlightStats() {
     );
   }
 
+  /*
+    Both of these used to `return null`, so anyone who opened Statistics
+    before logging a flight — which is everyone on their first visit — got a
+    blank panel and no way to tell a working empty app from a broken one.
+  */
   if (error || !stats) {
-    return null;
+    return (
+      <EmptyState
+        title="Statistics are unavailable"
+        body="We couldn't load your flight stats just now. Refreshing usually sorts it."
+      />
+    );
   }
 
   if (stats.totalFlights === 0) {
-    return null;
+    return (
+      <EmptyState
+        title="No flights logged yet"
+        body="Add a flight from the Flights tab and this fills up: distance flown, time in the air, your busiest year, and how far up to the Moon you've got."
+      />
+    );
   }
 
   const formatNumber = (n: number) => n.toLocaleString();
@@ -90,15 +127,15 @@ function FlightStats() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <p className="text-white/75 text-sm">Distance to Moon</p>
-            <p className="text-2xl font-bold">{stats.moonDistancePercent.toFixed(1)}%</p>
+            <p className="font-display font-normal text-3xl">{stats.moonDistancePercent.toFixed(1)}%</p>
           </div>
           <div>
             <p className="text-white/75 text-sm">If you walked instead...</p>
-            <p className="text-2xl font-bold">{stats.walkingYears.toFixed(1)} years</p>
+            <p className="font-display font-normal text-3xl">{stats.walkingYears.toFixed(1)} years</p>
           </div>
           <div>
             <p className="text-white/75 text-sm">Earth Circumferences</p>
-            <p className="text-2xl font-bold">{stats.earthCircumferences.toFixed(2)}×</p>
+            <p className="font-display font-normal text-3xl">{stats.earthCircumferences.toFixed(2)}×</p>
           </div>
         </div>
       </div>
@@ -130,7 +167,7 @@ function FlightStats() {
             <p className="text-sm text-ink-muted">
               {stats.shortestFlight.departureCity} to {stats.shortestFlight.arrivalCity}
             </p>
-            <p className="text-green-600 font-semibold mt-1">
+            <p className="text-map-transit font-semibold mt-1">
               {formatNumber(Math.round(stats.shortestFlight.distanceKm))} km
             </p>
           </div>
