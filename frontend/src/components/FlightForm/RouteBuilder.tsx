@@ -152,7 +152,7 @@ function RouteBuilder({ onSubmit, isLoading }: RouteBuilderProps) {
             type="date"
             value={journeyDate}
             onChange={(e) => setJourneyDate(e.target.value)}
-            className="w-full px-3 py-2 border border-line rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
+            className="w-full min-h-11 px-3 border border-line rounded-lg bg-surface text-ink placeholder:text-ink-subtle focus:outline-none focus:ring-2 focus:ring-brand-500"
           />
         </div>
         <div className="flex items-end">
@@ -177,7 +177,7 @@ function RouteBuilder({ onSubmit, isLoading }: RouteBuilderProps) {
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           placeholder="e.g., Business trip, vacation..."
-          className="w-full px-3 py-2 border border-line rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
+          className="w-full min-h-11 px-3 border border-line rounded-lg bg-surface text-ink placeholder:text-ink-subtle focus:outline-none focus:ring-2 focus:ring-brand-500"
         />
       </div>
 

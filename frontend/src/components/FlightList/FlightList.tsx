@@ -168,7 +168,7 @@ function FlightList() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search route, city, note…"
-            className="w-full min-h-11 pl-9 pr-3 border border-line rounded-lg text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+            className="w-full min-h-11 pl-9 pr-3 border border-line rounded-lg bg-surface text-ink placeholder:text-ink-subtle text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
           />
           <svg
             className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-subtle pointer-events-none"

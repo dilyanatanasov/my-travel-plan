@@ -79,7 +79,7 @@ function AirportSearch({
           }}
           placeholder={placeholder}
           disabled={disabled}
-          className={`w-full px-3 py-2 border border-line rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent ${
+          className={`w-full min-h-11 px-3 border border-line rounded-lg bg-surface text-ink placeholder:text-ink-subtle focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent ${
             disabled ? 'bg-surface-sunken cursor-not-allowed' : ''
           } ${value ? 'pr-8' : ''}`}
         />

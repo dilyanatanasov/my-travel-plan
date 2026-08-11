@@ -58,7 +58,7 @@ function SelectedJourneyCard({ journey, onClose }: SelectedJourneyCardProps) {
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="font-mono text-sm font-semibold text-slate-100 break-words leading-snug">
+          <p className="font-mono text-sm font-semibold break-words leading-snug">
             {route}
           </p>
           <p className="text-xs map-glass-muted mt-0.5">
@@ -67,7 +67,7 @@ function SelectedJourneyCard({ journey, onClose }: SelectedJourneyCardProps) {
             {Math.round(distance).toLocaleString()} km
           </p>
           {journey.notes && (
-            <p className="text-xs text-slate-400 mt-1 line-clamp-2">
+            <p className="text-xs map-glass-muted mt-1 line-clamp-2">
               {journey.notes}
             </p>
           )}
@@ -76,7 +76,7 @@ function SelectedJourneyCard({ journey, onClose }: SelectedJourneyCardProps) {
           type="button"
           onClick={onClose}
           aria-label="Clear selected journey"
-          className="map-glass-hover flex-shrink-0 w-9 h-9 -mr-1 -mt-1 flex items-center justify-center rounded-lg text-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-400"
+          className="map-glass-hover flex-shrink-0 w-9 h-9 -mr-1 -mt-1 flex items-center justify-center rounded-lg map-glass-muted focus:outline-none focus:ring-2 focus:ring-brand-400"
         >
           <svg
             className="w-4 h-4"

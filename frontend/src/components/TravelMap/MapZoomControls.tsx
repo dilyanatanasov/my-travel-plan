@@ -33,7 +33,7 @@ function MapZoomControls({
 
   return (
     // bottom-20 on mobile clears the peek bar pinned to the canvas floor.
-    <div className="absolute bottom-20 lg:bottom-4 right-3 z-20 flex flex-col rounded-lg overflow-hidden shadow-lg border border-white/10 divide-y divide-white/10">
+    <div className="absolute bottom-20 lg:bottom-4 right-3 z-20 flex flex-col rounded-lg overflow-hidden shadow-lg border border-current/15 divide-y divide-current/15">
       <button
         type="button"
         onClick={onZoomIn}

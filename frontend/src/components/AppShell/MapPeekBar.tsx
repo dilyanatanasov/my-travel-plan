@@ -34,24 +34,24 @@ function MapPeekBar({
       */}
       <span className="flex items-center gap-5 min-w-0">
         <span className="flex flex-col leading-none">
-          <span className="text-base font-bold text-slate-100">{countriesVisited}</span>
-          <span className="text-[11px] text-slate-400 mt-0.5">countries</span>
+          <span className="text-base font-bold">{countriesVisited}</span>
+          <span className="text-[11px] map-glass-muted mt-0.5">countries</span>
         </span>
         <span className="flex flex-col leading-none">
-          <span className="text-base font-bold text-brand-300">
+          <span className="text-base font-bold text-brand-700">
             {worldPercent}%
           </span>
-          <span className="text-[11px] text-slate-400 mt-0.5">of world</span>
+          <span className="text-[11px] map-glass-muted mt-0.5">of world</span>
         </span>
         {flights > 0 && (
           <span className="flex flex-col leading-none">
-            <span className="text-base font-bold text-slate-100">{flights}</span>
-            <span className="text-[11px] text-slate-400 mt-0.5">flights</span>
+            <span className="text-base font-bold">{flights}</span>
+            <span className="text-[11px] map-glass-muted mt-0.5">flights</span>
           </span>
         )}
       </span>
       <svg
-        className="w-5 h-5 flex-shrink-0 text-slate-400"
+        className="w-5 h-5 flex-shrink-0 map-glass-muted"
         fill="none"
         stroke="currentColor"
         viewBox="0 0 24 24"

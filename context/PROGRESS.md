@@ -117,3 +117,21 @@ which would also hide the status bar — wrong for an app with its own header.
 2. **PNG export is cropped** — both the map and the caption text. The map now *covers* its
    container (see `useMapViewport`), so serialising the on-screen SVG captures a cropped view.
 3. **Some labels wrap on mobile.**
+
+## Open items (2026-08-11, end of session)
+
+1. **Journey card does not always clear on deselect.** Reported twice. The first fix moved
+   clearing to a single container-level handler in `TravelMap.tsx`
+   (`handleContainerClick` + `clickConsumedRef`), which fixed the airport-dot case, but a
+   path remains. Prime suspect: `clickConsumedRef` is only reset inside
+   `handleContainerClick`, so any click that never reaches the container — the card itself
+   calls `stopPropagation`, and `SelectedJourneyCard`'s close button is inside the map
+   container — can leave the flag stuck `true`, swallowing the *next* clear. Reproduce by
+   selecting a route, clicking the card body, then clicking open water. Fix is likely to
+   reset the flag on `pointerdown` rather than on the container click.
+2. **Contrast audit not done.** The theme sweep was mechanical; the tokens were measured but
+   not every rendered text/background pair. Suspects: the amber transit badge, the
+   `bg-map-*/10` stat tiles, and toast chips in dark mode.
+3. **Move "Home country" out of the filter panel into Settings.** Everything else in that
+   panel is a view toggle; home country is account state, and changing it rewrites a visit's
+   type. A destructive control should not look like a harmless one.
