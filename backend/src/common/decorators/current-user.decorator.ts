@@ -2,7 +2,8 @@ import { createParamDecorator, ExecutionContext } from '@nestjs/common';
 
 export interface AuthenticatedUser {
   id: number;
-  email: string;
+  /** Null for guest sessions, which have no credentials. */
+  email: string | null;
 }
 
 /**

@@ -15,6 +15,7 @@ import MapExportCanvas, {
 } from '../../components/TravelMap/MapExportCanvas';
 import { useGetVisitsQuery } from '../visits/visitsApi';
 import { useGetFlightStatsQuery } from '../flights/flightsApi';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../auth/authApi';
 
 function ShareMenu() {
@@ -26,8 +27,12 @@ function ShareMenu() {
   const canExportVideo = useMemo(() => isVideoExportSupported(), []);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const { user } = useAuth();
-  const { data: shareStatus } = useGetShareStatusQuery();
+  const { user, isGuest } = useAuth();
+  // A guest has no share token and never will until they sign up, so asking
+  // for one is a request that can only ever answer "off".
+  const { data: shareStatus } = useGetShareStatusQuery(undefined, {
+    skip: isGuest,
+  });
   const [enableShare, { isLoading: isEnabling }] = useEnableShareMutation();
   const [disableShare, { isLoading: isDisabling }] = useDisableShareMutation();
   const { data: visits = [] } = useGetVisitsQuery();
@@ -207,7 +212,7 @@ function ShareMenu() {
           role="menu"
           className="absolute right-0 mt-2 w-72 bg-surface border border-line rounded-lg shadow-lg py-1 z-50"
         >
-          {canExportVideo && (
+          {canExportVideo && !isGuest && (
             <button
               type="button"
               role="menuitem"
@@ -243,6 +248,32 @@ function ShareMenu() {
 
           <div className="border-t border-line my-1" />
 
+          {/*
+            The image stays free for everyone — it is how the app spreads.
+            Sharing and video are what an account buys, because both are
+            things someone actively wants in the moment, which is a far
+            stronger reason to sign up than an abstract warning about losing
+            data later.
+          */}
+          {isGuest ? (
+            <div className="px-3 py-3">
+              <p className="text-sm font-medium text-ink">
+                Share your map &amp; export video
+              </p>
+              <p className="text-xs text-ink-subtle mt-0.5 leading-relaxed">
+                A free account gives you a public link to your map and the
+                animated video export — and keeps your map if you change
+                device.
+              </p>
+              <Link
+                to="/register"
+                onClick={() => setIsOpen(false)}
+                className="mt-2 flex items-center justify-center w-full min-h-10 rounded-lg bg-brand-600 text-white text-sm font-medium hover:bg-brand-700"
+              >
+                Create free account
+              </Link>
+            </div>
+          ) : (
           <div className="px-3 py-2">
             <p className="text-sm font-medium text-ink">Public link</p>
             <p className="text-xs text-ink-subtle mt-0.5">
@@ -287,6 +318,7 @@ function ShareMenu() {
                   : 'Create share link'}
             </button>
           </div>
+          )}
         </div>
       )}
     </div>

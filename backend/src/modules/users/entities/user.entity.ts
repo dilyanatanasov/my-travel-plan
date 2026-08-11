@@ -14,12 +14,33 @@ export class User {
   @PrimaryGeneratedColumn()
   id: number;
 
-  // Always stored lowercased so lookups are case-insensitive
-  @Column({ type: 'varchar', length: 255, unique: true })
-  email: string;
+  /**
+   * Null for guests, who have no credentials. Postgres permits many NULLs in
+   * a unique column, so the uniqueness guarantee for real emails is intact.
+   * Always stored lowercased so lookups are case-insensitive.
+   */
+  @Column({ type: 'varchar', length: 255, unique: true, nullable: true })
+  email: string | null;
 
-  @Column({ name: 'password_hash', type: 'varchar', length: 255 })
-  passwordHash: string;
+  @Column({
+    name: 'password_hash',
+    type: 'varchar',
+    length: 255,
+    nullable: true,
+  })
+  passwordHash: string | null;
+
+  /**
+   * An anonymous account created so someone can use the app before signing
+   * up. Registering converts this row in place rather than creating a second
+   * one, so nothing has to be migrated across.
+   */
+  @Column({ name: 'is_guest', type: 'boolean', default: false })
+  isGuest: boolean;
+
+  /** Drives cleanup of abandoned guest accounts. */
+  @Column({ name: 'last_seen_at', type: 'timestamp', default: () => 'now()' })
+  lastSeenAt: Date;
 
   @Column({ name: 'display_name', type: 'varchar', length: 100, nullable: true })
   displayName: string | null;

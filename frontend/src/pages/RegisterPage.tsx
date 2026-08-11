@@ -1,9 +1,12 @@
 import { useForm } from 'react-hook-form';
 import { Link, useNavigate } from 'react-router-dom';
 import {
+  useAuth,
   useRegisterMutation,
   type RegisterRequest,
 } from '../features/auth/authApi';
+import { useGetVisitsQuery } from '../features/visits/visitsApi';
+import { useGetFlightStatsQuery } from '../features/flights/flightsApi';
 import AuthLayout from '../features/auth/AuthLayout';
 import {
   inputClass,
@@ -17,6 +20,32 @@ import {
 function RegisterPage() {
   const navigate = useNavigate();
   const [registerUser, { isLoading, error }] = useRegisterMutation();
+
+  /*
+    A guest signing up keeps the map they already built — the server upgrades
+    their existing row rather than creating a second account. Saying so with
+    real numbers matters: without it, "create an account" reads like starting
+    over, which is exactly the fear that stops someone pressing the button.
+  */
+  const { isGuest } = useAuth();
+  const { data: visits = [] } = useGetVisitsQuery(undefined, { skip: !isGuest });
+  const { data: flightStats } = useGetFlightStatsQuery(undefined, {
+    skip: !isGuest,
+  });
+
+  const carriedOver: string[] = [];
+  if (visits.length) {
+    carriedOver.push(
+      `${visits.length} ${visits.length === 1 ? 'country' : 'countries'}`
+    );
+  }
+  if (flightStats?.totalFlights) {
+    carriedOver.push(
+      `${flightStats.totalFlights} ${
+        flightStats.totalFlights === 1 ? 'flight' : 'flights'
+      }`
+    );
+  }
 
   const {
     register,
@@ -53,6 +82,14 @@ function RegisterPage() {
       }
     >
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
+        {/* No dark: variants — the brand ramp is inverted per theme in
+            tokens.css, so 50-on-800 stays readable in both. */}
+        {isGuest && carriedOver.length > 0 && (
+          <div className="bg-brand-50 border border-brand-200 text-brand-800 px-3 py-2 rounded-lg text-sm">
+            Your {carriedOver.join(' and ')} will be saved to this account.
+          </div>
+        )}
+
         {error && (
           <div
             role="alert"

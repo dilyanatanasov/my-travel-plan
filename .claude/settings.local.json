@@ -85,7 +85,9 @@
       "Bash(sed -i 's/^export function getCountryHoverColor\\(\\\\n  palette: MapPalette,/x/' countryColors.ts)",
       "Bash(sed -i 's/getCountryHoverColor\\(colors, hover, visitType, isHome\\)/getCountryHoverColor\\(hover, visitType, isHome\\)/; s/getCountryPressedColor\\(colors, pressed, visitType, isHome\\)/getCountryPressedColor\\(pressed, visitType, isHome\\)/' CountriesLayer.tsx)",
       "mcp__playwright__browser_run_code_unsafe",
-      "Bash(xargs echo \"commits ahead of main:\")"
+      "Bash(xargs echo \"commits ahead of main:\")",
+      "Bash(echo \"=== 4. guest registers \\(same cookie\\) ===\")",
+      "Bash(xargs tail -5)"
     ],
     "deny": [],
     "ask": []

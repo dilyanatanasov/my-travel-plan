@@ -3,11 +3,12 @@ import {
   Post,
   Get,
   Body,
+  Req,
   Res,
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
-import { Response, CookieOptions } from 'express';
+import { Request, Response, CookieOptions } from 'express';
 import { ConfigService } from '@nestjs/config';
 import { Throttle } from '@nestjs/throttler';
 import { AuthService, AuthResult } from './auth.service';
@@ -44,14 +45,36 @@ export class AuthController {
     res.cookie(ACCESS_TOKEN_COOKIE, result.accessToken, this.cookieOptions());
   }
 
+  /**
+   * Start using the app without signing up.
+   *
+   * @Public because the caller has no session yet, and rate limited because
+   * every call creates a row.
+   */
+  @Public()
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Post('guest')
+  async guest(@Res({ passthrough: true }) res: Response) {
+    const result = await this.authService.createGuest();
+    this.setAuthCookie(res, result);
+    return { user: result.user };
+  }
+
   @Public()
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post('register')
   async register(
     @Body() dto: RegisterDto,
+    @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const result = await this.authService.register(dto);
+    // @Public, so the guard leaves req.user empty even with a valid cookie.
+    // Decode it here: if a guest is signing up, their existing row is
+    // upgraded rather than orphaned.
+    const guestId = this.authService.userIdFromToken(
+      req.cookies?.[ACCESS_TOKEN_COOKIE],
+    );
+    const result = await this.authService.register(dto, guestId);
     this.setAuthCookie(res, result);
     return { user: result.user, claimed: result.claimed };
   }
@@ -82,6 +105,13 @@ export class AuthController {
   /** Protected on purpose: the 401 is the frontend's "logged out" signal. */
   @Get('me')
   async me(@CurrentUser('id') userId: number) {
-    return { user: await this.authService.getProfile(userId) };
+    const user = await this.authService.getProfile(userId);
+    // Only guests need this: it is what stops the cleanup sweep from
+    // collecting an anonymous account someone is still actively using.
+    // Not awaited — a stale timestamp must never fail the request.
+    if (user.isGuest) {
+      void this.authService.touch(userId);
+    }
+    return { user };
   }
 }

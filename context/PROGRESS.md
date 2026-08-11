@@ -158,3 +158,57 @@ subscriptions, and the plan is to fund this with subs and paid exports. Web plus
 in the background), which is the one feature that genuinely wants native. The API is already
 a separate backend, so a native client would reuse all of it — the decision does not get
 more expensive by waiting.
+
+## Guest accounts — no forced signup (2026-08-11) — DONE
+
+Anyone can use the whole app without an account. The account is what makes the map
+permanent and shareable.
+
+**Approach:** a guest is a real but anonymous `users` row, not client-side storage. The
+alternative (localStorage) would mean a second implementation of haversine distance and
+country derivation in the browser, and two implementations that must agree forever. With a
+row, signing up **upgrades that same row in place** — nothing is copied, so nothing can be
+lost in transit.
+
+Backend (`1786200000000-AddGuestAccounts`, run 2026-08-11, DB backed up first):
+- `email` / `password_hash` nullable; new `is_guest`, `last_seen_at`, index on both.
+- `POST /auth/guest` creates the anonymous row. Rate limited — every call is a row.
+- `register` accepts an optional guest id and converts that row inside the existing
+  transaction.
+- `login` rejects rows with no `password_hash`, so a guest row can never be logged into.
+- `/auth/me` touches `last_seen_at` for guests only.
+
+Two bugs caught while building, both silent:
+- `@Public()` on register means the guard never populates `req.user`, so the upgrade path
+  would never have fired and **every guest who signed up would have been orphaned from
+  their own data**. Register now decodes the cookie itself via `userIdFromToken`.
+- The JWT payload declared a non-optional email that guests do not have.
+
+Frontend:
+- `RequireAuth` creates a guest session instead of redirecting. StrictMode double-invoke is
+  guarded with a ref, or one visitor would mint two accounts.
+- **Returning-device guard**: `contrail-account-known` in localStorage. Without it, an
+  expired session on a returning user's device is indistinguishable from a first visit, and
+  they would be handed a fresh empty map — which looks exactly like their history being
+  deleted. Set centrally in the RTK mutations, not in the pages. Deliberately *not* cleared
+  on sign-out: it describes the device, not the session.
+- The account button becomes a brand-coloured "Save map" CTA for guests. Chosen over a
+  banner because it costs no vertical space, which is scarce on a phone.
+- No sign-out for guests — there are no credentials to return with, so it would silently
+  discard everything.
+- Register page states what carries over with real numbers ("Your 4 countries and 2 flights
+  will be saved"). Without it, "create an account" reads like starting over.
+
+**Gating, deliberate:** image export stays free for everyone — it is how the app spreads.
+Public share links and video export need an account. Share is the stronger trigger than
+"save forever": it is something someone actively wants *now*, not an abstract future loss.
+
+Verified end to end: fresh visitor → guest row → added Japan → registered → **same user id**,
+Japan intact, CTA gone, flag set; expired session on a known device → `/login`, no new guest.
+Exactly one row per visitor. Contrast of the carry-over banner measured at 12.1:1 dark /
+9.1:1 light (the `dark:` variants I first wrote fought the inverted brand ramp in
+`tokens.css` and produced unreadable text — the ramp already inverts per theme, so
+`bg-brand-50 text-brand-800` is correct in both).
+
+**Follow-up:** nothing sweeps abandoned guest rows yet. `last_seen_at` and its index exist
+for exactly that; needs a scheduled job before this sees real traffic.

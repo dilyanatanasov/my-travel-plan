@@ -10,7 +10,7 @@ export const ACCESS_TOKEN_COOKIE = 'access_token';
 
 export interface JwtPayload {
   sub: number;
-  email: string;
+  email?: string;
 }
 
 /** Read the JWT from our httpOnly cookie rather than the Authorization header. */
