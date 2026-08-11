@@ -12,6 +12,8 @@ import AirportMarkers from '../FlightMap/AirportMarkers';
 import CountriesLayer from './CountriesLayer';
 import { buildCountryDisplayMap } from './countryColors';
 import { useMapColors } from '../../theme/mapColors';
+import { ThemeContext, useTheme } from '../../features/theme/ThemeContext';
+import type { ResolvedTheme } from '../../features/theme/ThemeContext';
 
 export const EXPORT_WIDTH = 1600;
 export const EXPORT_HEIGHT = 800;
@@ -32,7 +34,31 @@ const EXPORT_SCALE = (EXPORT_WIDTH * 0.98) / (2 * Math.PI);
  * Positioned off-screen rather than `display: none`: a hidden element has no
  * layout box, and the SVG needs real dimensions to serialise.
  */
-function MapExportCanvas() {
+interface MapExportCanvasProps {
+  /**
+   * Pin the map's colours regardless of the app's theme.
+   *
+   * The share card's style decides this, not the user's theme: the Ink card
+   * is dark, and drawing a cream map inside it looks like a pasted screenshot
+   * from a different app.
+   */
+  theme?: ResolvedTheme;
+}
+
+function MapExportCanvas({ theme }: MapExportCanvasProps) {
+  const outer = useTheme();
+
+  if (theme && theme !== outer.resolved) {
+    return (
+      <ThemeContext.Provider value={{ ...outer, resolved: theme }}>
+        <MapExportCanvasInner />
+      </ThemeContext.Provider>
+    );
+  }
+  return <MapExportCanvasInner />;
+}
+
+function MapExportCanvasInner() {
   const { map: colors } = useMapColors();
   const { data: visits = [] } = useGetVisitsQuery();
   const { data: flights = [] } = useGetFlightsQuery();

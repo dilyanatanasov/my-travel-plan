@@ -21,7 +21,12 @@ function MobileTabBar({ activeSection, onSelect }: MobileTabBarProps) {
       className="lg:hidden flex-shrink-0 border-t border-line bg-surface z-40"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
-      <div className="grid grid-cols-4 px-1 py-1">
+      {/*
+        Five equal columns. grid-cols-5 rather than flex, so every tab is the
+        same width regardless of label length — "Statistics" is twice the
+        length of "Share" and would otherwise take twice the room.
+      */}
+      <div className="grid grid-cols-5 px-0.5 py-1">
         {SECTIONS.map((section) => {
           const isActive = activeSection === section.id;
           return (
@@ -33,14 +38,16 @@ function MobileTabBar({ activeSection, onSelect }: MobileTabBarProps) {
               className="group flex items-center justify-center min-h-14 rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
             >
               <span
-                className={`flex flex-col items-center justify-center gap-0.5 w-full mx-1 py-1.5 rounded-xl transition-colors ${
+                className={`flex flex-col items-center justify-center gap-0.5 w-full mx-0.5 px-0.5 py-1.5 rounded-xl transition-colors ${
                   isActive
                     ? 'bg-brand-50 text-brand-700'
                     : 'text-ink-subtle group-hover:text-ink-muted'
                 }`}
               >
                 {section.icon}
-                <span className="text-[11px] font-medium leading-none">
+                {/* Truncate rather than wrap: a second line would make this
+                    tab taller than its neighbours and break the row. */}
+                <span className="text-[10px] font-medium leading-none w-full text-center truncate">
                   {section.label}
                 </span>
               </span>

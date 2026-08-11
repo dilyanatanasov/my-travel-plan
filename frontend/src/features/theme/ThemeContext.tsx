@@ -21,7 +21,12 @@ interface ThemeValue {
   setPreference: (preference: ThemePreference) => void;
 }
 
-const ThemeContext = createContext<ThemeValue | null>(null);
+/*
+  Exported so a subtree can be pinned to one theme without touching the
+  document. ThemeProvider itself cannot be reused for that: it writes the
+  `dark` class onto <html>, so nesting it would flip the whole app.
+*/
+export const ThemeContext = createContext<ThemeValue | null>(null);
 
 function readStoredPreference(): ThemePreference {
   if (typeof localStorage === 'undefined') return 'system';

@@ -1,6 +1,5 @@
 import { Outlet, Link } from 'react-router-dom';
 import AccountMenu from '../../features/auth/AccountMenu';
-import ShareMenu from '../../features/share/ShareMenu';
 import BrandMark from '../BrandMark';
 
 function Layout() {
@@ -41,7 +40,6 @@ function Layout() {
               (preferred airports, minimum layover, departure hour), which no
               mainstream flight search offers, so it is worth keeping.
             */}
-            <ShareMenu />
             <AccountMenu />
           </div>
         </div>

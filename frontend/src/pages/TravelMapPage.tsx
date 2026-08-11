@@ -10,6 +10,7 @@ import SectionRail from '../components/AppShell/SectionRail';
 import MobileTabBar from '../components/AppShell/MobileTabBar';
 import SectionPanel from '../components/AppShell/SectionPanel';
 import OverviewPanel from '../components/AppShell/OverviewPanel';
+import SharePanel from '../features/share/SharePanel';
 import MapPeekBar from '../components/AppShell/MapPeekBar';
 import { useGetFlightStatsQuery } from '../features/flights/flightsApi';
 import { getSection, type SectionId } from '../components/AppShell/sections';
@@ -117,6 +118,9 @@ function TravelMapPage() {
           />
         );
 
+      case 'share':
+        return <SharePanel />;
+
       case 'countries':
         return (
           <div className="space-y-5">
@@ -146,12 +150,17 @@ function TravelMapPage() {
           </div>
         );
 
+      case 'stats':
+        return <FlightStats />;
+
       default:
         return null;
     }
   })();
 
-  const sectionBody = isFullView ? <FlightStats /> : panelContent;
+  // One source for both layouts: full-view replaces the map, the dock sits
+  // beside it, but the content is the same component either way.
+  const sectionBody = panelContent;
 
   // On a phone a section takes the whole screen. A half-height sheet left the
   // forms cramped and the map above it largely covered by the filter card

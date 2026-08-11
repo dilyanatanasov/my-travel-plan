@@ -1,21 +1,22 @@
 import type { ReactNode } from 'react';
 
-export type SectionId = 'overview' | 'countries' | 'flights' | 'stats';
+export type SectionId = 'overview' | 'countries' | 'flights' | 'stats' | 'share';
 
 export interface SectionDef {
   id: SectionId;
   label: string;
   icon: ReactNode;
   /**
-   * Statistics is a dashboard — 4 stat cards, a fun-facts block, records,
-   * airport and country chips. It does not fit a 400px rail, so it replaces
-   * the map instead of docking beside it.
+   * Statistics is a dashboard and Share is a 4:5 preview card — neither fits
+   * a 400px rail, so they replace the map instead of docking beside it.
    */
   fullView?: boolean;
 }
 
 const iconProps = {
-  className: 'w-6 h-6',
+  // 20px, not 24: five tabs across a 390px phone leaves ~74px each, and the
+  // larger glyph pushed the label into the safe-area inset.
+  className: 'w-5 h-5',
   fill: 'none',
   stroke: 'currentColor',
   viewBox: '0 0 24 24',
@@ -83,6 +84,24 @@ export const SECTIONS: SectionDef[] = [
           strokeWidth={1.8}
           d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
         />
+      </svg>
+    ),
+  },
+  {
+    id: 'share',
+    label: 'Share',
+    // The preview is a portrait card; a 400px dock would show it postage-stamp
+    // sized, which defeats the point of previewing it at all.
+    fullView: true,
+    // Lucide share-2: the three-node glyph the handoff specifies. It carries
+    // more strokes than an upload arrow, so the weight is nudged up to hold
+    // together at 20px.
+    icon: (
+      <svg {...iconProps} strokeWidth={2}>
+        <circle cx="18" cy="5" r="2.6" />
+        <circle cx="6" cy="12" r="2.6" />
+        <circle cx="18" cy="19" r="2.6" />
+        <path strokeLinecap="round" d="M8.4 13.3l7.2 4.2M15.6 6.5L8.4 10.7" />
       </svg>
     ),
   },
