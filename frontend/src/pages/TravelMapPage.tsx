@@ -9,6 +9,7 @@ import CountrySelector from '../components/CountrySelector';
 import SectionRail from '../components/AppShell/SectionRail';
 import MobileTabBar from '../components/AppShell/MobileTabBar';
 import SectionPanel from '../components/AppShell/SectionPanel';
+import OverviewPanel from '../components/AppShell/OverviewPanel';
 import MapPeekBar from '../components/AppShell/MapPeekBar';
 import { useGetFlightStatsQuery } from '../features/flights/flightsApi';
 import { getSection, type SectionId } from '../components/AppShell/sections';
@@ -23,22 +24,6 @@ import { useIsDesktop } from '../hooks/useMediaQuery';
 import { MapFocusProvider } from '../features/map/MapFocusContext';
 import type { VisitType, Visit } from '../types';
 
-function StatTile({
-  value,
-  label,
-  tone,
-}: {
-  value: string;
-  label: string;
-  tone: string;
-}) {
-  return (
-    <div className={`rounded-lg p-3 ${tone}`}>
-      <div className="text-xl font-bold">{value}</div>
-      <div className="text-xs text-ink-muted mt-0.5">{label}</div>
-    </div>
-  );
-}
 
 function TravelMapPage() {
   // Null means "no panel" — the map gets the whole canvas. Countries opens by
@@ -123,35 +108,13 @@ function TravelMapPage() {
     switch (activeSection) {
       case 'overview':
         return (
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
-              <StatTile
-                value={String(overviewStats.tripCount)}
-                label="Countries visited"
-                tone="bg-map-visited/10 text-map-visited"
-              />
-              <StatTile
-                value={String(overviewStats.transitCount)}
-                label="Transit countries"
-                tone="bg-map-transit/15 text-amber-600"
-              />
-              <StatTile
-                value={`${overviewStats.worldPercent}%`}
-                label={`Of the world (${overviewStats.tripCount}/${overviewStats.totalCountries})`}
-                tone="bg-brand-50 text-brand-700"
-              />
-              <StatTile
-                value={overviewStats.homeCountry}
-                label="Home country"
-                tone="bg-map-home/10 text-map-home"
-              />
-            </div>
-            <p className="text-sm text-ink-muted">
-              Tap any country on the map to mark it visited. Use{' '}
-              <span className="font-medium text-ink">Map layers &amp; filters</span>{' '}
-              to show or hide flight routes and set your home country.
-            </p>
-          </div>
+          <OverviewPanel
+            tripCount={overviewStats.tripCount}
+            transitCount={overviewStats.transitCount}
+            worldPercent={overviewStats.worldPercent}
+            totalCountries={overviewStats.totalCountries}
+            homeCountry={overviewStats.homeCountry}
+          />
         );
 
       case 'countries':
@@ -209,7 +172,12 @@ function TravelMapPage() {
         <div className="flex-1 min-h-0 flex">
           <div className="flex-1 min-w-0 relative">
             {showMobileFullSection || isFullView ? (
-              <div className="absolute inset-0 overflow-y-auto overscroll-contain bg-canvas">
+              // Keyed so switching section starts at the top rather than
+              // inheriting the previous section's scroll offset.
+              <div
+                key={activeSection}
+                className="absolute inset-0 overflow-y-auto overscroll-contain bg-canvas"
+              >
                 <div className="max-w-5xl mx-auto p-4 sm:p-6">
                   <div className="flex items-center justify-between gap-3 mb-4">
                     <h2 className="font-display font-normal text-2xl text-ink">

@@ -56,7 +56,11 @@ function SectionPanel({ title, isOpen, onClose, children }: SectionPanelProps) {
           </svg>
         </button>
       </header>
-      <div className="flex-1 min-h-0 overflow-y-auto p-5">{children}</div>
+      {/* Keyed on the section so its scroll offset does not survive a
+          switch to a different section. */}
+      <div key={title} className="flex-1 min-h-0 overflow-y-auto p-5">
+        {children}
+      </div>
     </aside>
   );
 }
