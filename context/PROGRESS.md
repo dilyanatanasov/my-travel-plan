@@ -108,3 +108,12 @@ origin.** Over the plain-http LAN address Chrome/Android will not offer to insta
 
 `display: "standalone"` (no browser UI, OS status bar retained) rather than `"fullscreen"`,
 which would also hide the status bar — wrong for an app with its own header.
+
+## Reported after the shell rework (2026-08-11)
+
+1. **Installs as a browser shortcut, not a standalone app.** Expected while served over plain
+   http — Chrome only creates a real installed app (WebAPK) on a secure origin with a service
+   worker. Needs HTTPS; see the PWA section above.
+2. **PNG export is cropped** — both the map and the caption text. The map now *covers* its
+   container (see `useMapViewport`), so serialising the on-screen SVG captures a cropped view.
+3. **Some labels wrap on mobile.**
