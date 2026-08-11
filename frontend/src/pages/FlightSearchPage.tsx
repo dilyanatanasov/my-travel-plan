@@ -109,7 +109,7 @@ function FlightSearchPage() {
   const isLoading = searchMode === 'specific' ? isSearchLoading : isExploreLoading;
 
   return (
-    <div className="scroll-page bg-gray-50">
+    <div className="scroll-page bg-surface-sunken">
       {/* Header */}
       <div className="bg-blue-600 text-white py-8">
         <div className="max-w-7xl mx-auto px-4">
@@ -133,14 +133,14 @@ function FlightSearchPage() {
 
       {/* Mode Toggle */}
       <div className="max-w-7xl mx-auto px-4 -mt-6">
-        <div className="bg-white rounded-t-lg shadow-md">
-          <div className="flex border-b border-gray-200">
+        <div className="bg-surface rounded-t-lg shadow-md">
+          <div className="flex border-b border-line">
             <button
               onClick={() => handleModeChange('explore')}
               className={`flex-1 py-4 px-6 text-center font-medium transition-colors relative ${
                 searchMode === 'explore'
                   ? 'text-blue-600'
-                  : 'text-gray-500 hover:text-gray-700'
+                  : 'text-ink-muted hover:text-ink'
               }`}
             >
               <div className="flex items-center justify-center gap-2">
@@ -160,7 +160,7 @@ function FlightSearchPage() {
               className={`flex-1 py-4 px-6 text-center font-medium transition-colors relative ${
                 searchMode === 'specific'
                   ? 'text-blue-600'
-                  : 'text-gray-500 hover:text-gray-700'
+                  : 'text-ink-muted hover:text-ink'
               }`}
             >
               <div className="flex items-center justify-center gap-2">
@@ -179,7 +179,7 @@ function FlightSearchPage() {
 
       {/* Search Form */}
       <div className="max-w-7xl mx-auto px-4">
-        <div className="bg-white rounded-b-lg shadow-md p-6 mb-6">
+        <div className="bg-surface rounded-b-lg shadow-md p-6 mb-6">
           {searchMode === 'explore' ? (
             <FlexibleSearchForm onSearch={handleExplore} isLoading={isExploreLoading} />
           ) : (
@@ -191,7 +191,7 @@ function FlightSearchPage() {
       {/* Error Message */}
       {error && (
         <div className="max-w-7xl mx-auto px-4">
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
+          <div className="bg-danger-soft border border-danger/30 text-danger px-4 py-3 rounded-lg mb-6">
             {error}
           </div>
         </div>
@@ -209,10 +209,10 @@ function FlightSearchPage() {
         <div className="max-w-7xl mx-auto px-4 py-8">
           {/* Search Summary */}
           <div className="mb-6">
-            <h2 className="text-xl font-semibold text-gray-900">
+            <h2 className="text-xl font-semibold text-ink">
               {searchResult.origin} → {searchResult.destination}
             </h2>
-            <p className="text-gray-600">
+            <p className="text-ink-muted">
               {searchResult.departureDate}
               {searchResult.returnDate && ` - ${searchResult.returnDate}`}
               {' · '}
@@ -262,10 +262,10 @@ function FlightSearchPage() {
               d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
             />
           </svg>
-          <h2 className="text-2xl font-semibold text-gray-700 mb-2">
+          <h2 className="text-2xl font-semibold text-ink mb-2">
             {searchMode === 'explore' ? 'Explore Flight Options' : 'Search for Flights'}
           </h2>
-          <p className="text-gray-500 max-w-md mx-auto">
+          <p className="text-ink-muted max-w-md mx-auto">
             {searchMode === 'explore'
               ? 'Choose flexible dates or a month to discover the best flight deals. We\'ll search multiple dates and show you the best options.'
               : 'Enter your origin, destination, and travel dates above to find available flights.'}
@@ -283,10 +283,10 @@ function FlightSearchPage() {
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
               </svg>
             </div>
-            <h2 className="text-xl font-semibold text-gray-700 mb-2">
+            <h2 className="text-xl font-semibold text-ink mb-2">
               Exploring flight options...
             </h2>
-            <p className="text-gray-500">
+            <p className="text-ink-muted">
               Searching multiple dates to find you the best deals. This may take a moment.
             </p>
           </div>

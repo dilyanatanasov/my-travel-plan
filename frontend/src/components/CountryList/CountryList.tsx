@@ -31,12 +31,12 @@ function CountryList({
   if (isLoading) {
     return (
       <div>
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">
+        <h2 className="text-lg font-semibold text-ink mb-4">
           Visited Countries
         </h2>
         <div className="animate-pulse space-y-3">
           {[1, 2, 3].map((n) => (
-            <div key={n} className="h-12 bg-gray-200 rounded"></div>
+            <div key={n} className="h-12 bg-surface-sunken rounded"></div>
           ))}
         </div>
       </div>
@@ -64,7 +64,7 @@ function CountryList({
       </h3>
 
       {visits.length === 0 ? (
-        <div className="p-6 text-center text-gray-500">
+        <div className="p-6 text-center text-ink-muted">
           <p>No countries visited yet.</p>
           <p className="text-sm mt-1">
             Click on a country on the map to add it!
@@ -85,7 +85,7 @@ function CountryList({
               >
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="min-w-0">
-                    <p className="font-medium text-gray-900 truncate">
+                    <p className="font-medium text-ink truncate">
                       {visit.country.name}
                     </p>
                     <div className="flex items-center gap-2 mt-1">
@@ -100,7 +100,7 @@ function CountryList({
                             )
                           }
                           aria-label={`Visit type for ${visit.country.name}`}
-                          className={`min-h-11 text-xs pl-2 pr-6 rounded-lg font-medium ${colors.bg} ${colors.text} border-0 cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-500`}
+                          className={`select-field min-h-11 text-xs pl-2 rounded-lg font-medium ${colors.bg} ${colors.text} border-0 cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-500`}
                         >
                           <option value="trip">Visited</option>
                           <option value="transit">Transit</option>
@@ -124,7 +124,7 @@ function CountryList({
 
                       {/* Date */}
                       {visit.visitedAt && (
-                        <span className="text-xs text-gray-500">
+                        <span className="text-xs text-ink-muted">
                           {new Date(visit.visitedAt).toLocaleDateString()}
                         </span>
                       )}

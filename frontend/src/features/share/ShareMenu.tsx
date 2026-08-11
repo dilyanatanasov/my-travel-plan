@@ -205,7 +205,7 @@ function ShareMenu() {
       {isOpen && (
         <div
           role="menu"
-          className="absolute right-0 mt-2 w-72 bg-white border border-line rounded-lg shadow-lg py-1 z-50"
+          className="absolute right-0 mt-2 w-72 bg-surface border border-line rounded-lg shadow-lg py-1 z-50"
         >
           {canExportVideo && (
             <button
@@ -213,7 +213,7 @@ function ShareMenu() {
               role="menuitem"
               onClick={handleDownloadVideo}
               disabled={isExporting}
-              className="w-full text-left px-3 py-3 text-sm text-ink hover:bg-gray-50 disabled:opacity-50"
+              className="w-full text-left px-3 py-3 text-sm text-ink hover:bg-surface-sunken disabled:opacity-50"
             >
               <span className="font-medium">
                 {videoProgress !== null
@@ -231,7 +231,7 @@ function ShareMenu() {
             role="menuitem"
             onClick={handleDownload}
             disabled={isExporting}
-            className="w-full text-left px-3 py-3 text-sm text-ink hover:bg-gray-50 disabled:opacity-50"
+            className="w-full text-left px-3 py-3 text-sm text-ink hover:bg-surface-sunken disabled:opacity-50"
           >
             <span className="font-medium">
               {isExporting ? 'Creating image…' : 'Download as image'}

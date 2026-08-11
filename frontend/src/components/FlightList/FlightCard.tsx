@@ -30,13 +30,13 @@ function FlightCard({ journey, onDelete }: FlightCardProps) {
   };
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+    <div className="bg-surface border border-line rounded-lg p-4 hover:shadow-md transition-shadow">
       <div className="flex items-start justify-between">
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-1">
             {/* A seven-leg route is long. Smaller and tighter on mobile so it
                 wraps to two readable lines rather than sprawling. */}
-            <span className="font-mono text-sm sm:text-lg font-semibold text-gray-900 leading-snug break-words">
+            <span className="font-mono text-sm sm:text-lg font-semibold text-ink leading-snug break-words">
               {routeString}
             </span>
             {journey.isRoundTrip && (
@@ -45,7 +45,7 @@ function FlightCard({ journey, onDelete }: FlightCardProps) {
               </span>
             )}
           </div>
-          <div className="flex items-center gap-4 text-sm text-gray-500">
+          <div className="flex items-center gap-4 text-sm text-ink-muted">
             <span>{formatDate(journey.journeyDate)}</span>
             <span>{Math.round(totalDistance).toLocaleString()} km</span>
             <span>
@@ -53,12 +53,12 @@ function FlightCard({ journey, onDelete }: FlightCardProps) {
             </span>
           </div>
           {journey.notes && (
-            <p className="mt-2 text-sm text-gray-600">{journey.notes}</p>
+            <p className="mt-2 text-sm text-ink-muted">{journey.notes}</p>
           )}
         </div>
         <button
           onClick={() => onDelete(journey.id)}
-          className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+          className="p-2 text-ink-subtle hover:text-red-500 hover:bg-danger-soft rounded-lg transition-colors"
         >
           <svg
             className="w-5 h-5"
@@ -77,12 +77,12 @@ function FlightCard({ journey, onDelete }: FlightCardProps) {
       </div>
 
       {/* Leg details (collapsed by default, expandable in future) */}
-      <div className="mt-3 pt-3 border-t border-gray-100">
+      <div className="mt-3 pt-3 border-t border-line">
         <div className="flex flex-wrap gap-2">
           {journey.legs.map((leg, index) => (
             <div
               key={leg.id}
-              className="flex items-center gap-1 text-xs text-gray-500"
+              className="flex items-center gap-1 text-xs text-ink-muted"
             >
               <span className="font-mono">{leg.departureAirport.iataCode}</span>
               <svg
@@ -99,7 +99,7 @@ function FlightCard({ journey, onDelete }: FlightCardProps) {
                 />
               </svg>
               <span className="font-mono">{leg.arrivalAirport.iataCode}</span>
-              <span className="text-gray-400">
+              <span className="text-ink-subtle">
                 ({Math.round(Number(leg.distanceKm) || 0)} km)
               </span>
               {index < journey.legs.length - 1 && (

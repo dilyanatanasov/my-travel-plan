@@ -5,6 +5,7 @@ import FlightSearchPage from './pages/FlightSearchPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import SharedMapPage from './pages/SharedMapPage';
+import SettingsPage from './pages/SettingsPage';
 import RequireAuth from './features/auth/RequireAuth';
 
 function App() {
@@ -23,6 +24,7 @@ function App() {
           {/* Redirect old routes to home */}
           <Route path="countries" element={<Navigate to="/" replace />} />
         </Route>
+        <Route path="/settings" element={<SettingsPage />} />
         {/* Flight search has its own layout */}
         <Route path="/search" element={<FlightSearchPage />} />
       </Route>

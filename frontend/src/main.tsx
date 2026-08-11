@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { Provider } from 'react-redux';
 import { BrowserRouter } from 'react-router-dom';
 import { store } from './store/store';
+import { ThemeProvider } from './features/theme/ThemeContext';
 import { ToastProvider } from './components/Toast/ToastProvider';
 import { registerServiceWorker } from './registerServiceWorker';
 import App from './App';
@@ -17,9 +18,11 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <Provider store={store}>
       <BrowserRouter>
-        <ToastProvider>
-          <App />
-        </ToastProvider>
+        <ThemeProvider>
+          <ToastProvider>
+            <App />
+          </ToastProvider>
+        </ThemeProvider>
       </BrowserRouter>
     </Provider>
   </StrictMode>

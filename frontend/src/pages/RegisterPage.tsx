@@ -56,7 +56,7 @@ function RegisterPage() {
         {error && (
           <div
             role="alert"
-            className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg text-sm"
+            className="bg-danger-soft border border-danger/30 text-danger px-3 py-2 rounded-lg text-sm"
           >
             {getApiErrorMessage(error, 'Could not create your account')}
           </div>
@@ -64,7 +64,7 @@ function RegisterPage() {
 
         <div>
           <label htmlFor="displayName" className={labelClass}>
-            Name <span className="text-gray-400 font-normal">(optional)</span>
+            Name <span className="text-ink-subtle font-normal">(optional)</span>
           </label>
           <input
             id="displayName"
@@ -126,7 +126,7 @@ function RegisterPage() {
           {errors.password ? (
             <p className={fieldErrorClass}>{errors.password.message}</p>
           ) : (
-            <p id="password-hint" className="mt-1 text-sm text-gray-500">
+            <p id="password-hint" className="mt-1 text-sm text-ink-muted">
               At least 8 characters.
             </p>
           )}

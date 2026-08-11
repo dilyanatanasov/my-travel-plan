@@ -39,14 +39,14 @@ function CountrySelector({ countries, visitedCountryIds, onToggleCountry }: Coun
           }}
           onFocus={() => setIsOpen(true)}
           placeholder="Search country to add/remove..."
-          className="flex-1 min-h-11 px-3 text-base sm:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+          className="flex-1 min-h-11 px-3 text-base sm:text-sm border border-line rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
         />
       </div>
 
       {isOpen && search.trim() && (
-        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+        <div className="absolute z-10 w-full mt-1 bg-surface border border-line rounded-lg shadow-lg max-h-60 overflow-y-auto">
           {filteredCountries.length === 0 ? (
-            <div className="px-4 py-3 text-gray-500 text-sm">No countries found</div>
+            <div className="px-4 py-3 text-ink-muted text-sm">No countries found</div>
           ) : (
             filteredCountries.slice(0, 20).map((country) => {
               const isVisited = visitedCountryIds.has(country.id);
@@ -54,14 +54,14 @@ function CountrySelector({ countries, visitedCountryIds, onToggleCountry }: Coun
                 <button
                   key={country.id}
                   onClick={() => handleSelect(country)}
-                  className="w-full px-4 py-2 text-left hover:bg-gray-50 flex items-center justify-between"
+                  className="w-full px-4 py-2 text-left hover:bg-surface-sunken flex items-center justify-between"
                 >
-                  <span className="text-gray-900">{country.name}</span>
+                  <span className="text-ink">{country.name}</span>
                   <span
                     className={`text-xs px-2 py-1 rounded ${
                       isVisited
                         ? 'bg-green-100 text-green-700'
-                        : 'bg-gray-100 text-gray-600'
+                        : 'bg-surface-sunken text-ink-muted'
                     }`}
                   >
                     {isVisited ? 'Visited - click to remove' : 'Click to add'}

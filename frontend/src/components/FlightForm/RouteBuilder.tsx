@@ -89,7 +89,7 @@ function RouteBuilder({ onSubmit, isLoading }: RouteBuilderProps) {
               <button
                 type="button"
                 onClick={() => removeLeg(index)}
-                className="flex-shrink-0 p-2 text-red-500 hover:bg-red-50 rounded-lg"
+                className="flex-shrink-0 p-2 text-red-500 hover:bg-danger-soft rounded-lg"
               >
                 <svg
                   className="w-5 h-5"
@@ -132,11 +132,11 @@ function RouteBuilder({ onSubmit, isLoading }: RouteBuilderProps) {
       </button>
 
       {routePreview && (
-        <div className="p-3 bg-gray-50 rounded-lg">
-          <div className="text-sm text-gray-600">Route preview:</div>
-          <div className="font-mono text-lg text-gray-900">{routePreview}</div>
+        <div className="p-3 bg-surface-sunken rounded-lg">
+          <div className="text-sm text-ink-muted">Route preview:</div>
+          <div className="font-mono text-lg text-ink">{routePreview}</div>
           {returnPreview && (
-            <div className="font-mono text-lg text-gray-500 mt-1">
+            <div className="font-mono text-lg text-ink-muted mt-1">
               + {returnPreview}
             </div>
           )}
@@ -145,14 +145,14 @@ function RouteBuilder({ onSubmit, isLoading }: RouteBuilderProps) {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-ink mb-1">
             Date (optional)
           </label>
           <input
             type="date"
             value={journeyDate}
             onChange={(e) => setJourneyDate(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
+            className="w-full px-3 py-2 border border-line rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
           />
         </div>
         <div className="flex items-end">
@@ -163,13 +163,13 @@ function RouteBuilder({ onSubmit, isLoading }: RouteBuilderProps) {
               onChange={(e) => setIsRoundTrip(e.target.checked)}
               className="w-4 h-4 text-brand-600 rounded focus:ring-brand-500"
             />
-            <span className="text-sm text-gray-700">Round trip</span>
+            <span className="text-sm text-ink">Round trip</span>
           </label>
         </div>
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label className="block text-sm font-medium text-ink mb-1">
           Notes (optional)
         </label>
         <input
@@ -177,7 +177,7 @@ function RouteBuilder({ onSubmit, isLoading }: RouteBuilderProps) {
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           placeholder="e.g., Business trip, vacation..."
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
+          className="w-full px-3 py-2 border border-line rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
         />
       </div>
 

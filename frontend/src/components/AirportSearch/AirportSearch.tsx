@@ -79,15 +79,15 @@ function AirportSearch({
           }}
           placeholder={placeholder}
           disabled={disabled}
-          className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent ${
-            disabled ? 'bg-gray-100 cursor-not-allowed' : ''
+          className={`w-full px-3 py-2 border border-line rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent ${
+            disabled ? 'bg-surface-sunken cursor-not-allowed' : ''
           } ${value ? 'pr-8' : ''}`}
         />
         {value && !disabled && (
           <button
             type="button"
             onClick={handleClear}
-            className="absolute right-2 text-gray-400 hover:text-gray-600"
+            className="absolute right-2 text-ink-subtle hover:text-ink-muted"
           >
             <svg
               className="w-4 h-4"
@@ -107,11 +107,11 @@ function AirportSearch({
       </div>
 
       {isOpen && !value && search.length >= 2 && (
-        <div className="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+        <div className="absolute z-20 w-full mt-1 bg-surface border border-line rounded-lg shadow-lg max-h-60 overflow-y-auto">
           {isFetching ? (
-            <div className="px-4 py-3 text-gray-500 text-sm">Searching...</div>
+            <div className="px-4 py-3 text-ink-muted text-sm">Searching...</div>
           ) : filteredAirports.length === 0 ? (
-            <div className="px-4 py-3 text-gray-500 text-sm">
+            <div className="px-4 py-3 text-ink-muted text-sm">
               No airports found
             </div>
           ) : (
@@ -120,17 +120,17 @@ function AirportSearch({
                 key={airport.id}
                 type="button"
                 onClick={() => handleSelect(airport)}
-                className="w-full px-4 py-2 text-left hover:bg-gray-50 border-b border-gray-100 last:border-0"
+                className="w-full px-4 py-2 text-left hover:bg-surface-sunken border-b border-line last:border-0"
               >
                 <div className="flex items-center justify-between">
                   <div>
                     <span className="font-mono font-semibold text-brand-600">
                       {airport.iataCode}
                     </span>
-                    <span className="ml-2 text-gray-900">{airport.name}</span>
+                    <span className="ml-2 text-ink">{airport.name}</span>
                   </div>
                 </div>
-                <div className="text-sm text-gray-500">
+                <div className="text-sm text-ink-muted">
                   {airport.city}, {airport.country}
                 </div>
               </button>

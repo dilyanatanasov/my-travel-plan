@@ -109,10 +109,10 @@ function FlightList() {
         {[1, 2, 3].map((i) => (
           <div
             key={i}
-            className="bg-white border border-gray-200 rounded-lg p-4 animate-pulse"
+            className="bg-surface border border-line rounded-lg p-4 animate-pulse"
           >
-            <div className="h-6 bg-gray-200 rounded w-2/3 mb-2" />
-            <div className="h-4 bg-gray-200 rounded w-1/3" />
+            <div className="h-6 bg-surface-sunken rounded w-2/3 mb-2" />
+            <div className="h-4 bg-surface-sunken rounded w-1/3" />
           </div>
         ))}
       </div>
@@ -121,7 +121,7 @@ function FlightList() {
 
   if (error) {
     return (
-      <div className="text-center py-8 text-red-600">
+      <div className="text-center py-8 text-danger">
         Failed to load flights. Please try again.
       </div>
     );
@@ -129,9 +129,9 @@ function FlightList() {
 
   if (journeys.length === 0) {
     return (
-      <div className="text-center py-12 bg-gray-50 rounded-xl border border-dashed border-gray-300">
+      <div className="text-center py-12 bg-surface-sunken rounded-xl border border-dashed border-line">
         <svg
-          className="w-12 h-12 mx-auto text-gray-400 mb-3"
+          className="w-12 h-12 mx-auto text-ink-subtle mb-3"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -144,8 +144,8 @@ function FlightList() {
             d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
           />
         </svg>
-        <h3 className="text-gray-900 font-medium mb-1">No flights yet</h3>
-        <p className="text-gray-500 text-sm">
+        <h3 className="text-ink font-medium mb-1">No flights yet</h3>
+        <p className="text-ink-muted text-sm">
           Add your first flight to start tracking your journey!
         </p>
       </div>
@@ -155,9 +155,9 @@ function FlightList() {
   return (
     <div className="space-y-3">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <h2 className="text-lg font-semibold text-gray-900">
+        <h2 className="text-lg font-semibold text-ink">
           Your Flights
-          <span className="ml-2 text-sm font-normal text-gray-500">
+          <span className="ml-2 text-sm font-normal text-ink-muted">
             ({journeys.length} {journeys.length === 1 ? 'journey' : 'journeys'})
           </span>
         </h2>
@@ -168,10 +168,10 @@ function FlightList() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search route, city, note…"
-            className="w-full min-h-11 pl-9 pr-3 border border-gray-300 rounded-lg text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+            className="w-full min-h-11 pl-9 pr-3 border border-line rounded-lg text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
           />
           <svg
-            className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
+            className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-subtle pointer-events-none"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -188,7 +188,7 @@ function FlightList() {
       </div>
 
       {filtered.length === 0 ? (
-        <p className="text-sm text-gray-500 py-6 text-center">
+        <p className="text-sm text-ink-muted py-6 text-center">
           No flights match “{query}”.
         </p>
       ) : (
@@ -210,10 +210,10 @@ function FlightList() {
                 type="button"
                 onClick={() => toggleYear(year)}
                 aria-expanded={!collapsed}
-                className="w-full flex items-center gap-2 min-h-11 px-1 text-left border-b border-gray-200 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-brand-500 rounded"
+                className="w-full flex items-center gap-2 min-h-11 px-1 text-left border-b border-line hover:bg-surface-sunken focus:outline-none focus:ring-2 focus:ring-brand-500 rounded"
               >
                 <svg
-                  className={`w-4 h-4 text-gray-400 transition-transform ${
+                  className={`w-4 h-4 text-ink-subtle transition-transform ${
                     collapsed ? '-rotate-90' : ''
                   }`}
                   fill="none"
@@ -228,12 +228,12 @@ function FlightList() {
                     d="M19 9l-7 7-7-7"
                   />
                 </svg>
-                <span className="font-semibold text-gray-900">{year}</span>
-                <span className="text-sm text-gray-500">
+                <span className="font-semibold text-ink">{year}</span>
+                <span className="text-sm text-ink-muted">
                   {yearJourneys.length}{' '}
                   {yearJourneys.length === 1 ? 'journey' : 'journeys'}
                 </span>
-                <span className="ml-auto text-sm text-gray-400 tabular-nums">
+                <span className="ml-auto text-sm text-ink-subtle tabular-nums">
                   {Math.round(distance).toLocaleString()} km
                 </span>
               </button>

@@ -34,11 +34,11 @@ function RouteTooltip({ route, position }: RouteTooltipProps) {
         {/* Stats */}
         <div className="flex gap-4 mt-1.5 text-xs">
           <div>
-            <span className="text-gray-400">Flights: </span>
+            <span className="text-ink-subtle">Flights: </span>
             <span className="font-medium">{count}</span>
           </div>
           <div>
-            <span className="text-gray-400">Distance: </span>
+            <span className="text-ink-subtle">Distance: </span>
             <span className="font-medium">
               {avgDistance.toLocaleString()} km
             </span>

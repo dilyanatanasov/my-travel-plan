@@ -55,7 +55,7 @@ function LoginPage() {
         {error && (
           <div
             role="alert"
-            className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg text-sm"
+            className="bg-danger-soft border border-danger/30 text-danger px-3 py-2 rounded-lg text-sm"
           >
             {getApiErrorMessage(error, 'Incorrect email or password')}
           </div>

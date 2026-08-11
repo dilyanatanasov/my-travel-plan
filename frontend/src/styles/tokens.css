@@ -56,23 +56,41 @@
 }
 
 /**
- * Dark theme groundwork.
+ * Dark theme. Applied by adding `dark` to <html>; see features/theme.
  *
- * Not wired to a toggle yet: shipping a half-finished dark mode looks worse
- * than none. Having the variables here means enabling it later is a contained
- * change rather than a rewrite, because no component hardcodes a colour.
+ * Only the tokens change — no component knows which theme is active, which is
+ * exactly what the token work was for.
  */
 .dark {
-  --color-canvas: 15 23 42;
-  --color-surface: 30 41 59;
-  --color-surface-sunken: 51 65 85;
-  --color-border: 51 65 85;
-  --color-border-strong: 71 85 105;
+  --color-canvas: 9 14 26;
+  --color-surface: 20 29 46;
+  --color-surface-sunken: 30 41 61;
+  --color-border: 39 52 74;
+  --color-border-strong: 62 79 106;
 
-  --color-ink: 248 250 252;
-  --color-ink-muted: 203 213 225;
-  --color-ink-subtle: 148 163 184;
+  --color-ink: 241 245 249;
+  --color-ink-muted: 176 190 209;
+  --color-ink-subtle: 130 146 168;
 
-  --color-map-land: 71 85 105;
-  --color-map-ocean: 30 41 59;
+  /* The accent has to move: brand-600 is chosen for white text on a light
+     page and is far too dark to read against a dark surface. These are the
+     lighter steps of the same teal ramp, so the hue is unchanged. */
+  --color-brand-50: 12 42 42;
+  --color-brand-100: 15 60 58;
+  --color-brand-500: 45 212 191;
+  --color-brand-600: 45 212 191;
+  --color-brand-700: 94 234 212;
+  --color-brand-800: 153 246 228;
+
+  /* Map semantics on light panels: brighter, matching what the dark map
+     canvas draws. */
+  --color-map-home: 167 139 250;
+  --color-map-visited: 52 211 153;
+  --color-map-transit: 252 211 77;
+  --color-map-route: 96 165 250;
+  --color-map-land: 41 58 83;
+  --color-map-ocean: 10 16 32;
+
+  --color-danger: 248 113 113;
+  --color-danger-soft: 60 20 24;
 }

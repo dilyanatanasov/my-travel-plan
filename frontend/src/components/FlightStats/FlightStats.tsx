@@ -8,7 +8,7 @@ function FlightStats() {
     return (
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 animate-pulse">
         {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-          <div key={i} className="bg-gray-200 h-24 rounded-xl" />
+          <div key={i} className="bg-surface-sunken h-24 rounded-xl" />
         ))}
       </div>
     );
@@ -105,12 +105,12 @@ function FlightStats() {
       {/* Records */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {stats.longestFlight && (
-          <div className="bg-white rounded-xl border border-gray-200 p-4">
-            <h4 className="text-sm text-gray-500 mb-2">Longest Flight</h4>
-            <p className="font-mono text-lg font-semibold text-gray-900">
+          <div className="bg-surface rounded-xl border border-line p-4">
+            <h4 className="text-sm text-ink-muted mb-2">Longest Flight</h4>
+            <p className="font-mono text-lg font-semibold text-ink">
               {stats.longestFlight.departureIata} → {stats.longestFlight.arrivalIata}
             </p>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-ink-muted">
               {stats.longestFlight.departureCity} to {stats.longestFlight.arrivalCity}
             </p>
             <p className="text-brand-600 font-semibold mt-1">
@@ -119,12 +119,12 @@ function FlightStats() {
           </div>
         )}
         {stats.shortestFlight && (
-          <div className="bg-white rounded-xl border border-gray-200 p-4">
-            <h4 className="text-sm text-gray-500 mb-2">Shortest Flight</h4>
-            <p className="font-mono text-lg font-semibold text-gray-900">
+          <div className="bg-surface rounded-xl border border-line p-4">
+            <h4 className="text-sm text-ink-muted mb-2">Shortest Flight</h4>
+            <p className="font-mono text-lg font-semibold text-ink">
               {stats.shortestFlight.departureIata} → {stats.shortestFlight.arrivalIata}
             </p>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-ink-muted">
               {stats.shortestFlight.departureCity} to {stats.shortestFlight.arrivalCity}
             </p>
             <p className="text-green-600 font-semibold mt-1">
@@ -138,24 +138,24 @@ function FlightStats() {
       {(stats.strongestYear || stats.strongestMonth) && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {stats.strongestYear && (
-            <div className="bg-white rounded-xl border border-gray-200 p-4">
-              <h4 className="text-sm text-gray-500 mb-2">Strongest Year</h4>
-              <p className="text-2xl font-bold text-gray-900">
+            <div className="bg-surface rounded-xl border border-line p-4">
+              <h4 className="text-sm text-ink-muted mb-2">Strongest Year</h4>
+              <p className="text-2xl font-bold text-ink">
                 {stats.strongestYear.year}
               </p>
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-ink-muted">
                 {stats.strongestYear.flights} flights ·{' '}
                 {formatNumber(Math.round(stats.strongestYear.distanceKm))} km
               </p>
             </div>
           )}
           {stats.strongestMonth && (
-            <div className="bg-white rounded-xl border border-gray-200 p-4">
-              <h4 className="text-sm text-gray-500 mb-2">Strongest Month</h4>
-              <p className="text-2xl font-bold text-gray-900">
+            <div className="bg-surface rounded-xl border border-line p-4">
+              <h4 className="text-sm text-ink-muted mb-2">Strongest Month</h4>
+              <p className="text-2xl font-bold text-ink">
                 {getMonthName(stats.strongestMonth.month)} {stats.strongestMonth.year}
               </p>
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-ink-muted">
                 {stats.strongestMonth.flights} flights ·{' '}
                 {formatNumber(Math.round(stats.strongestMonth.distanceKm))} km
               </p>
@@ -166,19 +166,19 @@ function FlightStats() {
 
       {/* Most Visited Airports */}
       {stats.mostVisitedAirports.length > 0 && (
-        <div className="bg-white rounded-xl border border-gray-200 p-4">
-          <h4 className="text-sm text-gray-500 mb-3">Most Visited Airports</h4>
+        <div className="bg-surface rounded-xl border border-line p-4">
+          <h4 className="text-sm text-ink-muted mb-3">Most Visited Airports</h4>
           <div className="flex flex-wrap gap-2">
             {stats.mostVisitedAirports.slice(0, 5).map((airport, index) => (
               <div
                 key={airport.airportId}
-                className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-2"
+                className="flex items-center gap-2 bg-surface-sunken rounded-lg px-3 py-2"
               >
-                <span className="text-xs text-gray-400">#{index + 1}</span>
-                <span className="font-mono font-semibold text-gray-900">
+                <span className="text-xs text-ink-subtle">#{index + 1}</span>
+                <span className="font-mono font-semibold text-ink">
                   {airport.iataCode}
                 </span>
-                <span className="text-sm text-gray-500">{airport.city}</span>
+                <span className="text-sm text-ink-muted">{airport.city}</span>
                 <span className="text-xs text-brand-600 font-medium">
                   {airport.visitCount}×
                 </span>
@@ -190,15 +190,15 @@ function FlightStats() {
 
       {/* Countries */}
       {stats.countriesVisited.length > 0 && (
-        <div className="bg-white rounded-xl border border-gray-200 p-4">
-          <h4 className="text-sm text-gray-500 mb-3">
+        <div className="bg-surface rounded-xl border border-line p-4">
+          <h4 className="text-sm text-ink-muted mb-3">
             Countries Reached ({stats.countriesVisited.length})
           </h4>
           <div className="flex flex-wrap gap-2">
             {stats.countriesVisited.map((country) => (
               <span
                 key={country}
-                className="bg-gray-100 text-gray-700 text-sm px-2 py-1 rounded"
+                className="bg-surface-sunken text-ink text-sm px-2 py-1 rounded"
               >
                 {country}
               </span>

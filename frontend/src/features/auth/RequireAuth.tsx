@@ -40,7 +40,7 @@ function RequireAuth() {
               d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
             />
           </svg>
-          <span className="text-sm text-gray-500">Loading your map…</span>
+          <span className="text-sm text-ink-muted">Loading your map…</span>
         </div>
       </div>
     );

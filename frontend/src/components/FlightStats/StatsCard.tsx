@@ -22,7 +22,7 @@ function StatsCard({
   color = 'blue',
 }: StatsCardProps) {
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-3 sm:p-4 hover:shadow-md transition-shadow">
+    <div className="bg-surface rounded-xl border border-line p-3 sm:p-4 hover:shadow-md transition-shadow">
       {/*
         Two of these sit side by side on a 390px screen, leaving ~130px of
         text width. At the old fixed sizes the titles and even values like
@@ -32,12 +32,12 @@ function StatsCard({
       */}
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="text-xs sm:text-sm text-gray-500 mb-1">{title}</p>
-          <p className="text-lg sm:text-2xl font-bold text-gray-900 whitespace-nowrap">
+          <p className="text-xs sm:text-sm text-ink-muted mb-1">{title}</p>
+          <p className="text-lg sm:text-2xl font-bold text-ink whitespace-nowrap">
             {value}
           </p>
           {subtitle && (
-            <p className="text-xs text-gray-400 mt-1">{subtitle}</p>
+            <p className="text-xs text-ink-subtle mt-1">{subtitle}</p>
           )}
         </div>
         {icon && (

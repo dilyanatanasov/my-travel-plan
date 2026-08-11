@@ -29,15 +29,15 @@ function AuthLayout({ title, subtitle, children, footer }: AuthLayoutProps) {
               />
             </svg>
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
-          <p className="text-gray-500 mt-1">{subtitle}</p>
+          <h1 className="text-2xl font-bold text-ink">{title}</h1>
+          <p className="text-ink-muted mt-1">{subtitle}</p>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+        <div className="bg-surface rounded-2xl shadow-sm border border-line p-6">
           {children}
         </div>
 
-        <p className="text-center text-sm text-gray-500 mt-6">{footer}</p>
+        <p className="text-center text-sm text-ink-muted mt-6">{footer}</p>
       </div>
     </div>
   );
