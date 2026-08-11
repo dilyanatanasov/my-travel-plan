@@ -1,8 +1,12 @@
 import RouteBuilder from './RouteBuilder';
 import { useAddFlightMutation } from '../../features/flights/flightsApi';
+import { useToast } from '../Toast/ToastProvider';
+import { useMapFocus } from '../../features/map/MapFocusContext';
 
 function FlightForm() {
   const [addFlight, { isLoading }] = useAddFlightMutation();
+  const { showToast } = useToast();
+  const { focusJourney } = useMapFocus();
 
   const handleSubmit = async (data: {
     airportIds: number[];
@@ -11,15 +15,21 @@ function FlightForm() {
     notes?: string;
   }) => {
     try {
-      await addFlight(data).unwrap();
-    } catch (error) {
-      console.error('Failed to add flight:', error);
+      const journey = await addFlight(data).unwrap();
+      // Hand the map the new journey: the shell closes this panel and the
+      // route flies itself. Submitting into a panel and seeing nothing
+      // happen — with the map off screen on mobile — was a flat moment.
+      focusJourney(journey.id);
+    } catch {
+      // This used to only reach console.error, so a failed submit looked
+      // identical to a successful one.
+      showToast('Could not add that flight', { tone: 'error' });
     }
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-      <h2 className="text-lg font-semibold text-gray-900 mb-4">Add Flight</h2>
+    <div>
+      <h2 className="text-sm font-medium text-ink mb-3">Add a flight</h2>
       <RouteBuilder onSubmit={handleSubmit} isLoading={isLoading} />
     </div>
   );

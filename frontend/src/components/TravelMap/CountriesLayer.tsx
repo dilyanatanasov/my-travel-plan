@@ -68,6 +68,9 @@ function CountriesLayer({
                   stroke: MAP.countryBorder,
                   strokeWidth: 0.5,
                   outline: 'none',
+                  // Countries wash in and out instead of snapping, so adding
+                  // one reads as something happening rather than a repaint.
+                  transition: 'fill 400ms ease-out',
                 },
                 hover: {
                   // A read-only map should not suggest the countries respond.

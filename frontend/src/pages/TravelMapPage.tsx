@@ -19,6 +19,7 @@ import {
 import { useVisitActions } from '../features/visits/useVisitActions';
 import { useToast } from '../components/Toast/ToastProvider';
 import { useIsDesktop } from '../hooks/useMediaQuery';
+import { MapFocusProvider } from '../features/map/MapFocusContext';
 import type { VisitType, Visit } from '../types';
 
 function StatTile({
@@ -193,6 +194,9 @@ function TravelMapPage() {
   const showMobileFullSection = !isDesktop && section !== null;
 
   return (
+    // Closing the section on focus is what puts the map on screen in time to
+    // watch the new route fly.
+    <MapFocusProvider onFocus={() => setActiveSection(null)}>
     <div className="h-full flex">
       <SectionRail
         activeSection={activeSection}
@@ -252,6 +256,7 @@ function TravelMapPage() {
         />
       </div>
     </div>
+    </MapFocusProvider>
   );
 }
 

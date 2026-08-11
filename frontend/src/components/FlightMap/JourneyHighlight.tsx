@@ -5,6 +5,15 @@ import { MAP } from '../../theme/mapColors';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
 import type { FlightJourney } from '../../types';
 
+/**
+ * Plane silhouette in a 24x24 box, nose pointing right (+x).
+ *
+ * The direction matters: animateMotion's rotate="auto" aligns +x with the
+ * path tangent, so a nose-up drawing would fly permanently sideways.
+ */
+const PLANE_PATH =
+  'M2.5 12 L9 9.5 L9 4.2 A1.5 1.5 0 0 1 12 4.2 L12 8.4 L21.5 12 L12 15.6 L12 19.8 A1.5 1.5 0 0 1 9 19.8 L9 14.5 Z';
+
 interface JourneyHighlightProps {
   journey: FlightJourney;
   sizeScale?: number;
@@ -59,7 +68,9 @@ function JourneyHighlight({
         const width = getZoomAdjustedSize(2.4 * sizeScale, zoom);
         const dash = getZoomAdjustedSize(7, zoom);
         const gap = getZoomAdjustedSize(9, zoom);
-        const dotRadius = getZoomAdjustedSize(3.4 * sizeScale, zoom);
+        // The glyph is drawn in a 24-unit box, so this converts it to roughly
+        // the diameter the old marker dot had.
+        const planeScale = getZoomAdjustedSize(9 * sizeScale, zoom) / 24;
         const delay = (index * legDuration) / Math.max(legs.length, 1);
 
         return (
@@ -98,13 +109,15 @@ function JourneyHighlight({
               pointerEvents="none"
             />
             {!prefersReducedMotion && (
-              <circle
-                r={dotRadius}
-                fill="#ffffff"
-                stroke={MAP.selected}
-                strokeWidth={dotRadius * 0.45}
-                pointerEvents="none"
-              >
+              // A plane rather than a dot. rotate="auto" on animateMotion
+              // turns it along the path tangent, so it banks into the arc and
+              // always points the way the leg was flown. Drawn nose-right so
+              // that rotation lines up with the direction of travel.
+              <g pointerEvents="none">
+                {/* animateMotion belongs on the group: putting it on the same
+                    element as a transform attribute makes the two fight. The
+                    group is moved and rotated; the path inside is only
+                    scaled and centred on its own origin. */}
                 <animateMotion
                   dur={`${legDuration}s`}
                   begin={`${delay}s`}
@@ -112,7 +125,15 @@ function JourneyHighlight({
                   path={pathD}
                   rotate="auto"
                 />
-              </circle>
+                <path
+                  d={PLANE_PATH}
+                  fill={MAP.selected}
+                  stroke="#ffffff"
+                  strokeWidth={1.2}
+                  strokeLinejoin="round"
+                  transform={`scale(${planeScale}) translate(-12 -12)`}
+                />
+              </g>
             )}
             {/* Clicking the highlighted route clears the selection. */}
             <path

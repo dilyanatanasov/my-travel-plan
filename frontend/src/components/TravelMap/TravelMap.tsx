@@ -1,4 +1,4 @@
-import { memo, useState, useCallback, useMemo, useRef } from 'react';
+import { memo, useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { ComposableMap, ZoomableGroup } from 'react-simple-maps';
 import {
   useGetVisitsQuery,
@@ -21,6 +21,7 @@ import MapControlPanel, { type TravelMapSettings } from './MapControlPanel';
 import MapZoomControls from './MapZoomControls';
 import MapLegend from './MapLegend';
 import { useMapViewport } from './useMapViewport';
+import { useMapFocus } from '../../features/map/MapFocusContext';
 import { MAP } from '../../theme/mapColors';
 import { buildCountryDisplayMap } from './countryColors';
 import CountriesLayer from './CountriesLayer';
@@ -292,6 +293,22 @@ function TravelMap() {
     },
     [hoveredRoute]
   );
+
+  /**
+   * Fly a newly created journey.
+   *
+   * Depends on `flights` as well as the id, because the mutation invalidates
+   * the Flight tag and the new journey only appears once that refetch lands —
+   * looking it up on the id alone would find nothing.
+   */
+  const { focusedJourneyId, clearFocus } = useMapFocus();
+  useEffect(() => {
+    if (focusedJourneyId === null) return;
+    const journey = flights.find((f) => f.id === focusedJourneyId);
+    if (!journey) return;
+    setSelectedJourney(journey);
+    clearFocus();
+  }, [focusedJourneyId, flights, clearFocus]);
 
   // Highlighted airports: every stop on a selected journey, otherwise the two
   // ends of whatever route is hovered.
