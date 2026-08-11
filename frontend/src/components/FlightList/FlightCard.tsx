@@ -34,7 +34,9 @@ function FlightCard({ journey, onDelete }: FlightCardProps) {
       <div className="flex items-start justify-between">
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-1">
-            <span className="font-mono text-lg font-semibold text-gray-900">
+            {/* A seven-leg route is long. Smaller and tighter on mobile so it
+                wraps to two readable lines rather than sprawling. */}
+            <span className="font-mono text-sm sm:text-lg font-semibold text-gray-900 leading-snug break-words">
               {routeString}
             </span>
             {journey.isRoundTrip && (

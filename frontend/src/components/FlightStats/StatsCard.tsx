@@ -22,17 +22,30 @@ function StatsCard({
   color = 'blue',
 }: StatsCardProps) {
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-4 hover:shadow-md transition-shadow">
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-sm text-gray-500 mb-1">{title}</p>
-          <p className="text-2xl font-bold text-gray-900">{value}</p>
+    <div className="bg-white rounded-xl border border-gray-200 p-3 sm:p-4 hover:shadow-md transition-shadow">
+      {/*
+        Two of these sit side by side on a 390px screen, leaving ~130px of
+        text width. At the old fixed sizes the titles and even values like
+        "141,877 km" wrapped mid-number. Sizes step up with the viewport, and
+        the icon hides on the narrowest screens rather than stealing width
+        from the number it decorates.
+      */}
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-xs sm:text-sm text-gray-500 mb-1">{title}</p>
+          <p className="text-lg sm:text-2xl font-bold text-gray-900 whitespace-nowrap">
+            {value}
+          </p>
           {subtitle && (
             <p className="text-xs text-gray-400 mt-1">{subtitle}</p>
           )}
         </div>
         {icon && (
-          <div className={`p-2 rounded-lg ${colorClasses[color]}`}>{icon}</div>
+          <div
+            className={`hidden sm:block p-2 rounded-lg flex-shrink-0 ${colorClasses[color]}`}
+          >
+            {icon}
+          </div>
         )}
       </div>
     </div>

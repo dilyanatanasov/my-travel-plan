@@ -62,7 +62,8 @@
       "Bash(sed -i 's|\"background_color\": \"#f9fafb\"|\"background_color\": \"#f6f7f9\"|; s|\"theme_color\": \"#2563eb\"|\"theme_color\": \"#0f766e\"|' public/manifest.webmanifest)",
       "Bash(sed -i 's|<meta name=\"theme-color\" content=\"#2563eb\" />|<meta name=\"theme-color\" content=\"#0f766e\" />|' index.html)",
       "Bash(git rm *)",
-      "Bash(rm -f filters-*.png)"
+      "Bash(rm -f filters-*.png)",
+      "Bash(rm -f export-fixed.png stats-mobile.png)"
     ],
     "deny": [],
     "ask": []

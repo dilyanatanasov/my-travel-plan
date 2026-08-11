@@ -6,6 +6,9 @@ import {
 } from './shareApi';
 import { useToast } from '../../components/Toast/ToastProvider';
 import { renderMapPng, downloadBlob } from '../../utils/exportMapImage';
+import MapExportCanvas, {
+  EXPORT_SVG_ID,
+} from '../../components/TravelMap/MapExportCanvas';
 import { useGetVisitsQuery } from '../visits/visitsApi';
 import { useGetFlightStatsQuery } from '../flights/flightsApi';
 import { useAuth } from '../auth/authApi';
@@ -76,13 +79,18 @@ function ShareMenu() {
   };
 
   const handleDownload = async () => {
-    const svg = document.querySelector<SVGSVGElement>('svg.rsm-svg');
+    // The off-screen export canvas, not the visible map: the visible one
+    // overflows its container by design, so exporting it cropped the world.
+    const svg = document.getElementById(
+      EXPORT_SVG_ID
+    ) as SVGSVGElement | null;
     if (!svg) {
-      showToast('Open the map before downloading an image', { tone: 'error' });
+      showToast('The map is not ready yet — try again in a moment', {
+        tone: 'error',
+      });
       return;
     }
 
-    setIsOpen(false);
     setIsExporting(true);
     try {
       const visited = visits.filter((visit) => {
@@ -105,6 +113,7 @@ function ShareMenu() {
         stats,
       });
       downloadBlob(blob, 'travel-map.png');
+      setIsOpen(false);
       showToast('Image downloaded', { tone: 'success' });
     } catch (error) {
       showToast(
@@ -120,6 +129,11 @@ function ShareMenu() {
 
   return (
     <div className="relative" ref={containerRef}>
+      {/* Mounted while the menu is open so the geography has time to load
+          before Download is pressed, and unmounted otherwise rather than
+          keeping a second world map alive for the whole session. */}
+      {isOpen && <MapExportCanvas />}
+
       <button
         type="button"
         onClick={() => setIsOpen((open) => !open)}
