@@ -19,6 +19,16 @@ export const MAP = {
   ocean: '#eef4f8',
   route: '#1d4ed8',
   routeHighlight: '#1e293b',
+  /**
+   * A selected journey. Rose is the one strong hue the map does not already
+   * use — violet is home, emerald visited, amber transit, blue routes — so it
+   * cannot be mistaken for a category. It sits next to emerald on the map,
+   * which is a red/green pairing, but the selected journey is also the only
+   * animated element and the only one carrying white dashes, so it never
+   * relies on hue alone.
+   */
+  selected: '#e11d48',
+  selectedGlow: '#fb7185',
   /** Airports read as shape + lightness, never hue: red dots over green
       countries were the app's worst colourblind failure. */
   airportFill: '#ffffff',

@@ -6,10 +6,24 @@ interface MapViewport {
   height: number;
   /** Projection scale, derived from the space actually available. */
   scale: number;
+  /**
+   * Multiplier for route thickness and airport dots. A 1px line and a 3px dot
+   * cover far more of a 390px map than of a 1400px one, so they are trimmed
+   * on small screens.
+   */
+  markerScale: number;
+  /** True when the container is portrait-ish, i.e. a phone. */
+  isNarrow: boolean;
 }
 
 // Fallback until the first measurement lands.
-const INITIAL: MapViewport = { width: 1000, height: 500, scale: 150 };
+const INITIAL: MapViewport = {
+  width: 1000,
+  height: 500,
+  scale: 150,
+  markerScale: 1,
+  isNarrow: false,
+};
 
 /**
  * How much of the container width the world should occupy. The equirectangular
@@ -78,7 +92,13 @@ export function useMapViewport<T extends HTMLElement>(): {
         setViewport((current) =>
           current.width === w && current.height === h
             ? current
-            : { width: w, height: h, scale: computeScale(w, h) }
+            : {
+                width: w,
+                height: h,
+                scale: computeScale(w, h),
+                markerScale: w < 768 ? 0.7 : 1,
+                isNarrow: w < 768,
+              }
         );
       });
     };

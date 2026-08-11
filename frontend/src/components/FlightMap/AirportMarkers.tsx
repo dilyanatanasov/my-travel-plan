@@ -8,12 +8,15 @@ interface AirportMarkersProps {
   airports: Airport[];
   visitCounts: Map<string, number>;
   highlightedAirports: string[];
+  /** Trims marker size on small screens, where dots otherwise swamp the map. */
+  sizeScale?: number;
 }
 
 function AirportMarkers({
   airports,
   visitCounts,
   highlightedAirports,
+  sizeScale = 1,
 }: AirportMarkersProps) {
   const { projection } = useMapContext();
   const { k: zoom } = useZoomPanContext();
@@ -21,11 +24,15 @@ function AirportMarkers({
   // Calculate max visit count for scaling
   const maxVisits = Math.max(...Array.from(visitCounts.values()), 1);
 
-  // Calculate marker radius based on visit count
+  /**
+   * Marker radius by visit count. Smaller than it was (3–6): with 39 airports
+   * clustered over Europe the dots merged into one mass and hid the countries
+   * beneath them.
+   */
   const getRadius = (iataCode: string): number => {
     const count = visitCounts.get(iataCode) || 1;
     const normalized = (count - 1) / Math.max(maxVisits - 1, 1);
-    return 3 + normalized * 3; // Range: 3 to 6
+    return (2 + normalized * 2.2) * sizeScale; // Range: 2 to 4.2
   };
 
   return (
@@ -39,7 +46,7 @@ function AirportMarkers({
         const isHighlighted = highlightedAirports.includes(airport.iataCode);
         const baseRadius = getRadius(airport.iataCode);
         const radius = getZoomAdjustedSize(baseRadius, zoom);
-        const strokeWidth = getZoomAdjustedSize(1, zoom);
+        const strokeWidth = getZoomAdjustedSize(0.7 * sizeScale, zoom);
         const highlightOffset = getZoomAdjustedSize(3, zoom);
         const highlightStroke = getZoomAdjustedSize(2, zoom);
         const fontSize = getZoomAdjustedSize(10, zoom);
@@ -54,7 +61,7 @@ function AirportMarkers({
                 cy={y}
                 r={radius + highlightOffset}
                 fill="none"
-                stroke={MAP.route}
+                stroke={MAP.selected}
                 strokeWidth={highlightStroke}
                 strokeOpacity={0.8}
               />
@@ -69,8 +76,8 @@ function AirportMarkers({
               cx={x}
               cy={y}
               r={radius}
-              fill={isHighlighted ? MAP.route : MAP.airportFill}
-              stroke={isHighlighted ? MAP.route : MAP.airportRing}
+              fill={isHighlighted ? MAP.selected : MAP.airportFill}
+              stroke={isHighlighted ? MAP.selected : MAP.airportRing}
               strokeWidth={strokeWidth * 1.5}
               style={{
                 transition: 'fill 0.15s',

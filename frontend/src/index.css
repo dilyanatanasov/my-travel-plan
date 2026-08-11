@@ -37,6 +37,35 @@ body {
   overscroll-behavior: contain;
 }
 
+/*
+  Flowing dashes along a selected journey's legs. Decreasing the offset moves
+  them from the path's start to its end, i.e. departure to arrival, which is
+  what conveys direction.
+*/
+@keyframes route-flow {
+  to {
+    stroke-dashoffset: -32;
+  }
+}
+
+.route-flow {
+  /* Unhurried on purpose: this is ambient, and a fast loop next to a map you
+     are reading is agitating rather than informative. */
+  animation: route-flow 3.2s linear infinite;
+}
+
+/*
+  Looping motion is a real problem for some vestibular conditions. The
+  highlight still reads without it: the solid stroke and the dashes stay, they
+  simply stop moving. The travelling dot is a SMIL <animateMotion>, which CSS
+  cannot switch off, so JourneyHighlight omits it in JS instead.
+*/
+@media (prefers-reduced-motion: reduce) {
+  .route-flow {
+    animation: none;
+  }
+}
+
 @layer utilities {
   /* Horizontal scroll strips scroll by swipe; the bar itself is visual noise. */
   .scrollbar-none {

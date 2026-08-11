@@ -129,10 +129,22 @@ export function calculateArcPath(
  * Calculate stroke width based on flight count
  * Maps count to a range of 1-4 pixels
  */
-export function getStrokeWidth(count: number, maxCount: number): number {
-  if (maxCount <= 1) return 2;
+/**
+ * Route line thickness, by how often the route was flown.
+ *
+ * Thinner than it was (1.5–4). At this data density, heavy strokes merge into
+ * a blob over Europe and hide the countries underneath, which are the point
+ * of the map. `sizeScale` trims them further on small screens, where the same
+ * width covers proportionally far more of the map.
+ */
+export function getStrokeWidth(
+  count: number,
+  maxCount: number,
+  sizeScale = 1
+): number {
+  if (maxCount <= 1) return 1.2 * sizeScale;
   const normalized = (count - 1) / (maxCount - 1);
-  return 1.5 + normalized * 2.5; // Range: 1.5 to 4
+  return (0.9 + normalized * 1.5) * sizeScale; // Range: 0.9 to 2.4
 }
 
 /**

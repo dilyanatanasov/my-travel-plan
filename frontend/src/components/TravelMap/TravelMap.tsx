@@ -1,4 +1,4 @@
-import { memo, useState, useCallback, useMemo } from 'react';
+import { memo, useState, useCallback, useMemo, useRef } from 'react';
 import { ComposableMap, ZoomableGroup } from 'react-simple-maps';
 import {
   useGetVisitsQuery,
@@ -7,7 +7,7 @@ import {
 } from '../../features/visits/visitsApi';
 import { useVisitActions } from '../../features/visits/useVisitActions';
 import { useToast } from '../Toast/ToastProvider';
-import type { Visit } from '../../types';
+import type { Visit, FlightJourney } from '../../types';
 import { useGetFlightsQuery } from '../../features/flights/flightsApi';
 import { aggregateRoutes, extractUniqueAirports, countAirportVisits } from '../FlightMap/routeUtils';
 import { applyFilters, extractFilterOptions } from '../FlightMap/filterUtils';
@@ -15,6 +15,8 @@ import { DEFAULT_FILTERS, type FlightFilters } from '../FlightMap/filterTypes';
 import FlightRoutes from '../FlightMap/FlightRoutes';
 import AirportMarkers from '../FlightMap/AirportMarkers';
 import RouteTooltip from '../FlightMap/RouteTooltip';
+import JourneyHighlight from '../FlightMap/JourneyHighlight';
+import SelectedJourneyCard from './SelectedJourneyCard';
 import MapControlPanel, { type TravelMapSettings } from './MapControlPanel';
 import MapZoomControls from './MapZoomControls';
 import MapLegend from './MapLegend';
@@ -29,12 +31,12 @@ const MIN_ZOOM = 1;
 const MAX_ZOOM = 8;
 
 /**
- * Slightly west of centre, so the landmass sits right of the controls pinned
- * to the top-left. Longitude only: the map always overflows horizontally (see
- * useMapViewport), so panning sideways never exposes an edge, whereas a
- * vertical offset would open a gap on a portrait canvas.
+ * Slightly west of centre on desktop, so the landmass sits right of the
+ * control card pinned to the top-left corner. On a phone that card spans the
+ * full width, so there is nothing to dodge and the map is simply centred.
  */
-const INITIAL_CENTER: [number, number] = [-12, 0];
+const DESKTOP_CENTER: [number, number] = [-12, 0];
+const NARROW_CENTER: [number, number] = [0, 0];
 
 const DEFAULT_SETTINGS: TravelMapSettings = {
   showCountries: true,
@@ -67,16 +69,55 @@ function TravelMap() {
   // The map fills whatever the shell leaves it, so the viewBox follows the
   // measured container rather than a breakpoint preset.
   const { ref: containerRef, viewport } = useMapViewport<HTMLDivElement>();
-  const { width, height, scale } = viewport;
+  const { width, height, scale, markerScale, isNarrow } = viewport;
 
   // Zoom is controlled so the +/- buttons and d3's own gestures stay in sync.
   const [zoom, setZoom] = useState(MIN_ZOOM);
-  const [center, setCenter] = useState<[number, number]>(INITIAL_CENTER);
+  const [center, setCenter] = useState<[number, number]>(DESKTOP_CENTER);
+  // Track whether the user has moved the map; until then, follow the
+  // breakpoint's default centre rather than stranding a phone off-centre.
+  const [hasMovedMap, setHasMovedMap] = useState(false);
+  const defaultCenter = isNarrow ? NARROW_CENTER : DESKTOP_CENTER;
+  const effectiveCenter = hasMovedMap ? center : defaultCenter;
+
+  // The journey highlighted by clicking one of its routes.
+  const [selectedJourney, setSelectedJourney] = useState<FlightJourney | null>(
+    null
+  );
+
+  /**
+   * Distinguishes a tap from the end of a drag.
+   *
+   * d3-zoom pans on pointer drag, and the browser still fires a click on
+   * whatever sits under the finger when it lifts. Without this, panning the
+   * map to look around toggled whichever country you happened to release
+   * over. Measured in client pixels and evaluated in the capture phase, so it
+   * is set before any child's own click handler runs.
+   */
+  const pointerDownAtRef = useRef<{ x: number; y: number } | null>(null);
+  const wasDragRef = useRef(false);
+
+  const handlePointerDownCapture = useCallback((event: React.PointerEvent) => {
+    pointerDownAtRef.current = { x: event.clientX, y: event.clientY };
+    wasDragRef.current = false;
+  }, []);
+
+  const handleClickCapture = useCallback((event: React.MouseEvent) => {
+    const start = pointerDownAtRef.current;
+    if (!start) return;
+    const distance = Math.hypot(
+      event.clientX - start.x,
+      event.clientY - start.y
+    );
+    // 6px of slop: fingers and trackpads wobble on a deliberate tap.
+    wasDragRef.current = distance > 6;
+  }, []);
 
   const handleMoveEnd = useCallback(
     (position: { coordinates: [number, number]; zoom: number }) => {
       setZoom(position.zoom);
       setCenter(position.coordinates);
+      setHasMovedMap(true);
     },
     []
   );
@@ -85,7 +126,20 @@ function TravelMap() {
     setZoom(MIN_ZOOM);
     // Back to the view the map opened with, not [0,0] — otherwise "reset"
     // lands somewhere the user has never seen.
-    setCenter(INITIAL_CENTER);
+    setHasMovedMap(false);
+    setCenter(defaultCenter);
+  }, [defaultCenter]);
+
+  const handleSelectRoute = useCallback((route: AggregatedRoute) => {
+    if (wasDragRef.current) return;
+    // A route can belong to several journeys; the most recent is the most
+    // likely thing someone is asking about.
+    const journey = [...route.flights].sort((a, b) => {
+      const aDate = a.journeyDate ? new Date(a.journeyDate).getTime() : 0;
+      const bDate = b.journeyDate ? new Date(b.journeyDate).getTime() : 0;
+      return bDate - aDate;
+    })[0];
+    setSelectedJourney(journey ?? null);
   }, []);
 
   // Build country display map from visits
@@ -153,6 +207,18 @@ function TravelMap() {
   // Handlers
   const handleCountryClick = useCallback(
     async (isoCode: string) => {
+      // A pan ends with a click on whatever is under the finger. Without this
+      // guard, dragging the map to look around silently toggled a country.
+      if (wasDragRef.current) return;
+
+      // While a journey is highlighted, the map is in "reading" mode: a tap
+      // anywhere dismisses the highlight rather than editing your countries.
+      // Tapping a thin route and missing it should not add a country.
+      if (selectedJourney) {
+        setSelectedJourney(null);
+        return;
+      }
+
       const countryId = countryByIsoCode.get(isoCode);
       if (!countryId) return;
 
@@ -163,7 +229,13 @@ function TravelMap() {
         await addVisitForCountry(countryId);
       }
     },
-    [countryByIsoCode, visitByCountryId, addVisitForCountry, removeVisitWithUndo]
+    [
+      countryByIsoCode,
+      visitByCountryId,
+      addVisitForCountry,
+      removeVisitWithUndo,
+      selectedJourney,
+    ]
   );
 
   const handleSetHomeCountry = useCallback(
@@ -196,16 +268,35 @@ function TravelMap() {
     [hoveredRoute]
   );
 
-  // Highlighted airports when hovering a route
-  const highlightedAirports = hoveredRoute
-    ? [hoveredRoute.departure.iataCode, hoveredRoute.arrival.iataCode]
-    : [];
+  // Highlighted airports: every stop on a selected journey, otherwise the two
+  // ends of whatever route is hovered.
+  const highlightedAirports = useMemo(() => {
+    if (selectedJourney) {
+      return (selectedJourney.legs ?? []).flatMap((leg) => [
+        leg.departureAirport?.iataCode,
+        leg.arrivalAirport?.iataCode,
+      ]).filter(Boolean) as string[];
+    }
+    return hoveredRoute
+      ? [hoveredRoute.departure.iataCode, hoveredRoute.arrival.iataCode]
+      : [];
+  }, [selectedJourney, hoveredRoute]);
+
+  // With a journey selected, show only its airports — leaving all 39 dots up
+  // would undo the clarity gained by hiding the other routes.
+  const visibleAirports = useMemo(() => {
+    if (!selectedJourney) return airports;
+    const onJourney = new Set(highlightedAirports);
+    return airports.filter((airport) => onJourney.has(airport.iataCode));
+  }, [airports, selectedJourney, highlightedAirports]);
 
   return (
     <div
       ref={containerRef}
       className="relative w-full h-full overflow-hidden bg-map-ocean"
       onMouseMove={handleMouseMove}
+      onPointerDownCapture={handlePointerDownCapture}
+      onClickCapture={handleClickCapture}
     >
       {/* Map fills the canvas; chrome floats over it. */}
       <ComposableMap
@@ -219,7 +310,7 @@ function TravelMap() {
       >
         <ZoomableGroup
           zoom={zoom}
-          center={center}
+          center={effectiveCenter}
           minZoom={MIN_ZOOM}
           maxZoom={MAX_ZOOM}
           onMoveEnd={handleMoveEnd}
@@ -235,6 +326,13 @@ function TravelMap() {
             width={width * 5}
             height={height * 5}
             fill={MAP.ocean}
+            // Tapping open water clears a selection — the most instinctive
+            // way out, alongside Escape, the card's close button, and
+            // clicking the highlighted route itself.
+            onClick={() => {
+              if (!wasDragRef.current) setSelectedJourney(null);
+            }}
+            style={{ cursor: selectedJourney ? 'pointer' : 'default' }}
           />
 
           {/* Countries */}
@@ -245,21 +343,34 @@ function TravelMap() {
           />
 
           {/* Flight Routes */}
-          {settings.showFlights && (
-            <FlightRoutes
-              routes={routes}
-              maxCount={maxRouteCount}
-              hoveredRouteKey={hoveredRoute?.key || null}
-              onHover={handleRouteHover}
-            />
-          )}
+          {settings.showFlights &&
+            // While a journey is selected the other routes are hidden
+            // outright rather than dimmed: with 49 of them the selected one
+            // was still lost in the crowd.
+            (selectedJourney ? (
+              <JourneyHighlight
+                journey={selectedJourney}
+                sizeScale={markerScale}
+                onClear={() => setSelectedJourney(null)}
+              />
+            ) : (
+              <FlightRoutes
+                routes={routes}
+                maxCount={maxRouteCount}
+                hoveredRouteKey={hoveredRoute?.key || null}
+                onHover={handleRouteHover}
+                onSelect={handleSelectRoute}
+                sizeScale={markerScale}
+              />
+            ))}
 
           {/* Airport Markers */}
           {settings.showAirports && settings.showFlights && (
             <AirportMarkers
-              airports={airports}
+              airports={visibleAirports}
               visitCounts={airportVisitCounts}
               highlightedAirports={highlightedAirports}
+              sizeScale={markerScale}
             />
           )}
         </ZoomableGroup>
@@ -308,6 +419,13 @@ function TravelMap() {
         onZoomOut={() => setZoom((z) => Math.max(z / 1.5, MIN_ZOOM))}
         onReset={handleResetView}
       />
+
+      {selectedJourney && (
+        <SelectedJourneyCard
+          journey={selectedJourney}
+          onClose={() => setSelectedJourney(null)}
+        />
+      )}
 
       {/* Route Tooltip */}
       <RouteTooltip route={hoveredRoute} position={tooltipPosition} />

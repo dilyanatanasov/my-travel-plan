@@ -63,7 +63,9 @@
       "Bash(sed -i 's|<meta name=\"theme-color\" content=\"#2563eb\" />|<meta name=\"theme-color\" content=\"#0f766e\" />|' index.html)",
       "Bash(git rm *)",
       "Bash(rm -f filters-*.png)",
-      "Bash(rm -f export-fixed.png stats-mobile.png)"
+      "Bash(rm -f export-fixed.png stats-mobile.png)",
+      "Bash(echo \"=== verify against backup ===\")",
+      "Bash(rm -f journey-highlight.png)"
     ],
     "deny": [],
     "ask": []
