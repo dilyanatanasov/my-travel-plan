@@ -96,13 +96,21 @@ function TravelMap() {
    * over. Measured in client pixels and evaluated in the capture phase, so it
    * is set before any child's own click handler runs.
    */
-  const pointerDownAtRef = useRef<{ x: number; y: number } | null>(null);
+  const pointerDownAtRef = useRef<{
+    x: number;
+    y: number;
+    pointerType: string;
+  } | null>(null);
   const wasDragRef = useRef(false);
   /** Set by handlers that acted on a click, so the container does not also clear. */
   const clickConsumedRef = useRef(false);
 
   const handlePointerDownCapture = useCallback((event: React.PointerEvent) => {
-    pointerDownAtRef.current = { x: event.clientX, y: event.clientY };
+    pointerDownAtRef.current = {
+      x: event.clientX,
+      y: event.clientY,
+      pointerType: event.pointerType,
+    };
     wasDragRef.current = false;
   }, []);
 
@@ -113,8 +121,16 @@ function TravelMap() {
       event.clientX - start.x,
       event.clientY - start.y
     );
-    // 6px of slop: fingers and trackpads wobble on a deliberate tap.
-    wasDragRef.current = distance > 6;
+    /**
+     * A finger travels much further than a mouse on what the user means as a
+     * single tap. At a flat 6px, ordinary thumb wobble was being read as a
+     * pan, which silently swallowed taps — selecting and dismissing a journey
+     * both failed intermittently on a phone while working perfectly with a
+     * mouse. 14px is in line with the platform conventions (iOS ~10pt,
+     * Android 8dp scaled), and still far below a deliberate drag.
+     */
+    const slop = start.pointerType === 'touch' ? 14 : 6;
+    wasDragRef.current = distance > slop;
   }, []);
 
   const handleMoveEnd = useCallback(

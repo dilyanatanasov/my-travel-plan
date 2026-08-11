@@ -120,15 +120,11 @@ which would also hide the status bar — wrong for an app with its own header.
 
 ## Open items (2026-08-11, end of session)
 
-1. **Journey card does not always clear on deselect.** Reported twice. The first fix moved
-   clearing to a single container-level handler in `TravelMap.tsx`
-   (`handleContainerClick` + `clickConsumedRef`), which fixed the airport-dot case, but a
-   path remains. Prime suspect: `clickConsumedRef` is only reset inside
-   `handleContainerClick`, so any click that never reaches the container — the card itself
-   calls `stopPropagation`, and `SelectedJourneyCard`'s close button is inside the map
-   container — can leave the flag stuck `true`, swallowing the *next* clear. Reproduce by
-   selecting a route, clicking the card body, then clicking open water. Fix is likely to
-   reset the flag on `pointerdown` rather than on the container click.
+1. ~~**Journey card does not always clear on deselect.**~~ FIXED. The recorded hypothesis
+   (a stuck `clickConsumedRef`) was wrong — every click path was verified working with a
+   mouse. The real cause was the drag guard: a flat 6px threshold, which a thumb exceeds on
+   an ordinary tap, so legitimate taps were read as pans and silently swallowed. The
+   threshold is now pointer-type aware (14px touch, 6px mouse).
 2. **Contrast audit not done.** The theme sweep was mechanical; the tokens were measured but
    not every rendered text/background pair. Suspects: the amber transit badge, the
    `bg-map-*/10` stat tiles, and toast chips in dark mode.

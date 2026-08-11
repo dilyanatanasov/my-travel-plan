@@ -83,7 +83,8 @@
       "Bash(node *)",
       "Bash(sed -i 's/  return pick\\(palette, hover, visitType, isHome\\);/  return pick\\(hover, visitType, isHome\\);/; s/  return pick\\(palette, pressed, visitType, isHome\\);/  return pick\\(pressed, visitType, isHome\\);/' countryColors.ts)",
       "Bash(sed -i 's/^export function getCountryHoverColor\\(\\\\n  palette: MapPalette,/x/' countryColors.ts)",
-      "Bash(sed -i 's/getCountryHoverColor\\(colors, hover, visitType, isHome\\)/getCountryHoverColor\\(hover, visitType, isHome\\)/; s/getCountryPressedColor\\(colors, pressed, visitType, isHome\\)/getCountryPressedColor\\(pressed, visitType, isHome\\)/' CountriesLayer.tsx)"
+      "Bash(sed -i 's/getCountryHoverColor\\(colors, hover, visitType, isHome\\)/getCountryHoverColor\\(hover, visitType, isHome\\)/; s/getCountryPressedColor\\(colors, pressed, visitType, isHome\\)/getCountryPressedColor\\(pressed, visitType, isHome\\)/' CountriesLayer.tsx)",
+      "mcp__playwright__browser_run_code_unsafe"
     ],
     "deny": [],
     "ask": []
