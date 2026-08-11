@@ -1,0 +1,7 @@
+# Files that execute or get parsed on Linux must stay LF even on a Windows
+# checkout: busybox sh hard-fails on `then\r`, and a Windows-built Docker
+# image COPYs whatever line endings the working tree has. Discovered by
+# running the nginx entrypoint under busybox from a Windows checkout.
+*.sh text eol=lf
+*.template text eol=lf
+Dockerfile text eol=lf
