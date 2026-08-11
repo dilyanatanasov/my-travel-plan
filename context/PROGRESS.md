@@ -27,8 +27,12 @@ Source review: UX/product review of the running app (desktop 1440px + mobile 390
 - [x] **4. Share (export PNG + OG tags)** — DONE, verified (payload leak-checked; revocation works)
 - [x] **5. Flight list grouping by year + undo toasts** — DONE, verified (undo restores full record; 7771px → 3121px)
 - [x] **5.5. Map-first app shell** — DONE, verified (no page scroll; wheel-hijack fixed at root)
-- [ ] **6. Flight import (CSV)** ← NEXT
-- [ ] 7. Decide fate of flight search (decision point with user)
+- [x] **6. Flight import (CSV)** — DONE (parse + preview + idempotent import)
+- [~] **7. Flight search** — DECIDED: keep it, hidden from nav for now. Its differentiator
+  is persistent personal constraints (preferred airports, minimum layover, departure hour)
+  and month-level "when is this cheapest" questions, which mainstream search does not answer.
+  The current quality ceiling is the free rotating API key; paid multi-source is the upgrade
+  path, funded by subscriptions. Do NOT delete the backend.
 - [ ] 8. Accessibility pass
 
 ---

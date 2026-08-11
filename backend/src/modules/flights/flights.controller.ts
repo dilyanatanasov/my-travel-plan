@@ -21,6 +21,7 @@ import { FlexibleSearchDto } from './dto/flexible-search.dto';
 import { FilterOptionsDto } from './dto/filter-options.dto';
 import { FlightSearchResultDto } from './dto/flight-result.dto';
 import { FlightExplorationResultDto } from './dto/flight-exploration-result.dto';
+import { ImportFlightsDto, type ImportResultDto } from './dto/import-flights.dto';
 import { FlightJourney } from './entities/flight-journey.entity';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 
@@ -58,6 +59,20 @@ export class FlightsController {
     @Body() flexibleSearchDto: FlexibleSearchDto,
   ): Promise<FlightExplorationResultDto> {
     return this.flightExplorationService.explore(flexibleSearchDto);
+  }
+
+  /**
+   * Bulk import. Idempotent: re-uploading the same file skips rows that are
+   * already present rather than duplicating them.
+   *
+   * Declared above the parameterless @Post so route matching is unambiguous.
+   */
+  @Post('import')
+  async importFlights(
+    @CurrentUser('id') userId: number,
+    @Body() dto: ImportFlightsDto,
+  ): Promise<ImportResultDto> {
+    return this.flightsService.importJourneys(userId, dto.journeys);
   }
 
   @Get()

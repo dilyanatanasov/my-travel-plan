@@ -4,12 +4,13 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { FlightJourney } from './entities/flight-journey.entity';
 import { FlightLeg } from './entities/flight-leg.entity';
 import { Airport } from '../airports/entities/airport.entity';
 import { CreateFlightDto } from './dto/create-flight.dto';
 import { UpdateFlightDto } from './dto/update-flight.dto';
+import type { ImportJourneyDto, ImportResultDto } from './dto/import-flights.dto';
 import { calculateAirportDistance } from '../../common/utils/haversine';
 import { VisitsService } from '../visits/visits.service';
 import { VisitType } from '../visits/entities/visit.entity';
@@ -136,6 +137,109 @@ export class FlightsService {
 
     // Return the complete journey with relations
     return this.findOne(userId, savedJourney.id);
+  }
+
+  /**
+   * Bulk import journeys given as IATA pairs.
+   *
+   * Codes are resolved here rather than trusted from the client, and every
+   * journey goes through `create` so distances and the country visits it
+   * derives are identical to a hand-entered flight — an import that produced
+   * subtly different records would be worse than no import.
+   *
+   * Re-running the same file is safe: anything matching an existing date and
+   * route is skipped rather than duplicated, because people re-export and
+   * re-upload rather than tracking what they already loaded.
+   */
+  async importJourneys(
+    userId: number,
+    journeys: ImportJourneyDto[],
+  ): Promise<ImportResultDto> {
+    const result: ImportResultDto = { imported: 0, skipped: 0, failed: [] };
+
+    // Resolve every distinct code in one query rather than per leg.
+    const codes = new Set<string>();
+    journeys.forEach((journey) =>
+      journey.legs.forEach((leg) => {
+        codes.add(leg.from.toUpperCase());
+        codes.add(leg.to.toUpperCase());
+      }),
+    );
+
+    const airports = await this.airportRepository.find({
+      where: { iataCode: In([...codes]) },
+    });
+    const byCode = new Map(airports.map((a) => [a.iataCode.toUpperCase(), a]));
+
+    // Signature of what the user already has, so a repeat import is a no-op.
+    const existing = await this.journeyRepository.find({
+      where: { userId },
+      relations: ['legs', 'legs.departureAirport', 'legs.arrivalAirport'],
+    });
+    const signature = (date: string | null, route: string[]) =>
+      `${date ?? 'undated'}|${route.join('>')}`;
+    const seen = new Set(
+      existing.map((journey) => {
+        const legs = [...(journey.legs ?? [])].sort(
+          (a, b) => a.legOrder - b.legOrder,
+        );
+        const route = legs.flatMap((leg, index) =>
+          index === 0
+            ? [leg.departureAirport?.iataCode ?? '', leg.arrivalAirport?.iataCode ?? '']
+            : [leg.arrivalAirport?.iataCode ?? ''],
+        );
+        const date = journey.journeyDate
+          ? new Date(journey.journeyDate).toISOString().slice(0, 10)
+          : null;
+        return signature(date, route);
+      }),
+    );
+
+    for (const [index, journey] of journeys.entries()) {
+      const route = journey.legs.flatMap((leg, i) =>
+        i === 0 ? [leg.from.toUpperCase(), leg.to.toUpperCase()] : [leg.to.toUpperCase()],
+      );
+      const label = route.join(' → ');
+
+      const unknown = route.find((code) => !byCode.has(code));
+      if (unknown) {
+        result.failed.push({
+          row: index + 1,
+          route: label,
+          reason: `Unknown airport code ${unknown}`,
+        });
+        continue;
+      }
+
+      const key = signature(journey.date?.slice(0, 10) ?? null, route);
+      if (seen.has(key)) {
+        result.skipped += 1;
+        continue;
+      }
+
+      try {
+        await this.create(userId, {
+          journeyDate: journey.date,
+          notes: journey.notes,
+          legs: journey.legs.map((leg) => ({
+            departureAirportId: byCode.get(leg.from.toUpperCase())!.id,
+            arrivalAirportId: byCode.get(leg.to.toUpperCase())!.id,
+          })),
+        });
+        // Guards against duplicates *within* the same file, not just against
+        // rows already in the database.
+        seen.add(key);
+        result.imported += 1;
+      } catch (error) {
+        result.failed.push({
+          row: index + 1,
+          route: label,
+          reason: error instanceof Error ? error.message : 'Could not import',
+        });
+      }
+    }
+
+    return result;
   }
 
   /**

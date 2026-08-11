@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import TravelMap from '../components/TravelMap';
 import FlightForm from '../components/FlightForm';
+import ImportFlights from '../components/FlightForm/ImportFlights';
 import FlightList from '../components/FlightList';
 import FlightStats from '../components/FlightStats';
 import CountryList from '../components/CountryList';
@@ -177,6 +178,7 @@ function TravelMapPage() {
         return (
           <div className="space-y-6">
             <FlightForm />
+            <ImportFlights />
             <FlightList />
           </div>
         );

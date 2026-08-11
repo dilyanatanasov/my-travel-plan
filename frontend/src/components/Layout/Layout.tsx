@@ -27,30 +27,14 @@ function Layout() {
             </p>
           </Link>
           <div className="flex items-center gap-2 flex-shrink-0">
-            <Link
-              to="/search"
-              className="flex items-center gap-2 min-h-11 bg-brand-600 hover:bg-brand-700 text-white px-3 sm:px-4 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2"
-            >
-              <svg
-                className="w-5 h-5 flex-shrink-0"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                aria-hidden="true"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                />
-              </svg>
-              {/* Label hidden on phones so the button never wraps to two lines */}
-              <span className="hidden sm:inline whitespace-nowrap">
-                Search Flights
-              </span>
-              <span className="sr-only sm:hidden">Search Flights</span>
-            </Link>
+            {/*
+              Flight search is hidden from the nav, not removed. The route,
+              the page and the whole backend still work at /search — this only
+              takes it out of the way while the map is the product being
+              shaped. Its differentiator is persistent personal constraints
+              (preferred airports, minimum layover, departure hour), which no
+              mainstream flight search offers, so it is worth keeping.
+            */}
             <ShareMenu />
             <AccountMenu />
           </div>

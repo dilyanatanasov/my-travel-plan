@@ -54,6 +54,19 @@ export const flightsApi = apiSlice.injectEndpoints({
       invalidatesTags: ['Flight', 'FlightStats'],
     }),
 
+    importFlights: builder.mutation<
+      ImportResult,
+      { journeys: { date?: string; legs: { from: string; to: string }[]; notes?: string }[] }
+    >({
+      query: (body) => ({
+        url: '/flights/import',
+        method: 'POST',
+        body,
+      }),
+      // An import creates journeys and, through them, country visits.
+      invalidatesTags: ['Flight', 'FlightStats', 'Visit'],
+    }),
+
     removeFlight: builder.mutation<void, number>({
       query: (id) => ({
         url: `/flights/${id}`,
@@ -70,6 +83,12 @@ export const flightsApi = apiSlice.injectEndpoints({
   }),
 });
 
+export interface ImportResult {
+  imported: number;
+  skipped: number;
+  failed: { row: number; route: string; reason: string }[];
+}
+
 export const {
   useSearchAirportsQuery,
   useLazySearchAirportsQuery,
@@ -79,6 +98,7 @@ export const {
   useGetFlightQuery,
   useAddFlightMutation,
   useUpdateFlightMutation,
+  useImportFlightsMutation,
   useRemoveFlightMutation,
   useGetFlightStatsQuery,
 } = flightsApi;
