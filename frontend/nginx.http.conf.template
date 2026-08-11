@@ -1,4 +1,4 @@
-# Production nginx for Travel Tracker (HTTP only).
+# Production nginx for Contrail (HTTP only).
 #
 # Used in two situations:
 #  - before certbot has issued a certificate, so the container can boot and

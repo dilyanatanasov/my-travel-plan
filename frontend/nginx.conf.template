@@ -1,4 +1,4 @@
-# Production nginx for Travel Tracker (HTTPS).
+# Production nginx for Contrail (HTTPS).
 #
 # Rendered from this template at container start by the official nginx image's
 # envsubst step. NGINX_ENVSUBST_FILTER is set to DOMAIN so only ${DOMAIN} is

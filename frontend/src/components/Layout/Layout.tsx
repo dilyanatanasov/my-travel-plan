@@ -1,6 +1,7 @@
 import { Outlet, Link } from 'react-router-dom';
 import AccountMenu from '../../features/auth/AccountMenu';
 import ShareMenu from '../../features/share/ShareMenu';
+import BrandMark from '../BrandMark';
 
 function Layout() {
   return (
@@ -17,14 +18,19 @@ function Layout() {
         style={{ paddingTop: 'env(safe-area-inset-top)' }}
       >
         <div className="px-3 sm:px-4 lg:px-6 h-14 sm:h-16 flex items-center justify-between gap-3">
-          <Link to="/" className="flex flex-col justify-center min-h-11 min-w-0">
-            <h1 className="text-lg sm:text-xl font-bold text-ink leading-tight">
-              Travel Tracker
-            </h1>
-            {/* Subtitle only where there is room for it */}
-            <p className="hidden lg:block text-xs text-ink-subtle leading-tight">
-              Track your journeys around the world
-            </p>
+          <Link to="/" className="flex items-center gap-2 min-h-11 min-w-0">
+            <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-brand-600 text-white flex-shrink-0">
+              <BrandMark className="w-5 h-5" />
+            </span>
+            <span className="flex flex-col justify-center min-w-0">
+              <h1 className="text-lg sm:text-xl font-bold text-ink leading-tight">
+                Contrail
+              </h1>
+              {/* Subtitle only where there is room for it */}
+              <p className="hidden lg:block text-xs text-ink-subtle leading-tight">
+                Every country you&rsquo;ve been to
+              </p>
+            </span>
           </Link>
           <div className="flex items-center gap-2 flex-shrink-0">
             {/*

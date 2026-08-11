@@ -1,7 +1,7 @@
 {
-  "name": "Travel Tracker",
-  "short_name": "Travels",
-  "description": "Track the countries you have visited and the flights you have taken.",
+  "name": "Contrail",
+  "short_name": "Contrail",
+  "description": "Every country you have been to. Every flight you have taken.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

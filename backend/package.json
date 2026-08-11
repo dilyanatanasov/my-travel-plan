@@ -1,7 +1,7 @@
 {
-  "name": "travel-tracker-backend",
+  "name": "contrail-backend",
   "version": "1.0.0",
-  "description": "Travel Tracker API - NestJS Backend",
+  "description": "Contrail API - NestJS Backend",
   "author": "",
   "private": true,
   "license": "UNLICENSED",

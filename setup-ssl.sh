@@ -1,5 +1,5 @@
 #!/bin/bash
-# Issue a Let's Encrypt certificate for Travel Tracker, then restart nginx so
+# Issue a Let's Encrypt certificate for Contrail, then restart nginx so
 # it picks up HTTPS.
 #
 # This is what makes the app installable as a PWA: browsers only register a

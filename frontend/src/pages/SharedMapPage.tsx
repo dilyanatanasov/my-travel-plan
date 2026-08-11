@@ -106,7 +106,7 @@ function SharedMapPage() {
             to="/"
             className="inline-flex items-center min-h-11 px-4 rounded-lg bg-brand-600 text-white font-medium hover:bg-brand-700"
           >
-            Go to Travel Tracker
+            Go to Contrail
           </Link>
         </div>
       </div>
@@ -208,7 +208,7 @@ function SharedMapPage() {
         <p className="text-center text-sm text-ink-muted py-4">
           Made with{' '}
           <Link to="/" className="text-brand-700 font-medium hover:underline">
-            Travel Tracker
+            Contrail
           </Link>
         </p>
       </main>

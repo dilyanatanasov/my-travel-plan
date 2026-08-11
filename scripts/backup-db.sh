@@ -1,5 +1,5 @@
 #!/bin/bash
-# Dump the Travel Tracker database to context/backups/.
+# Dump the Contrail database to context/backups/.
 #
 # Dev and production use *separate* Docker volumes (pgdata_dev vs pgdata), so
 # starting the production stack never touches development data — but nothing

@@ -8,7 +8,7 @@
  * cache API responses, because stale travel data presented as current is
  * worse than an honest failure.
  */
-const CACHE = 'travel-tracker-v1';
+const CACHE = 'contrail-v1';
 
 const APP_SHELL = [
   '/',
