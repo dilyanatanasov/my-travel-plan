@@ -22,7 +22,7 @@ import MapZoomControls from './MapZoomControls';
 import MapLegend from './MapLegend';
 import { useMapViewport } from './useMapViewport';
 import { useMapFocus } from '../../features/map/MapFocusContext';
-import { MAP } from '../../theme/mapColors';
+import { useMapColors } from '../../theme/mapColors';
 import { buildCountryDisplayMap } from './countryColors';
 import CountriesLayer from './CountriesLayer';
 import type { AggregatedRoute } from '../FlightMap/routeUtils';
@@ -69,6 +69,7 @@ function TravelMap() {
 
   // The map fills whatever the shell leaves it, so the viewBox follows the
   // measured container rather than a breakpoint preset.
+  const { map: colors } = useMapColors();
   const { ref: containerRef, viewport } = useMapViewport<HTMLDivElement>();
   const { width, height, scale, markerScale, isNarrow } = viewport;
 
@@ -335,7 +336,8 @@ function TravelMap() {
   return (
     <div
       ref={containerRef}
-      className="relative w-full h-full overflow-hidden bg-map-ocean"
+      className="relative w-full h-full overflow-hidden"
+      style={{ backgroundColor: colors.ocean }}
       onMouseMove={handleMouseMove}
       onPointerDownCapture={handlePointerDownCapture}
       onClickCapture={handleClickCapture}
@@ -368,7 +370,7 @@ function TravelMap() {
             y={-height * 2}
             width={width * 5}
             height={height * 5}
-            fill={MAP.ocean}
+            fill={colors.ocean}
             // Clearing is handled once at the container, so open water needs
             // no handler of its own.
             style={{ cursor: selectedJourney ? 'pointer' : 'default' }}

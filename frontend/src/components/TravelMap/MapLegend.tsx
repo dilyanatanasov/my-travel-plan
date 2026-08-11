@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { COUNTRY_LEGEND, MAP } from '../../theme/mapColors';
+import { useMapColors } from '../../theme/mapColors';
 
 interface MapLegendProps {
   showFlights: boolean;
@@ -22,10 +22,12 @@ interface MapLegendProps {
  * Offset above the mobile peek bar, mirroring the zoom controls on the right.
  */
 function MapLegend({ showFlights, stats }: MapLegendProps) {
+  const { map: colors, legend } = useMapColors();
+
   return (
     <div className="map-glass absolute bottom-20 lg:bottom-4 left-3 z-20 max-w-[55%] lg:max-w-none rounded-lg border shadow-lg px-3 py-2">
       <ul className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
-        {COUNTRY_LEGEND.map((entry) => (
+        {legend.map((entry) => (
           <li key={entry.label} className="flex items-center gap-1.5">
             <span
               className="w-3 h-3 rounded flex-shrink-0"
@@ -41,7 +43,7 @@ function MapLegend({ showFlights, stats }: MapLegendProps) {
             <li className="flex items-center gap-1.5">
               <span
                 className="w-5 h-0.5 rounded flex-shrink-0"
-                style={{ backgroundColor: MAP.route }}
+                style={{ backgroundColor: colors.route }}
                 aria-hidden="true"
               />
               <span className="map-glass-muted">Route</span>
@@ -50,8 +52,8 @@ function MapLegend({ showFlights, stats }: MapLegendProps) {
               <span
                 className="w-2.5 h-2.5 rounded-full flex-shrink-0 border-2"
                 style={{
-                  backgroundColor: MAP.airportFill,
-                  borderColor: MAP.airportRing,
+                  backgroundColor: colors.airportFill,
+                  borderColor: colors.airportRing,
                 }}
                 aria-hidden="true"
               />

@@ -97,20 +97,36 @@ select option {
     the map stay light — that contrast is what makes the map read as a canvas
     rather than as another panel.
   */
+  /* Light theme: pale glass over a pale map. */
   .map-glass {
-    background-color: rgb(15 23 42 / 0.82);
+    background-color: rgb(255 255 255 / 0.88);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
+    border-color: rgb(15 23 42 / 0.1);
+    color: rgb(15 23 42);
+  }
+
+  .map-glass-hover:hover {
+    background-color: rgb(15 23 42 / 0.06);
+  }
+
+  .map-glass-muted {
+    color: rgb(71 85 105);
+  }
+
+  /* Dark theme: the map is near-black, so white cards would read as holes
+     punched in it. */
+  .dark .map-glass {
+    background-color: rgb(15 23 42 / 0.82);
     border-color: rgb(255 255 255 / 0.12);
     color: rgb(226 232 240);
   }
 
-  .map-glass-hover:hover {
+  .dark .map-glass-hover:hover {
     background-color: rgb(255 255 255 / 0.08);
   }
 
-  /* Muted text inside dark glass. */
-  .map-glass-muted {
+  .dark .map-glass-muted {
     color: rgb(148 163 184);
   }
 
@@ -132,17 +148,29 @@ select option {
     display: none;
   }
 
-  /* Form controls inside dark glass need their own surface and chevron. */
+  /* Form controls inside map glass. */
   .map-glass-field {
+    background-color: rgb(255 255 255 / 0.75);
+    border-color: rgb(15 23 42 / 0.14);
+    color: rgb(15 23 42);
+  }
+
+  .map-glass-field option {
+    background-color: #ffffff;
+    color: #0f172a;
+  }
+
+  .dark .map-glass-field {
     background-color: rgb(255 255 255 / 0.06);
     border-color: rgb(255 255 255 / 0.14);
     color: rgb(241 245 249);
+    /* Lighter chevron, or it disappears against the dark field. */
     background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
   }
 
   /* Native option lists are drawn by the OS and ignore the control's colour,
      so they must be set explicitly or become white-on-white. */
-  .map-glass-field option {
+  .dark .map-glass-field option {
     background-color: #16213a;
     color: #f1f5f9;
   }

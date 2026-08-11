@@ -6,7 +6,7 @@ import CountriesLayer from '../components/TravelMap/CountriesLayer';
 import FlightRoutes from '../components/FlightMap/FlightRoutes';
 import AirportMarkers from '../components/FlightMap/AirportMarkers';
 import { useMapViewport } from '../components/TravelMap/useMapViewport';
-import { MAP, COUNTRY_LEGEND } from '../theme/mapColors';
+import { useMapColors } from '../theme/mapColors';
 import type { CountryDisplayInfo } from '../components/TravelMap/countryColors';
 import type { AggregatedRoute } from '../components/FlightMap/routeUtils';
 import type { Airport } from '../types';
@@ -27,6 +27,7 @@ function SharedMapPage() {
   });
   // The shared page is a document, not the shell, so the map keeps a fixed
   // aspect box; the hook measures whatever that box resolves to.
+  const { map: colors, legend } = useMapColors();
   const { ref: mapBoxRef, viewport } = useMapViewport<HTMLDivElement>();
   const { width, height, scale } = viewport;
 
@@ -139,7 +140,8 @@ function SharedMapPage() {
         <div className="bg-surface rounded-lg shadow-md overflow-hidden">
           <div
             ref={mapBoxRef}
-            className="w-full aspect-[4/3] md:aspect-[2/1] bg-map-ocean"
+            className="w-full aspect-[4/3] md:aspect-[2/1]"
+            style={{ backgroundColor: colors.ocean }}
           >
             <ComposableMap
               width={width}
@@ -153,7 +155,7 @@ function SharedMapPage() {
                 y={-height * 2}
                 width={width * 5}
                 height={height * 5}
-                fill={MAP.ocean}
+                fill={colors.ocean}
               />
               {/* No onCountryClick: this view is read-only. */}
               <CountriesLayer countryDisplayMap={countryDisplayMap} />
@@ -177,7 +179,7 @@ function SharedMapPage() {
           </div>
 
           <div className="px-4 py-2.5 border-t border-line flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs">
-            {COUNTRY_LEGEND.map((entry) => (
+            {legend.map((entry) => (
               <div key={entry.label} className="flex items-center gap-1.5">
                 <span
                   className="w-3 h-3 rounded flex-shrink-0"

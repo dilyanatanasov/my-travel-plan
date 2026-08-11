@@ -11,7 +11,7 @@ import FlightRoutes from '../FlightMap/FlightRoutes';
 import AirportMarkers from '../FlightMap/AirportMarkers';
 import CountriesLayer from './CountriesLayer';
 import { buildCountryDisplayMap } from './countryColors';
-import { MAP } from '../../theme/mapColors';
+import { useMapColors } from '../../theme/mapColors';
 
 export const EXPORT_WIDTH = 1600;
 export const EXPORT_HEIGHT = 800;
@@ -33,6 +33,7 @@ const EXPORT_SCALE = (EXPORT_WIDTH * 0.98) / (2 * Math.PI);
  * layout box, and the SVG needs real dimensions to serialise.
  */
 function MapExportCanvas() {
+  const { map: colors } = useMapColors();
   const { data: visits = [] } = useGetVisitsQuery();
   const { data: flights = [] } = useGetFlightsQuery();
 
@@ -64,7 +65,7 @@ function MapExportCanvas() {
             y={-EXPORT_HEIGHT}
             width={EXPORT_WIDTH * 3}
             height={EXPORT_HEIGHT * 3}
-            fill={MAP.ocean}
+            fill={colors.ocean}
           />
           <CountriesLayer countryDisplayMap={countryDisplayMap} />
           {routes.length > 0 && (

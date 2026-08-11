@@ -1,5 +1,5 @@
 import type { Visit, VisitType } from '../../types';
-import { MAP, MAP_HOVER, MAP_PRESSED } from '../../theme/mapColors';
+import type { MapPalette, MapStatePalette } from '../../theme/mapColors';
 
 export interface CountryDisplayInfo {
   isoCode: string;
@@ -16,55 +16,45 @@ export interface CountryDisplayInfo {
  * contrast alone — the previous green/orange pair was nearly identical in
  * greyscale and unreadable with red-green colour vision deficiency.
  */
-export const COUNTRY_COLORS = {
-  home: MAP.home,
-  trip: MAP.visited,
-  transit: MAP.transit,
-  flightOnly: MAP.route,
-  none: MAP.land,
-} as const;
-
-export const COUNTRY_COLORS_HOVER = {
-  home: MAP_HOVER.home,
-  trip: MAP_HOVER.visited,
-  transit: MAP_HOVER.transit,
-  flightOnly: MAP.routeHighlight,
-  none: MAP_HOVER.land,
-} as const;
-
-export const COUNTRY_COLORS_PRESSED = {
-  home: MAP_PRESSED.home,
-  trip: MAP_PRESSED.visited,
-  transit: MAP_PRESSED.transit,
-  flightOnly: MAP.routeHighlight,
-  none: MAP_PRESSED.land,
-} as const;
-
-export function getCountryColor(
+/** Maps a visit type onto the state palette entry that represents it. */
+function pick(
+  state: MapStatePalette,
   visitType: VisitType | 'none',
   isHome: boolean
 ): string {
-  if (isHome) return COUNTRY_COLORS.home;
-  if (visitType === 'none') return COUNTRY_COLORS.none;
-  return COUNTRY_COLORS[visitType];
+  if (isHome) return state.home;
+  if (visitType === 'none') return state.land;
+  if (visitType === 'home') return state.home;
+  if (visitType === 'transit') return state.transit;
+  return state.visited;
+}
+
+export function getCountryColor(
+  palette: MapPalette,
+  visitType: VisitType | 'none',
+  isHome: boolean
+): string {
+  if (isHome) return palette.home;
+  if (visitType === 'none') return palette.land;
+  if (visitType === 'transit') return palette.transit;
+  if (visitType === 'home') return palette.home;
+  return palette.visited;
 }
 
 export function getCountryHoverColor(
+  hover: MapStatePalette,
   visitType: VisitType | 'none',
   isHome: boolean
 ): string {
-  if (isHome) return COUNTRY_COLORS_HOVER.home;
-  if (visitType === 'none') return COUNTRY_COLORS_HOVER.none;
-  return COUNTRY_COLORS_HOVER[visitType];
+  return pick(hover, visitType, isHome);
 }
 
 export function getCountryPressedColor(
+  pressed: MapStatePalette,
   visitType: VisitType | 'none',
   isHome: boolean
 ): string {
-  if (isHome) return COUNTRY_COLORS_PRESSED.home;
-  if (visitType === 'none') return COUNTRY_COLORS_PRESSED.none;
-  return COUNTRY_COLORS_PRESSED[visitType];
+  return pick(pressed, visitType, isHome);
 }
 
 /**

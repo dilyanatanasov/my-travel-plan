@@ -7,7 +7,7 @@ import {
   getCountryPressedColor,
   type CountryDisplayInfo,
 } from './countryColors';
-import { MAP, MAP_HOVER, MAP_PRESSED } from '../../theme/mapColors';
+import { useMapColors } from '../../theme/mapColors';
 
 export const GEO_URL =
   'https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json';
@@ -30,6 +30,7 @@ function CountriesLayer({
   onCountryClick,
 }: CountriesLayerProps) {
   const isInteractive = Boolean(onCountryClick);
+  const { map: colors, hover, pressed } = useMapColors();
 
   return (
     <Geographies geography={GEO_URL}>
@@ -44,14 +45,14 @@ function CountriesLayer({
           const isHome = displayInfo?.isHome || false;
 
           const fillColor = showVisitColors
-            ? getCountryColor(visitType, isHome)
-            : MAP.land;
+            ? getCountryColor(colors, visitType, isHome)
+            : colors.land;
           const hoverColor = showVisitColors
-            ? getCountryHoverColor(visitType, isHome)
-            : MAP_HOVER.land;
+            ? getCountryHoverColor(hover, visitType, isHome)
+            : hover.land;
           const pressedColor = showVisitColors
-            ? getCountryPressedColor(visitType, isHome)
-            : MAP_PRESSED.land;
+            ? getCountryPressedColor(pressed, visitType, isHome)
+            : pressed.land;
 
           const clickable = isInteractive && Boolean(isoCode) && showVisitColors;
 
@@ -65,7 +66,7 @@ function CountriesLayer({
               style={{
                 default: {
                   fill: fillColor,
-                  stroke: MAP.countryBorder,
+                  stroke: colors.countryBorder,
                   strokeWidth: 0.5,
                   outline: 'none',
                   // Countries wash in and out instead of snapping, so adding
@@ -75,14 +76,14 @@ function CountriesLayer({
                 hover: {
                   // A read-only map should not suggest the countries respond.
                   fill: isInteractive ? hoverColor : fillColor,
-                  stroke: MAP.countryBorder,
+                  stroke: colors.countryBorder,
                   strokeWidth: 0.5,
                   outline: 'none',
                   cursor: clickable ? 'pointer' : 'default',
                 },
                 pressed: {
                   fill: isInteractive ? pressedColor : fillColor,
-                  stroke: MAP.countryBorder,
+                  stroke: colors.countryBorder,
                   strokeWidth: 0.5,
                   outline: 'none',
                 },

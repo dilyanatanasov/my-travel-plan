@@ -2,7 +2,7 @@ import { memo } from 'react';
 import { useMapContext, useZoomPanContext } from 'react-simple-maps';
 import type { Airport } from '../../types';
 import { getZoomAdjustedSize } from './routeUtils';
-import { MAP } from '../../theme/mapColors';
+import { useMapColors } from '../../theme/mapColors';
 
 interface AirportMarkersProps {
   airports: Airport[];
@@ -18,6 +18,7 @@ function AirportMarkers({
   highlightedAirports,
   sizeScale = 1,
 }: AirportMarkersProps) {
+  const { map: colors } = useMapColors();
   const { projection } = useMapContext();
   const { k: zoom } = useZoomPanContext();
 
@@ -61,7 +62,7 @@ function AirportMarkers({
                 cy={y}
                 r={radius + highlightOffset}
                 fill="none"
-                stroke={MAP.selected}
+                stroke={colors.selected}
                 strokeWidth={highlightStroke}
                 strokeOpacity={0.8}
               />
@@ -76,8 +77,8 @@ function AirportMarkers({
               cx={x}
               cy={y}
               r={radius}
-              fill={isHighlighted ? MAP.selected : MAP.airportFill}
-              stroke={isHighlighted ? MAP.selected : MAP.airportRing}
+              fill={isHighlighted ? colors.selected : colors.airportFill}
+              stroke={isHighlighted ? colors.selected : colors.airportRing}
               strokeWidth={strokeWidth * 1.5}
               style={{
                 transition: 'fill 0.15s',
@@ -91,7 +92,7 @@ function AirportMarkers({
                 textAnchor="middle"
                 fontSize={fontSize}
                 fontWeight="bold"
-                fill={MAP.airportRing}
+                fill={colors.label}
                 style={{ pointerEvents: 'none' }}
               >
                 {airport.iataCode}

@@ -1,7 +1,7 @@
 import { memo } from 'react';
 import { useMapContext, useZoomPanContext } from 'react-simple-maps';
 import { calculateArcPath, getZoomAdjustedSize } from './routeUtils';
-import { MAP } from '../../theme/mapColors';
+import { useMapColors } from '../../theme/mapColors';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
 import type { FlightJourney } from '../../types';
 
@@ -41,6 +41,7 @@ function JourneyHighlight({
   sizeScale = 1,
   onClear,
 }: JourneyHighlightProps) {
+  const { map: colors } = useMapColors();
   const { projection } = useMapContext();
   const { k: zoom } = useZoomPanContext();
   const prefersReducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)');
@@ -79,7 +80,7 @@ function JourneyHighlight({
             <path
               d={pathD}
               fill="none"
-              stroke={MAP.selectedGlow}
+              stroke={colors.selectedGlow}
               strokeWidth={width * 2.6}
               strokeLinecap="round"
               strokeOpacity={0.28}
@@ -89,7 +90,7 @@ function JourneyHighlight({
             <path
               d={pathD}
               fill="none"
-              stroke={MAP.selected}
+              stroke={colors.selected}
               strokeWidth={width}
               strokeLinecap="round"
               pointerEvents="none"
@@ -127,7 +128,7 @@ function JourneyHighlight({
                 />
                 <path
                   d={PLANE_PATH}
-                  fill={MAP.selected}
+                  fill={colors.selected}
                   stroke="#ffffff"
                   strokeWidth={1.2}
                   strokeLinejoin="round"

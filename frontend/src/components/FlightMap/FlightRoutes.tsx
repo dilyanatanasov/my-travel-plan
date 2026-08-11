@@ -2,7 +2,7 @@ import { memo } from 'react';
 import { useMapContext, useZoomPanContext } from 'react-simple-maps';
 import type { AggregatedRoute } from './routeUtils';
 import { calculateArcPath, getStrokeWidth, getZoomAdjustedSize } from './routeUtils';
-import { MAP } from '../../theme/mapColors';
+import { useMapColors } from '../../theme/mapColors';
 
 interface FlightRoutesProps {
   routes: AggregatedRoute[];
@@ -30,6 +30,7 @@ function FlightRoutes({
   onSelect,
   faded = false,
 }: FlightRoutesProps) {
+  const { map: colors } = useMapColors();
   const { projection } = useMapContext();
   const { k: zoom } = useZoomPanContext();
 
@@ -76,7 +77,7 @@ function FlightRoutes({
             <path
               d={pathD}
               fill="none"
-              stroke={isHovered ? MAP.routeHighlight : MAP.route}
+              stroke={isHovered ? colors.routeHighlight : colors.route}
               strokeWidth={strokeWidth}
               strokeLinecap="round"
               strokeOpacity={faded ? 0.1 : isHovered ? 1 : 0.65}
