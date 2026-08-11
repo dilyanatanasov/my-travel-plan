@@ -57,7 +57,7 @@ function YearBarChart({ byYear, strongestYear }: YearBarChartProps) {
         // per-year buttons that carry the actual values.
         className="flex items-end gap-2.5 h-28"
       >
-        {years.map((year) => {
+        {years.map((year, index) => {
           const isBusiest = year.year === busiestYear;
           // Floor the height so a single-flight year is still a visible bar
           // rather than a sliver that looks like a rendering artefact.
@@ -91,12 +91,23 @@ function YearBarChart({ byYear, strongestYear }: YearBarChartProps) {
                 pointer-events-none so it can never sit between the cursor and
                 the bar that summoned it.
               */}
+              {/*
+                Anchored to the nearest edge for the first and last bars.
+                Centred on a column that is itself against the panel wall, the
+                tooltip hangs outside the card and gets clipped.
+              */}
               <span
                 role="tooltip"
-                className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 z-10
+                className={`pointer-events-none absolute bottom-full mb-1.5 z-10
                   whitespace-nowrap rounded-lg bg-panel-accent px-2 py-1 text-[11px] font-medium text-white
                   opacity-0 shadow-md transition-opacity
-                  group-hover:opacity-100 group-focus-visible:opacity-100"
+                  group-hover:opacity-100 group-focus-visible:opacity-100 ${
+                  index === 0
+                    ? 'left-0'
+                    : index === years.length - 1
+                      ? 'right-0'
+                      : 'left-1/2 -translate-x-1/2'
+                }`}
               >
                 {year.flights} {year.flights === 1 ? 'flight' : 'flights'}
                 <span className="text-white/70">
