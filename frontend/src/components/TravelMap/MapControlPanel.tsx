@@ -29,10 +29,10 @@ interface MapControlPanelProps {
 
 // 44px minimum touch target; text-base stops iOS zooming the page on focus.
 const selectClass =
-  'select-field min-h-11 w-full text-base sm:text-sm border border-line rounded-lg pl-3 ' +
-  'bg-surface text-ink focus:outline-none focus:ring-2 focus:ring-brand-500';
+  'select-field map-glass-field min-h-11 w-full text-base sm:text-sm border rounded-lg pl-3 ' +
+  'focus:outline-none focus:ring-2 focus:ring-brand-400';
 
-const fieldLabelClass = 'block text-xs font-medium text-gray-500 mb-1';
+const fieldLabelClass = 'block text-xs font-medium map-glass-muted mb-1';
 
 /** Checkbox stays 16px visually, but the whole 44px-tall label is the hit area. */
 function ToggleRow({
@@ -47,14 +47,14 @@ function ToggleRow({
   return (
     // inline-flex so the labels size to their text and wrap naturally instead
     // of being squeezed into equal grid columns.
-    <label className="inline-flex items-center gap-2 min-h-11 px-2 rounded-lg cursor-pointer hover:bg-gray-50">
+    <label className="map-glass-hover inline-flex items-center gap-2 min-h-11 px-2 rounded-lg cursor-pointer">
       <input
         type="checkbox"
         checked={checked}
         onChange={onChange}
         className="w-4 h-4 flex-shrink-0 text-brand-600 rounded focus:ring-brand-500"
       />
-      <span className="text-sm text-gray-700 select-none">{children}</span>
+      <span className="text-sm text-slate-200 select-none">{children}</span>
     </label>
   );
 }
@@ -95,18 +95,18 @@ function MapControlPanel({
   };
 
   return (
-    <div className="rounded-xl border border-line bg-surface/95 backdrop-blur shadow-lg overflow-hidden flex flex-col">
+    <div className="map-glass rounded-xl border shadow-xl overflow-hidden flex flex-col">
       {/* Header stays put; only the content below it scrolls. */}
       <button
         type="button"
         onClick={() => onOpenChange(!isOpen)}
         aria-expanded={isOpen}
         aria-controls="map-control-panel"
-        className="flex-shrink-0 w-full flex items-center justify-between gap-2 min-h-12 px-4 py-2 text-left hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-brand-500"
+        className="map-glass-hover flex-shrink-0 w-full flex items-center justify-between gap-2 min-h-12 px-4 py-2 text-left focus:outline-none focus:ring-2 focus:ring-inset focus:ring-brand-400"
       >
-        <span className="flex items-center gap-2 text-sm font-medium text-gray-700">
+        <span className="flex items-center gap-2 text-sm font-medium text-slate-100">
           <svg
-            className="w-4 h-4 text-gray-400"
+            className="w-4 h-4 text-slate-400"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -132,7 +132,7 @@ function MapControlPanel({
           )}
         </span>
         <svg
-          className={`w-5 h-5 text-gray-400 transition-transform flex-shrink-0 ${
+          className={`w-5 h-5 text-slate-400 transition-transform flex-shrink-0 ${
             isOpen ? 'rotate-180' : ''
           }`}
           fill="none"
@@ -155,7 +155,7 @@ function MapControlPanel({
         // zoom controls.
         <div
           id="map-control-panel"
-          className="flex-1 min-h-0 overflow-y-auto overscroll-contain scrollbar-thin max-h-[38vh] sm:max-h-[42vh] lg:max-h-[55vh] px-4 pb-3 space-y-3 border-t border-line"
+          className="flex-1 min-h-0 overflow-y-auto overscroll-contain scrollbar-thin max-h-[38vh] sm:max-h-[42vh] lg:max-h-[55vh] px-4 pb-3 space-y-3 border-t border-white/10"
         >
           {/* Layers + home country, each on its own full-width row: sharing a
               two-column grid left the toggle labels about 76px wide. */}
@@ -209,7 +209,7 @@ function MapControlPanel({
 
           {/* Flight filters, only meaningful when routes are shown */}
           {settings.showFlights && (
-            <div className="space-y-2 pt-2 border-t border-gray-100">
+            <div className="space-y-2 pt-2 border-t border-white/10">
               {/*
                 Two grids, not one five-across row. The panel now floats over
                 the map at a fixed ~30rem, so five columns left every select
@@ -353,8 +353,8 @@ function MapControlPanel({
                         aria-pressed={isActive}
                         className={`min-h-11 px-3 text-sm rounded-lg border transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500 ${
                           isActive
-                            ? 'bg-brand-600 text-white border-brand-600'
-                            : 'bg-white text-gray-700 border-gray-300 hover:border-brand-400'
+                            ? 'bg-brand-500 text-white border-brand-500'
+                            : 'map-glass-field hover:border-brand-400'
                         }`}
                       >
                         {continent}

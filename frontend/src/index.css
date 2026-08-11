@@ -75,6 +75,46 @@ body {
   with real breathing room, identical everywhere.
 */
 @layer components {
+  /*
+    Chrome that floats over the dark map canvas: the filter card, legend, zoom
+    buttons, journey card, peek bar.
+    White cards on near-black read as holes punched in the map. Dark glass
+    keeps the map continuous and lets it show through. Panels *docked beside*
+    the map stay light — that contrast is what makes the map read as a canvas
+    rather than as another panel.
+  */
+  .map-glass {
+    background-color: rgb(15 23 42 / 0.82);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-color: rgb(255 255 255 / 0.12);
+    color: rgb(226 232 240);
+  }
+
+  .map-glass-hover:hover {
+    background-color: rgb(255 255 255 / 0.08);
+  }
+
+  /* Muted text inside dark glass. */
+  .map-glass-muted {
+    color: rgb(148 163 184);
+  }
+
+  /* Form controls inside dark glass need their own surface and chevron. */
+  .map-glass-field {
+    background-color: rgb(255 255 255 / 0.06);
+    border-color: rgb(255 255 255 / 0.14);
+    color: rgb(241 245 249);
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
+  }
+
+  /* Native option lists are drawn by the OS and ignore the control's colour,
+     so they must be set explicitly or become white-on-white. */
+  .map-glass-field option {
+    background-color: #16213a;
+    color: #f1f5f9;
+  }
+
   .select-field {
     -webkit-appearance: none;
     -moz-appearance: none;

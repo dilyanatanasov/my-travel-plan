@@ -10,9 +10,9 @@ interface MapZoomControlsProps {
 }
 
 const buttonClass =
-  'w-11 h-11 flex items-center justify-center bg-surface text-ink-muted ' +
-  'hover:bg-surface-sunken focus:outline-none focus:ring-2 focus:ring-inset ' +
-  'focus:ring-brand-500 disabled:opacity-40 disabled:hover:bg-surface';
+  'w-11 h-11 flex items-center justify-center map-glass map-glass-hover ' +
+  'focus:outline-none focus:ring-2 focus:ring-inset focus:ring-brand-400 ' +
+  'disabled:opacity-35';
 
 /**
  * Explicit zoom controls.
@@ -33,7 +33,7 @@ function MapZoomControls({
 
   return (
     // bottom-20 on mobile clears the peek bar pinned to the canvas floor.
-    <div className="absolute bottom-20 lg:bottom-4 right-3 z-20 flex flex-col rounded-lg overflow-hidden shadow-md border border-line divide-y divide-line">
+    <div className="absolute bottom-20 lg:bottom-4 right-3 z-20 flex flex-col rounded-lg overflow-hidden shadow-lg border border-white/10 divide-y divide-white/10">
       <button
         type="button"
         onClick={onZoomIn}

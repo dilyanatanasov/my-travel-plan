@@ -23,7 +23,7 @@ interface MapLegendProps {
  */
 function MapLegend({ showFlights, stats }: MapLegendProps) {
   return (
-    <div className="absolute bottom-20 lg:bottom-4 left-3 z-20 max-w-[55%] lg:max-w-none rounded-lg bg-surface/95 backdrop-blur border border-line shadow-md px-3 py-2">
+    <div className="map-glass absolute bottom-20 lg:bottom-4 left-3 z-20 max-w-[55%] lg:max-w-none rounded-lg border shadow-lg px-3 py-2">
       <ul className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
         {COUNTRY_LEGEND.map((entry) => (
           <li key={entry.label} className="flex items-center gap-1.5">
@@ -32,7 +32,7 @@ function MapLegend({ showFlights, stats }: MapLegendProps) {
               style={{ backgroundColor: entry.color }}
               aria-hidden="true"
             />
-            <span className="text-ink-muted">{entry.label}</span>
+            <span className="map-glass-muted">{entry.label}</span>
           </li>
         ))}
 
@@ -44,7 +44,7 @@ function MapLegend({ showFlights, stats }: MapLegendProps) {
                 style={{ backgroundColor: MAP.route }}
                 aria-hidden="true"
               />
-              <span className="text-ink-muted">Route</span>
+              <span className="map-glass-muted">Route</span>
             </li>
             <li className="flex items-center gap-1.5">
               <span
@@ -55,14 +55,14 @@ function MapLegend({ showFlights, stats }: MapLegendProps) {
                 }}
                 aria-hidden="true"
               />
-              <span className="text-ink-muted">Airport</span>
+              <span className="map-glass-muted">Airport</span>
             </li>
           </>
         )}
       </ul>
 
       {/* Counts on desktop only — the mobile peek bar already carries them. */}
-      <p className="hidden lg:block mt-1.5 pt-1.5 border-t border-line text-[11px] text-ink-subtle">
+      <p className="hidden lg:block mt-1.5 pt-1.5 border-t border-white/10 text-[11px] text-slate-400">
         {stats.visitedCount} visited · {stats.transitCount} transit
         {showFlights &&
           ` · ${stats.flightRoutes} routes · ${stats.airports} airports`}

@@ -54,20 +54,20 @@ function SelectedJourneyCard({ journey, onClose }: SelectedJourneyCardProps) {
       // The card sits inside the map, whose container clears the selection on
       // any unhandled click. Without this, reading the card would dismiss it.
       onClick={(event) => event.stopPropagation()}
-      className="absolute z-20 left-3 right-3 sm:right-auto sm:max-w-sm bottom-20 lg:bottom-4 lg:left-auto lg:right-20 rounded-xl border border-line bg-surface/95 backdrop-blur shadow-lg px-3 py-2.5"
+      className="map-glass absolute z-20 left-3 right-3 sm:right-auto sm:max-w-sm bottom-20 lg:bottom-4 lg:left-auto lg:right-20 rounded-xl border shadow-xl px-3 py-2.5"
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="font-mono text-sm font-semibold text-ink break-words leading-snug">
+          <p className="font-mono text-sm font-semibold text-slate-100 break-words leading-snug">
             {route}
           </p>
-          <p className="text-xs text-ink-muted mt-0.5">
+          <p className="text-xs map-glass-muted mt-0.5">
             {date ? `${date} · ` : ''}
             {legs.length} {legs.length === 1 ? 'flight' : 'flights'} ·{' '}
             {Math.round(distance).toLocaleString()} km
           </p>
           {journey.notes && (
-            <p className="text-xs text-ink-subtle mt-1 line-clamp-2">
+            <p className="text-xs text-slate-400 mt-1 line-clamp-2">
               {journey.notes}
             </p>
           )}
@@ -76,7 +76,7 @@ function SelectedJourneyCard({ journey, onClose }: SelectedJourneyCardProps) {
           type="button"
           onClick={onClose}
           aria-label="Clear selected journey"
-          className="flex-shrink-0 w-9 h-9 -mr-1 -mt-1 flex items-center justify-center rounded-lg text-ink-subtle hover:bg-surface-sunken focus:outline-none focus:ring-2 focus:ring-brand-500"
+          className="map-glass-hover flex-shrink-0 w-9 h-9 -mr-1 -mt-1 flex items-center justify-center rounded-lg text-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-400"
         >
           <svg
             className="w-4 h-4"

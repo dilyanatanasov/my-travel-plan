@@ -77,7 +77,9 @@
       "Bash(./scripts/backup-db.sh dev *)",
       "Bash(docker volume *)",
       "Bash(docker rmi *)",
-      "Bash(rm -f ui-fixes.png)"
+      "Bash(rm -f ui-fixes.png)",
+      "Bash(sed -i \"s/  land: '#2f3f57',/  land: '#38496a',/\" ../../theme/mapColors.ts)",
+      "Bash(sed -i \"s/  land: '#3b4d69',/  land: '#45587c',/\" ../../theme/mapColors.ts)"
     ],
     "deny": [],
     "ask": []

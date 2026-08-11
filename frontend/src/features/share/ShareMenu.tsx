@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import {
   useGetShareStatusQuery,
   useEnableShareMutation,
@@ -6,6 +6,10 @@ import {
 } from './shareApi';
 import { useToast } from '../../components/Toast/ToastProvider';
 import { renderMapPng, downloadBlob } from '../../utils/exportMapImage';
+import {
+  renderMapVideo,
+  isVideoExportSupported,
+} from '../../utils/exportMapVideo';
 import MapExportCanvas, {
   EXPORT_SVG_ID,
 } from '../../components/TravelMap/MapExportCanvas';
@@ -16,6 +20,10 @@ import { useAuth } from '../auth/authApi';
 function ShareMenu() {
   const [isOpen, setIsOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [videoProgress, setVideoProgress] = useState<number | null>(null);
+  // Safari and iOS cannot record WebM, so the option is hidden there rather
+  // than offered and then failing.
+  const canExportVideo = useMemo(() => isVideoExportSupported(), []);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const { user } = useAuth();
@@ -78,6 +86,55 @@ function ShareMenu() {
     }
   };
 
+  /** Title and stat line shared by the image and the video. */
+  const buildCaption = useCallback(() => {
+    const visited = visits.filter((visit) => {
+      const type = visit.visitType || 'trip';
+      return type === 'trip' || type === 'home';
+    }).length;
+
+    const stats = [`${visited} countries`];
+    if (flightStats?.totalFlights) {
+      stats.push(`${flightStats.totalFlights} flights`);
+      stats.push(
+        `${Math.round(flightStats.totalDistanceKm).toLocaleString()} km`
+      );
+    }
+    return {
+      title: user?.displayName
+        ? `${user.displayName}'s travel map`
+        : 'My travel map',
+      stats,
+    };
+  }, [visits, flightStats, user]);
+
+  const handleDownloadVideo = async () => {
+    const svg = document.getElementById(EXPORT_SVG_ID) as SVGSVGElement | null;
+    if (!svg) {
+      showToast('The map is not ready yet — try again in a moment', {
+        tone: 'error',
+      });
+      return;
+    }
+
+    setIsExporting(true);
+    setVideoProgress(0);
+    try {
+      const blob = await renderMapVideo(svg, buildCaption(), setVideoProgress);
+      downloadBlob(blob, 'travel-map.webm');
+      setIsOpen(false);
+      showToast('Video downloaded', { tone: 'success' });
+    } catch (error) {
+      showToast(
+        error instanceof Error ? error.message : 'Could not create the video',
+        { tone: 'error' }
+      );
+    } finally {
+      setIsExporting(false);
+      setVideoProgress(null);
+    }
+  };
+
   const handleDownload = async () => {
     // The off-screen export canvas, not the visible map: the visible one
     // overflows its container by design, so exporting it cropped the world.
@@ -93,25 +150,7 @@ function ShareMenu() {
 
     setIsExporting(true);
     try {
-      const visited = visits.filter((visit) => {
-        const type = visit.visitType || 'trip';
-        return type === 'trip' || type === 'home';
-      }).length;
-
-      const stats = [`${visited} countries`];
-      if (flightStats?.totalFlights) {
-        stats.push(`${flightStats.totalFlights} flights`);
-        stats.push(
-          `${Math.round(flightStats.totalDistanceKm).toLocaleString()} km`
-        );
-      }
-
-      const blob = await renderMapPng(svg, {
-        title: user?.displayName
-          ? `${user.displayName}'s travel map`
-          : 'My travel map',
-        stats,
-      });
+      const blob = await renderMapPng(svg, buildCaption());
       downloadBlob(blob, 'travel-map.png');
       setIsOpen(false);
       showToast('Image downloaded', { tone: 'success' });
@@ -168,6 +207,25 @@ function ShareMenu() {
           role="menu"
           className="absolute right-0 mt-2 w-72 bg-white border border-line rounded-lg shadow-lg py-1 z-50"
         >
+          {canExportVideo && (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={handleDownloadVideo}
+              disabled={isExporting}
+              className="w-full text-left px-3 py-3 text-sm text-ink hover:bg-gray-50 disabled:opacity-50"
+            >
+              <span className="font-medium">
+                {videoProgress !== null
+                  ? `Recording… ${Math.round(videoProgress * 100)}%`
+                  : 'Download as video'}
+              </span>
+              <span className="block text-xs text-ink-subtle mt-0.5">
+                Planes flying your routes, ~10s
+              </span>
+            </button>
+          )}
+
           <button
             type="button"
             role="menuitem"
