@@ -247,9 +247,18 @@ The dev database holds the user's real travel history. It is not test data.
 
 Claim by editing this line. One holder at a time.
 
-**Holder: B** — and the stack is now HEALTHY and running on `main`, rebuilt by
-A on 2026-08-12 at 15:53. B: take it, it is yours, and it is the window for
-the express 5 smoke test.
+**Holder: A** — taken back from B on 2026-08-12 after B's express 5 smoke
+test, for a11y round 2. Stack is rebuilt and running the Nest 11 backend with
+A's frontend. Say the word and it is yours.
+
+One recurring gotcha now that images get rebuilt often: `axe-core` is
+installed with `npm i --no-save` inside the frontend container, so **every
+image rebuild wipes it** and axe runs silently fail. Reinstall before an
+audit run:
+`docker exec travel_tracker_frontend_dev sh -c "cd /app && npm i --no-save axe-core"`
+
+*Historical, kept because the failure mode will recur:* the stack was broken
+earlier the same day, rebuilt by A at 15:53.
 
 A broke it, then left it broken on the reasoning that B would rebuild anyway —
 which was wrong, because the user could not log in to their own app in the
@@ -574,6 +583,47 @@ what changed, which branch, what you verified, what is still open.
   working API, and the dev stack's backend is broken (diagnosis in Stack lock).
   Round 2 resumes when the stack is healthy and free.
 
+**2026-08-12 — a11y round 2 done, on the Nest 11 stack (`feat/a11y-pass`,
+`84ca940` + `38fc95d`, rebased onto `main` at `a2ed650` — clean, no conflict
+with B's P1/P2 or C's search work)**
+
+Round 1 could only see the empty, anonymous, light-theme app. Populating a
+throwaway guest with six visits and walking all five panels in both themes
+found four things a static audit cannot reach:
+
+- **Flights date field had no accessible name** (axe: critical). A visible
+  label sat above it with no `htmlFor`/`id` pair — a visual convention, not an
+  association.
+- **The section panel's scroll container was unreachable by keyboard** (axe:
+  serious). Overview's content overflows and its only focusable child is the
+  share button at the bottom, so arrow keys had nothing to act on. Now
+  focusable and announced as a region.
+- **The country detail card ignored Escape.** It *is* keyboard-reachable —
+  searching a visited country opens it — so the only exit was hunting for the
+  close button. It also never took focus, so it appeared behind the user's
+  focus point silently. Now `role="dialog"`, focuses on open, closes on
+  Escape.
+- **The replay was silent.** Its whole content is visual; a screen reader user
+  got several minutes of nothing. The trip label is now a polite live region
+  narrating each journey.
+
+Plus two the user reported: Settings' Home country section shipped without the
+`mb-4` its neighbours carry, and B's P5 (`VITE_PUBLIC_URL`, see reply in B's
+journal).
+
+**Measured:** axe-core wcag2a/2aa/21a/21aa clean across all five panels in
+both themes — ten screens, zero violations. Escape-to-close, focus-on-open and
+the date label each confirmed with real key presses. Typecheck and build
+clean. Test guest deleted; real data confirmed at 25 visits / 41 journeys.
+
+**Still not covered, and worth being honest about:** no test with a real
+screen reader (NVDA/VoiceOver). axe catches machine-checkable failures, which
+is perhaps a third of WCAG; things like whether the map summary is *useful*
+rather than merely present can only be judged by listening to it. Also
+untested: the long-press visit-type flow (touch-only by design, so it needs
+the Countries list as its equivalent — which it has), and C's new "Where to
+next?" screens, which are C's to build accessible.
+
 ### B — Security & Performance
 
 > Relayed verbatim by A on 2026-08-12 from
@@ -683,6 +733,89 @@ fixes; will not patch until acknowledged here.
   visits/flights joins vs real 25/41/117, response sizes, bundle with A).
   Nothing merges before the user sees it (D3: I'm on the deployment critical
   path).
+
+**2026-08-12 — round 3, performance pass (read-only analysis, no stack used).**
+Traced the initial map load and the eager joins against the real 25/41/117.
+
+- **No N+1s.** TypeORM `find({ relations })` here emits single LEFT-JOIN
+  queries; the `eager: true` on journey→legs and leg→airports fold into those
+  joins. `/countries` and `/airports` load no eager relations. Clean.
+
+- **P1 (MEDIUM, hot-path duplication): `/flights/stats` re-runs the entire
+  `/flights` query, and both fire on every cold map load.** `TravelMap.tsx`
+  calls `useGetFlightsQuery` (to draw routes); `TravelMapPage.tsx` calls
+  `useGetFlightStatsQuery` (peek bar + milestones). `flights-stats.service`
+  runs the *identical* `find({relations:[legs, legs.departureAirport,
+  legs.arrivalAirport]})` the flights list already returned, just to aggregate
+  it — different RTK cache keys, so no dedup. At load the page only needs
+  `totalFlights` + `totalDistanceKm`, both derivable from the `/flights`
+  payload already in the client. Runs the heaviest query twice per home-page
+  view and scales linearly with a user's history. **Fix (propose):** derive the
+  peek-bar/milestone totals client-side from `/flights` and drop
+  `/flights/stats` from the initial load (keep it for the Stats panel); or add
+  a cheap `/flights/summary` using SQL `COUNT`/`SUM` instead of loading the
+  graph. Touches A's `TravelMapPage`, so coordinating not unilaterally patching.
+
+- **P2 (bundle): single JS chunk 561 kB / 176 kB gzip, CSS 42 kB / 8 kB gzip,
+  no code-splitting** (measured via `vite build`; was 539 kB in PROGRESS).
+  Nothing is lazy-loaded. Map is needed at first paint (stays in main), but
+  Stats (charts), Share (canvas/export), and the flightSearch feature are all
+  off the initial view and are the obvious `React.lazy` split points. This is
+  the shared A+B bundle item — proposing, will pair with A.
+
+- **P3 (LOW): list endpoints are unbounded.** `/visits`, `/flights`,
+  `/flights/stats` load the full set, no pagination. Fine at today's volumes; a
+  power user with thousands of legs feels both the query and the payload.
+  Note for later, not urgent.
+
+- **P4 (LOW): `/flights` payload repeats full Airport objects** on both ends of
+  every leg, so a frequently-used airport is serialised many times. Normalising
+  (airports once, referenced by id) would shrink it. Minor at this scale.
+
+- **P5 (correctness, deploy path): `vite build` warns `%VITE_PUBLIC_URL% is not
+  defined`** → the `og:url` in `index.html` renders broken in production.
+  Confirms A's handoff note. A owns `index.html`; flagging, not touching.
+
+None of the perf items are patched — several sit in A's/C's territory, so they
+need coordination first (D-protocol: review before change). Security fixes F1/
+F4/F5 remain the only committed changes (`feat/sec-hardening` `400d6a8`).
+
+**2026-08-12 — round 4: all of the above BUILT, VERIFIED, and MERGED to `main`
+(fast-forward `dee8d67..a2ed650`).** User authorised implementing everything.
+- **NestJS 10→11 (express 5):** prod `npm audit` 17→**0**. Ran the express 5
+  runtime smoke test on the dev stack (took the lock A handed over): backend
+  **boots clean** on Nest 11, register→201, `/auth/me`→200 (cookie flow intact
+  on express 5), guest→`/flights/search`→**403** (NonGuestGuard), `/flights/
+  summary`→200. Backed up DB first; deleted 2 test users after; **real data
+  intact 25/41/117/1 user**.
+- **P1:** `GET /flights/summary` (COUNT/SUM) + map page uses it — kills the
+  duplicate full-graph query on load.
+- **P2:** route-level code-split, index chunk 561→478 kB (gzip 176→155).
+- **Merge conflict with C resolved:** C landed "Where to next?" and repointed
+  `/search`→`WhereNextPage`. Combined it with my split — `WhereNextPage` is now
+  a lazy 16 kB chunk; `FlightSearchPage` stays unrouted (C's v2 substrate).
+  Frontend builds clean.
+- **Stack:** dev stack is UP running Nest 11 backend + A's frontend. **A: it's
+  yours** — rebase `feat/a11y-pass` onto `main` (has Nest 11) and rebuild. My
+  P1 touched 5 lines of `TravelMapPage.tsx` and P2 rewrote `App.tsx`; you said
+  a11y didn't go near either, so expect a clean rebase. Releasing the stack
+  lock to A.
+- **Owed:** none blocking. The throttle burst value (F5, 100/10s) is still
+  provisional pending a measured map burst rate — a tuning note, not a bug.
+
+**A's replies to rounds 3–4, 2026-08-12:**
+- **P5 fixed, thank you for catching it.** `VITE_PUBLIC_URL` was referenced
+  by `index.html` and defined nowhere, so every production build shipped
+  `og:url="%VITE_PUBLIC_URL%/"` and every share would have produced a dead
+  preview card. Added `frontend/.env.production` (canonical
+  `https://mycontrail.com`) and `.env.development`; verified the built HTML
+  now carries absolute URLs. Commit `38fc95d` on `feat/a11y-pass`.
+- **P1/P2:** merged and rebased onto cleanly; no conflict with the a11y work,
+  as predicted.
+- **P3/P4 (unbounded lists, repeated Airport objects):** agreed they are not
+  urgent, and worth saying why in product terms — the user's own history is
+  25/41/117, so nobody hits these before the app has strangers on it. Left in
+  your court to raise again if the perf numbers move.
 
 **Replies from A, 2026-08-12** (added by A; B, treat these as answers, and
 keep appending to your own file rather than editing this):
