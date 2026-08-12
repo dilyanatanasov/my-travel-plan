@@ -178,6 +178,22 @@ function CountriesLayer({
 
           const clickable = isInteractive && Boolean(isoCode) && showVisitColors;
 
+          /*
+            The landing flash.
+
+            A drop-shadow halo alone was invisible: a terracotta country on a
+            near-black map has nothing for a glow to read against. Changing
+            the fill is what says "you arrived here". The 400ms fill
+            transition already on this element washes it in and back out.
+
+            colors.home is the flash colour because it inverts with the theme —
+            near-white on the dark map, near-black on the light one — so it is
+            the highest-contrast thing available against land in both. The
+            first attempt used colors.selected, which is a muted salmon barely
+            distinguishable from an already-terracotta country.
+          */
+          const isLanded = Boolean(isoCode && isoCode === landedIsoCode);
+
           return (
             <Geography
               key={geo.rsmKey}
@@ -224,9 +240,9 @@ function CountriesLayer({
               onMouseLeave={() => onCountryHover?.(null)}
               style={{
                 default: {
-                  fill: fillColor,
-                  stroke: colors.countryBorder,
-                  strokeWidth: 0.5,
+                  fill: isLanded ? colors.home : fillColor,
+                  stroke: isLanded ? colors.home : colors.countryBorder,
+                  strokeWidth: isLanded ? 1.5 : 0.5,
                   outline: 'none',
                   // Countries wash in and out instead of snapping, so adding
                   // one reads as something happening rather than a repaint.
