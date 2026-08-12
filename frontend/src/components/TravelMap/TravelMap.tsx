@@ -30,6 +30,8 @@ import { buildCountryDisplayMap } from './countryColors';
 import CountriesLayer from './CountriesLayer';
 import CountryDetailCard from './CountryDetailCard';
 import MapSearch, { type SearchTarget } from './MapSearch';
+import { useJourneyReplay } from './useJourneyReplay';
+import ReplayControl from './ReplayControl';
 import type { AggregatedRoute } from '../FlightMap/routeUtils';
 import { fitToPoints, type LonLat } from './fitBounds';
 
@@ -367,6 +369,13 @@ function TravelMap() {
     [countryByIsoCode, visitByCountryId, addVisitForCountry, selectedJourney]
   );
 
+  /*
+    Replay draws one journey at a time, in date order, reusing the same
+    JourneyHighlight the map already uses for a selected route — so the plane,
+    the arc and the direction all come for free.
+  */
+  const replay = useJourneyReplay(flights);
+
   const openCountry = useMemo(() => {
     if (!openCountryIso) return null;
     const countryId = countryByIsoCode.get(openCountryIso);
@@ -558,9 +567,9 @@ function TravelMap() {
                 sizeScale={markerScale}
                 faded={Boolean(selectedJourney)}
               />
-              {selectedJourney && (
+              {(replay.current ?? selectedJourney) && (
                 <JourneyHighlight
-                  journey={selectedJourney}
+                  journey={replay.current ?? selectedJourney!}
                   sizeScale={markerScale}
                   onClear={clearSelection}
                 />
@@ -623,6 +632,13 @@ function TravelMap() {
         a world map.
       */}
       <MapLegend showFlights={settings.showFlights} stats={stats} />
+
+      {/* Bottom-centre on desktop, where the legend and zoom stack sit in the
+          corners. On a phone the legend spans most of the width, so this has to
+          clear it vertically rather than horizontally. */}
+      <div className="absolute z-20 bottom-36 lg:bottom-4 left-1/2 -translate-x-1/2">
+        <ReplayControl replay={replay} />
+      </div>
 
       <MapZoomControls
         zoom={zoom}
