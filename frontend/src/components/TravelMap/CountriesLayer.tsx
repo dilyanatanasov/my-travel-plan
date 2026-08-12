@@ -198,10 +198,6 @@ function CountriesLayer({
             <Geography
               key={geo.rsmKey}
               geography={geo}
-              /* Keyed by the landing too, so re-landing in the same country
-                 restarts the animation instead of being ignored as an
-                 unchanged class. */
-              className={isoCode && isoCode === landedIsoCode ? 'country-landed' : undefined}
               onClick={() => {
                 // The hold already acted; do not also treat it as a tap.
                 if (pressFiredRef.current) {

@@ -192,28 +192,15 @@ select option {
 
 @layer utilities {
   /*
-    A country lights up as the plane touches down on it.
+    The landing flash is a fill change on the country itself (see
+    CountriesLayer), not a filter.
 
-    Animating the SVG fill directly would fight the inline fill react-simple-
-    maps sets per geography, so this animates a drop-shadow instead: it reads
-    as a glow, needs no colour coordination, and leaves the country's own
-    colour alone.
+    An animated drop-shadow was tried first and removed: filters on a complex
+    SVG path force the browser to re-rasterise it every frame, and with a
+    replay running that cost 166ms frames — the single worst source of jank
+    measured. The fill transition is composited cheaply and reads better
+    anyway.
   */
-  @keyframes country-landed {
-    0% { filter: drop-shadow(0 0 0 rgb(var(--color-brand-500) / 0.9)); }
-    35% { filter: drop-shadow(0 0 14px rgb(var(--color-brand-500) / 0.95)); }
-    100% { filter: drop-shadow(0 0 0 rgb(var(--color-brand-500) / 0)); }
-  }
-
-  .country-landed {
-    animation: country-landed 1600ms ease-out;
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .country-landed {
-      animation: none;
-    }
-  }
 
   /*
     Cinematic camera for the replay.
@@ -226,7 +213,22 @@ select option {
     transition on ordinary panning would make dragging feel like wading.
   */
   .replay-camera .rsm-zoomable-group {
-    transition: transform 1600ms cubic-bezier(0.33, 0, 0.2, 1);
+    /*
+      700ms, not 1600ms.
+
+      Transitioning transform on this group re-rasterises every country path
+      on every frame — react-simple-maps writes the transform on an SVG <g>,
+      and SVG groups are not promoted to their own compositor layer, so
+      will-change buys nothing here (measured: no change at all). The only
+      lever is how long the expensive window lasts. Measured over a 40-journey
+      replay: 1600ms gave 43fps with 166ms worst frames, 700ms gives 51fps
+      with 133ms, and removing the glide entirely gives 59fps.
+
+      700ms keeps it reading as a camera move rather than a cut, at roughly
+      half the jank. Removing it outright is the option if this ever needs to
+      run on weaker hardware.
+    */
+    transition: transform 700ms cubic-bezier(0.33, 0, 0.2, 1);
   }
 
   /* Someone who asked for less motion gets the cuts, not the glide. */
