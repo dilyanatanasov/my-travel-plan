@@ -247,9 +247,32 @@ The dev database holds the user's real travel history. It is not test data.
 
 Claim by editing this line. One holder at a time.
 
-**Holder: A** — claimed 2026-08-12 for the accessibility pass, which needs
-continuous browser verification. Ask in Open Questions if you need it and I
-will release; B's early work is review-and-read and should not need it.
+**Holder: B** — released to B by A on 2026-08-12 for the NestJS 10 → 11
+upgrade, which needs more runtime verification than anything else queued.
+
+**Read this before you bring the stack up — it is currently broken.**
+
+The dev images are older than `package.json`. Compose mounts your code over
+`/app` but keeps `node_modules` in an *anonymous volume*, and `docker compose
+down` throws that volume away. Whatever had been `npm install`-ed inside the
+container over the months goes with it, and what comes back is the image's
+node_modules — which predates `@nestjs/passport`, `@nestjs/throttler` and
+`@node-rs/argon2`. The backend then fails to compile and every API call
+returns 500.
+
+A tried to patch it from inside the container and made it worse: plain
+`npm ci` omits devDependencies, so 13 missing-module errors became 35
+missing-`@types` errors. **Do not do that.** Rebuild the images instead:
+
+```bash
+COMPOSE_PROJECT_NAME=my-travel-pans docker compose -f docker-compose.dev.yml build
+COMPOSE_PROJECT_NAME=my-travel-pans docker compose -f docker-compose.dev.yml up -d
+```
+
+You are changing `package.json` anyway, so you need the rebuild regardless.
+Worth fixing properly while you are in there: the Dockerfile.dev images should
+be rebuilt whenever the lockfile changes, and right now nothing enforces that.
+That is your call as owner of the compose files.
 
 ---
 
@@ -516,6 +539,30 @@ what changed, which branch, what you verified, what is still open.
 - `npm ci` finished clean in the security worktree (frontend and backend);
   the search worktree was still installing when I last looked.
 
+**2026-08-12 — a11y round 1 done: the map works without a mouse
+(`feat/a11y-pass`, `a93576e`, off `main`)**
+- **The finding.** The map had 177 focusable elements and none of them
+  worked. react-simple-maps puts `tabIndex={0}` on every `Geography`, so a
+  keyboard user tabbed through 177 country paths with no accessible name, no
+  role, and no effect: `onClick` is a mouse handler, SVG shapes have no
+  default Enter/Space activation, and I confirmed by pressing Enter on a
+  focused country and checking the database — nothing was written.
+- **The fix.** Paths out of the tab order; `<svg>` gets `role="img"` and a
+  summary built from the same counts the legend renders. Naming all 177 would
+  have fixed the announcement and left the interaction broken and the tab
+  order unusable. The Countries section already offers a searchable selector
+  and an editable list, so this is an equivalent route, not a shrug.
+- Skip link added as the first tab stop, `<main tabIndex={-1}>` so it moves
+  focus rather than only scrolling. Rail hover label is now `aria-hidden` — it
+  duplicated the sr-only span, so every nav button announced itself twice.
+- **Measured:** 188 tab stops → 11, all named, all focus-visible. axe-core
+  (wcag2a/2aa/21a/21aa) zero violations on `/`, `/settings`, `/login`,
+  `/register`. Typecheck and build clean.
+- **NOT verified, and I am not claiming otherwise:** populated section panels,
+  the country detail card, replay controls, toasts and dark mode. Those need a
+  working API, and the dev stack's backend is broken (diagnosis in Stack lock).
+  Round 2 resumes when the stack is healthy and free.
+
 ### B — Security & Performance
 
 > Relayed verbatim by A on 2026-08-12 from
@@ -645,11 +692,22 @@ keep appending to your own file rather than editing this):
   should be absorbed. **Do it as its own branch after deployment**, with the
   stack free and time to regression-test. This is A's read; the user has the
   final call and it is flagged in the Backlog.
-- **Stack lock:** yours as soon as I finish the a11y pass. Your runtime check
-  of the guard needs the stack pointed at *your* branch, so it genuinely
-  serialises — that is the cost of the single-stack constraint, not a
-  scheduling failure. Take the perf pass meanwhile; it is read-only analysis
-  and needs no lock.
+- **Stack lock:** yours now. See the Stack lock section — the stack is
+  currently broken and needs an image rebuild, diagnosis written up there.
+
+**2026-08-12, later — the user has authorised the NestJS 11 upgrade now
+rather than after deployment.** That overrides both B's recommendation and
+A's agreement with it; the decision is made, so no one should re-argue it.
+Two consequences everyone should hold:
+
+- **B:** a major upgrade is exactly the work that must not be verified by
+  typecheck alone. It needs the stack, real data (25/41/117) and a walk
+  through every route that touches the API before it goes near `main`. You now
+  hold the lock for as long as that takes. The Backlog entry is updated.
+- **C:** B's upgrade changes `backend/package.json` and the lockfile. When it
+  merges, your worktree's `npm ci` and your container images both go stale —
+  expect to reinstall and rebuild after you rebase. Do not build search's
+  backend surface against assumptions about express 4 middleware.
 
 ### C — Trip Search
 
@@ -693,11 +751,9 @@ keep appending to your own file rather than editing this):
   droplet, DNS and TLS are manual steps the user has not taken yet. `.com`
   first, `.app` only after `.com` TLS works — the `.app` TLD is HSTS-preloaded
   and will refuse to load otherwise.
-- **NestJS 10 → 11 upgrade** (B's F3). The reachable ReDoS/DoS CVEs live in
-  express 4 and only clear in express 5, which means a major migration. Both B
-  and A recommend doing it as its own branch with full regression testing
-  **after** deployment, not bundled into the pre-deploy hardening. Needs the
-  user's agreement, since it means shipping with those advisories open and
-  mitigated by throttling plus the edge rather than closed.
+- ~~**NestJS 10 → 11 upgrade** (B's F3) — after deployment.~~ **Moved to
+  active work 2026-08-12: the user chose to do it now.** B owns it, on its own
+  branch, holding the stack lock. B and A had both recommended deferring until
+  after deployment; the user decided otherwise and that is settled.
 - **CI from the fitness app** — `deploy.yml`, `rollback.yml`, smoke tests.
 - **50 m map topology**, per A's note above.
