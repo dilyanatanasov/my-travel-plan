@@ -98,6 +98,15 @@ export class FlightsController {
     return this.flightsService.findAll(userId);
   }
 
+  /**
+   * Just the totals the map's initial view needs, computed with COUNT/SUM in
+   * the DB. Kept ahead of `/:id` so the literal path wins the route match.
+   */
+  @Get('summary')
+  async getSummary(@CurrentUser('id') userId: number) {
+    return this.flightsStatsService.getSummary(userId);
+  }
+
   @Get('stats')
   async getStats(@CurrentUser('id') userId: number): Promise<FlightStats> {
     return this.flightsStatsService.getStats(userId);

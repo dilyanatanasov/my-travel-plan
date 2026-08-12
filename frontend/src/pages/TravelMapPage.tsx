@@ -13,7 +13,7 @@ import OverviewPanel from '../components/AppShell/OverviewPanel';
 import SharePanel from '../features/share/SharePanel';
 import MapPeekBar from '../components/AppShell/MapPeekBar';
 import MapFirstRunHint from '../components/TravelMap/MapFirstRunHint';
-import { useGetFlightStatsQuery } from '../features/flights/flightsApi';
+import { useGetFlightSummaryQuery } from '../features/flights/flightsApi';
 import { useMilestones } from '../features/milestones/useMilestones';
 import { getSection, type SectionId } from '../components/AppShell/sections';
 import {
@@ -45,7 +45,11 @@ function TravelMapPage() {
 
   const { data: countries = [] } = useGetCountriesQuery();
   const { data: visits = [], isLoading: visitsLoading } = useGetVisitsQuery();
-  const { data: flightStats } = useGetFlightStatsQuery();
+  // The initial view needs only a flight count and total distance, so it uses
+  // the cheap summary endpoint rather than the full stats payload (which loads
+  // every journey with its legs and airports). The Stats panel still fetches
+  // the full stats when opened.
+  const { data: flightSummary } = useGetFlightSummaryQuery();
   const [updateVisit] = useUpdateVisitMutation();
   const { addVisitForCountry, removeVisitWithUndo } = useVisitActions();
   const { showToast } = useToast();
@@ -95,8 +99,8 @@ function TravelMapPage() {
   */
   useMilestones({
     countries: overviewStatsCountForMilestones(visits),
-    distanceKm: flightStats?.totalDistanceKm ?? 0,
-    flights: flightStats?.totalFlights ?? 0,
+    distanceKm: flightSummary?.totalDistanceKm ?? 0,
+    flights: flightSummary?.totalFlights ?? 0,
     onShare: () => setActiveSection('share'),
   });
 
@@ -234,7 +238,7 @@ function TravelMapPage() {
                   Only while there is genuinely nothing: one country or one
                   flight and it is gone for good.
                 */}
-                {visits.length === 0 && (flightStats?.totalFlights ?? 0) === 0 && (
+                {visits.length === 0 && (flightSummary?.totalFlights ?? 0) === 0 && (
                   <div className="absolute z-20 left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 lg:top-auto lg:bottom-24">
                     <MapFirstRunHint onAddFlights={() => setActiveSection('flights')} />
                   </div>
@@ -243,7 +247,7 @@ function TravelMapPage() {
                 <MapPeekBar
                   countriesVisited={overviewStats.tripCount}
                   worldPercent={overviewStats.worldPercent}
-                  flights={flightStats?.totalFlights ?? 0}
+                  flights={flightSummary?.totalFlights ?? 0}
                   onOpenOverview={() => setActiveSection('overview')}
                 />
               </>

@@ -93,6 +93,38 @@ export class FlightsStatsService {
     private readonly legRepository: Repository<FlightLeg>,
   ) {}
 
+  /**
+   * The three totals the map's initial view needs (peek bar + milestones).
+   *
+   * Kept separate from getStats() on purpose: the home page was fetching the
+   * full stats payload — which loads every journey with its legs and both
+   * airports and aggregates them in memory — just to show a flight count and a
+   * distance. This computes the same two numbers with a COUNT and a SUM in the
+   * database, touching no airport rows, so the heaviest query in the app stops
+   * running on every map load.
+   */
+  async getSummary(
+    userId: number,
+  ): Promise<{ totalFlights: number; totalJourneys: number; totalDistanceKm: number }> {
+    const journeyCount = await this.journeyRepository.count({ where: { userId } });
+
+    // Legs (i.e. individual flights) and their distance, scoped to this user's
+    // journeys via the join rather than loading the journeys themselves.
+    const { flights, distance } = await this.legRepository
+      .createQueryBuilder('leg')
+      .innerJoin('leg.journey', 'journey')
+      .where('journey.user_id = :userId', { userId })
+      .select('COUNT(leg.id)', 'flights')
+      .addSelect('COALESCE(SUM(leg.distance_km), 0)', 'distance')
+      .getRawOne<{ flights: string; distance: string }>();
+
+    return {
+      totalFlights: Number(flights) || 0,
+      totalJourneys: journeyCount,
+      totalDistanceKm: Math.round(Number(distance) * 100) / 100 || 0,
+    };
+  }
+
   async getStats(userId: number): Promise<FlightStats> {
     // Get this user's journeys with legs
     const journeys = await this.journeyRepository.find({

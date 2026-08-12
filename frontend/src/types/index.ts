@@ -144,6 +144,17 @@ export interface RouteCount {
   distanceKm: number;
 }
 
+/**
+ * The cheap subset of FlightStats the map's initial view needs. Served by
+ * GET /flights/summary via a COUNT/SUM, so the home page no longer pulls the
+ * full journey graph just to show a flight count and a distance.
+ */
+export interface FlightSummary {
+  totalFlights: number;
+  totalJourneys: number;
+  totalDistanceKm: number;
+}
+
 export interface FlightStats {
   // Core stats
   totalFlights: number;

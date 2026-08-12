@@ -3,6 +3,7 @@ import type {
   Airport,
   FlightJourney,
   FlightStats,
+  FlightSummary,
   CreateFlightDto,
   UpdateFlightDto,
 } from '../../types';
@@ -80,6 +81,12 @@ export const flightsApi = apiSlice.injectEndpoints({
       query: () => '/flights/stats',
       providesTags: ['FlightStats'],
     }),
+
+    // Cheap totals for the map's initial view — COUNT/SUM, no journey graph.
+    getFlightSummary: builder.query<FlightSummary, void>({
+      query: () => '/flights/summary',
+      providesTags: ['FlightStats'],
+    }),
   }),
 });
 
@@ -101,4 +108,5 @@ export const {
   useImportFlightsMutation,
   useRemoveFlightMutation,
   useGetFlightStatsQuery,
+  useGetFlightSummaryQuery,
 } = flightsApi;
