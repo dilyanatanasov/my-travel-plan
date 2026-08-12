@@ -1,7 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout/Layout';
 import TravelMapPage from './pages/TravelMapPage';
-import FlightSearchPage from './pages/FlightSearchPage';
+import WhereNextPage from './pages/WhereNextPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import SharedMapPage from './pages/SharedMapPage';
@@ -25,8 +25,8 @@ function App() {
           <Route path="countries" element={<Navigate to="/" replace />} />
         </Route>
         <Route path="/settings" element={<SettingsPage />} />
-        {/* Flight search has its own layout */}
-        <Route path="/search" element={<FlightSearchPage />} />
+        {/* Destination discovery — "where haven't I been that's cheap" */}
+        <Route path="/search" element={<WhereNextPage />} />
       </Route>
 
       {/* Catch-all redirect */}
