@@ -189,6 +189,51 @@ select option {
 }
 
 @layer utilities {
+  /*
+    A country lights up as the plane touches down on it.
+
+    Animating the SVG fill directly would fight the inline fill react-simple-
+    maps sets per geography, so this animates a drop-shadow instead: it reads
+    as a glow, needs no colour coordination, and leaves the country's own
+    colour alone.
+  */
+  @keyframes country-landed {
+    0% { filter: drop-shadow(0 0 0 rgb(var(--color-brand-500) / 0.9)); }
+    35% { filter: drop-shadow(0 0 14px rgb(var(--color-brand-500) / 0.95)); }
+    100% { filter: drop-shadow(0 0 0 rgb(var(--color-brand-500) / 0)); }
+  }
+
+  .country-landed {
+    animation: country-landed 1600ms ease-out;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .country-landed {
+      animation: none;
+    }
+  }
+
+  /*
+    Cinematic camera for the replay.
+
+    react-simple-maps writes the pan/zoom as a transform attribute on its own
+    group, so a CSS transition on that element glides between framings for
+    free — no per-frame state updates, no fighting d3-zoom.
+
+    Scoped to .replay-camera so it is only active while replaying: a
+    transition on ordinary panning would make dragging feel like wading.
+  */
+  .replay-camera .rsm-zoomable-group {
+    transition: transform 1600ms cubic-bezier(0.33, 0, 0.2, 1);
+  }
+
+  /* Someone who asked for less motion gets the cuts, not the glide. */
+  @media (prefers-reduced-motion: reduce) {
+    .replay-camera .rsm-zoomable-group {
+      transition: none;
+    }
+  }
+
   /* Horizontal scroll strips scroll by swipe; the bar itself is visual noise. */
   .scrollbar-none {
     -ms-overflow-style: none;

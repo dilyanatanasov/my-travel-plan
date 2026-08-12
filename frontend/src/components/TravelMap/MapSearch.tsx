@@ -92,7 +92,11 @@ function MapSearch({ countries, countryCentroids, onGo }: MapSearchProps) {
         key: `a-${airport.id}`,
         label: airport.iataCode,
         detail: [airport.city, airport.country].filter(Boolean).join(', ') || airport.name,
-        target: { center: [airport.longitude, airport.latitude], zoom: 4.5 },
+        // Same string-from-Postgres problem as fitBounds; see the note there.
+        target: {
+          center: [Number(airport.longitude), Number(airport.latitude)],
+          zoom: 4.5,
+        },
       });
     }
 

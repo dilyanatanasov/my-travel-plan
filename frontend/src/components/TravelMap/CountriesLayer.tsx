@@ -68,6 +68,8 @@ interface CountriesLayerProps {
    * there.
    */
   onCountryLongPress?: (isoCode: string) => void;
+  /** Alpha-3 of a country the replay has just landed in; pulses once. */
+  landedIsoCode?: string | null;
 }
 
 /**
@@ -81,6 +83,7 @@ function CountriesLayer({
   onCountryHover,
   onCentroids,
   onCountryLongPress,
+  landedIsoCode,
 }: CountriesLayerProps) {
   const isInteractive = Boolean(onCountryClick);
   // Reported once per geography load, not once per render.
@@ -179,6 +182,10 @@ function CountriesLayer({
             <Geography
               key={geo.rsmKey}
               geography={geo}
+              /* Keyed by the landing too, so re-landing in the same country
+                 restarts the animation instead of being ignored as an
+                 unchanged class. */
+              className={isoCode && isoCode === landedIsoCode ? 'country-landed' : undefined}
               onClick={() => {
                 // The hold already acted; do not also treat it as a tap.
                 if (pressFiredRef.current) {

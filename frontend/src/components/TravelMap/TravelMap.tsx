@@ -36,6 +36,14 @@ import type { AggregatedRoute } from '../FlightMap/routeUtils';
 import { fitToPoints, type LonLat } from './fitBounds';
 
 
+/**
+ * Seconds the plane takes to fly a leg during replay.
+ *
+ * Comfortably inside the step, so it lands and the arrival registers before
+ * the next journey begins.
+ */
+const REPLAY_FLIGHT_SECONDS = 3.6;
+
 const MIN_ZOOM = 1;
 const MAX_ZOOM = 8;
 
@@ -376,6 +384,95 @@ function TravelMap() {
   */
   const replay = useJourneyReplay(flights);
 
+  /*
+    During replay the map draws only what has been flown so far, so the trail
+    accumulates instead of being fully present and merely dimmed. Recomputed
+    per step, which is cheap: aggregateRoutes runs over a growing slice, not
+    the whole history each time.
+  */
+  const replayRoutes = useMemo(
+    () => (replay.isActive ? aggregateRoutes(replay.played) : []),
+    [replay.isActive, replay.played]
+  );
+  const replayMaxRouteCount = Math.max(
+    ...replayRoutes.map((route) => route.count),
+    1
+  );
+  const replayAirports = useMemo(
+    () => (replay.isActive ? extractUniqueAirports(replay.played) : []),
+    [replay.isActive, replay.played]
+  );
+
+  /*
+    Fly the camera to each journey as it plays.
+
+    Watching a route draw itself while the whole world is in frame wastes the
+    animation — at world zoom a European hop is a few pixels. Framing the
+    journey is what makes it read as travel. The glide comes from a CSS
+    transition on the zoom group; see .replay-camera.
+  */
+  useEffect(() => {
+    if (!replay.isActive || !replay.current) return;
+    const points: LonLat[] = [];
+    for (const leg of replay.current.legs) {
+      points.push([leg.departureAirport.longitude, leg.departureAirport.latitude]);
+      points.push([leg.arrivalAirport.longitude, leg.arrivalAirport.latitude]);
+    }
+    // fill 0.5 leaves generous margin, so the arc's bow is not cropped.
+    const framing = fitToPoints(points, { maxZoom: 4, fill: 0.5 });
+    if (!framing) return;
+    setCenter(framing.center);
+    setZoom(framing.zoom);
+    setHasMovedMap(true);
+  }, [replay.isActive, replay.current]);
+
+  /*
+    Light up the destination as the plane arrives.
+
+    Timed off the flight duration rather than an animation event: SMIL's
+    endEvent is awkward to hang React state off, and the duration is already
+    known exactly. The country's alpha-3 comes from the countries list, since
+    airports store alpha-2 and the map keys on alpha-3.
+  */
+  const [landedIsoCode, setLandedIsoCode] = useState<string | null>(null);
+  /*
+    Countries already lit during this replay.
+
+    The glow marks a discovery — the first time a flight puts you somewhere.
+    Firing it on every landing means a home airport flashes on most steps,
+    which turns a moment into a tic.
+  */
+  const landedBeforeRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!replay.isActive) landedBeforeRef.current.clear();
+  }, [replay.isActive]);
+
+  const alpha2ToAlpha3 = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const country of countries) map.set(country.isoCode2, country.isoCode);
+    return map;
+  }, [countries]);
+
+  useEffect(() => {
+    setLandedIsoCode(null);
+    if (!replay.isActive || !replay.current) return;
+
+    const legs = [...replay.current.legs].sort((a, b) => a.legOrder - b.legOrder);
+    const arrival = legs[legs.length - 1]?.arrivalAirport.countryIso;
+    if (!arrival) return;
+    const iso3 = alpha2ToAlpha3.get(arrival);
+    if (!iso3) return;
+
+    if (landedBeforeRef.current.has(iso3)) return;
+
+    const timer = window.setTimeout(() => {
+      landedBeforeRef.current.add(iso3);
+      setLandedIsoCode(iso3);
+    }, REPLAY_FLIGHT_SECONDS * 1000);
+    return () => window.clearTimeout(timer);
+  }, [replay.isActive, replay.current, alpha2ToAlpha3]);
+
   const openCountry = useMemo(() => {
     if (!openCountryIso) return null;
     const countryId = countryByIsoCode.get(openCountryIso);
@@ -513,7 +610,7 @@ function TravelMap() {
           rotate: [-10, 0, 0],
           scale,
         }}
-        className="w-full h-full"
+        className={`w-full h-full ${replay.isActive ? 'replay-camera' : ''}`}
       >
         <ZoomableGroup
           zoom={effectiveZoom}
@@ -546,6 +643,7 @@ function TravelMap() {
             onCountryHover={canHover ? handleCountryHover : undefined}
             onCentroids={setCountryCentroids}
             onCountryLongPress={handleCountryLongPress}
+            landedIsoCode={landedIsoCode}
           />
 
           {/* Flight Routes */}
@@ -559,17 +657,18 @@ function TravelMap() {
                 the old highlight appeared to be stuck.
               */}
               <FlightRoutes
-                routes={routes}
-                maxCount={maxRouteCount}
+                routes={replay.isActive ? replayRoutes : routes}
+                maxCount={replay.isActive ? replayMaxRouteCount : maxRouteCount}
                 hoveredRouteKey={selectedJourney ? null : hoveredRoute?.key || null}
                 onHover={selectedJourney ? () => undefined : handleRouteHover}
                 onSelect={handleSelectRoute}
                 sizeScale={markerScale}
-                faded={Boolean(selectedJourney)}
+                faded={Boolean(selectedJourney) || replay.isActive}
               />
               {(replay.current ?? selectedJourney) && (
                 <JourneyHighlight
                   journey={replay.current ?? selectedJourney!}
+                  legDurationSeconds={replay.isActive ? REPLAY_FLIGHT_SECONDS : undefined}
                   sizeScale={markerScale}
                   onClear={clearSelection}
                 />
@@ -580,7 +679,7 @@ function TravelMap() {
           {/* Airport Markers */}
           {settings.showAirports && settings.showFlights && (
             <AirportMarkers
-              airports={visibleAirports}
+              airports={replay.isActive ? replayAirports : visibleAirports}
               visitCounts={airportVisitCounts}
               highlightedAirports={highlightedAirports}
               sizeScale={markerScale}
@@ -633,14 +732,16 @@ function TravelMap() {
       */}
       <MapLegend showFlights={settings.showFlights} stats={stats} />
 
-      {/* Bottom-centre on desktop, where the legend and zoom stack sit in the
-          corners. On a phone the legend spans most of the width, so this has to
-          clear it vertically rather than horizontally. */}
-      <div className="absolute z-20 bottom-36 lg:bottom-4 left-1/2 -translate-x-1/2">
-        <ReplayControl replay={replay} />
-      </div>
+      {/* Transport controls appear only while replaying, so nothing floats
+          over the map when it is idle. */}
+      {replay.isActive && (
+        <div className="absolute z-20 bottom-36 lg:bottom-4 left-1/2 -translate-x-1/2">
+          <ReplayControl replay={replay} />
+        </div>
+      )}
 
       <MapZoomControls
+        extraTool={!replay.isActive ? <ReplayControl replay={replay} compact /> : null}
         zoom={zoom}
         minZoom={MIN_ZOOM}
         maxZoom={MAX_ZOOM}

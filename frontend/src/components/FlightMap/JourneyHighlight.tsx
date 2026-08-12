@@ -16,6 +16,14 @@ const PLANE_PATH =
 
 interface JourneyHighlightProps {
   journey: FlightJourney;
+  /**
+   * Seconds per leg.
+   *
+   * A selected route loops ambiently and can afford to be slow. During replay
+   * the plane has to actually arrive before the step advances, or it is cut
+   * off mid-ocean every time.
+   */
+  legDurationSeconds?: number;
   sizeScale?: number;
   /** Clicking the highlighted route clears it — one of several exits. */
   onClear?: () => void;
@@ -38,6 +46,7 @@ interface JourneyHighlightProps {
  */
 function JourneyHighlight({
   journey,
+  legDurationSeconds,
   sizeScale = 1,
   onClear,
 }: JourneyHighlightProps) {
@@ -47,9 +56,14 @@ function JourneyHighlight({
   const prefersReducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)');
 
   const legs = [...(journey.legs ?? [])].sort((a, b) => a.legOrder - b.legOrder);
-  // Slow enough to be ambient rather than agitating, and staggered so a
-  // multi-leg journey reads as a sequence instead of moving in lockstep.
-  const legDuration = 5;
+  /*
+    Slow enough to be ambient rather than agitating, and staggered so a
+    multi-leg journey reads as a sequence rather than moving in lockstep.
+
+    Nine seconds, not five: at five the plane crosses an ocean faster than the
+    eye follows it, which reads as a loading spinner rather than a flight.
+  */
+  const legDuration = legDurationSeconds ?? 9;
 
   return (
     <g className="journey-highlight">
@@ -125,6 +139,14 @@ function JourneyHighlight({
                   repeatCount="indefinite"
                   path={pathD}
                   rotate="auto"
+                  /*
+                    Constant ground speed. Without this the browser advances
+                    along the curve's parameter rather than its arc length, so
+                    the plane crawls out of the departure, accelerates through
+                    the middle and decelerates into the arrival — which reads
+                    as a stutter, not as flight.
+                  */
+                  calcMode="paced"
                 />
                 <path
                   d={PLANE_PATH}

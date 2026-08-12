@@ -64,10 +64,22 @@ export function fitToPoints(
   points: LonLat[],
   { maxZoom = 4, minZoom = 1, fill = 0.7 }: FitOptions = {},
 ): Framing | null {
-  const valid = points.filter(
-    ([lon, lat]) =>
-      Number.isFinite(lon) && Number.isFinite(lat) && Math.abs(lat) <= 90,
-  );
+  /*
+    Coerce before validating.
+
+    Postgres returns numeric columns as strings through pg, so an airport's
+    longitude arrives as "23.4062" rather than 23.4062. Number.isFinite on a
+    string is false, so every airport was being discarded here — silently,
+    since the function just returns null and callers fall back to a default.
+    That is why the replay camera never moved and why the opening view was
+    framed on country centroids alone.
+  */
+  const valid = points
+    .map(([lon, lat]) => [Number(lon), Number(lat)] as LonLat)
+    .filter(
+      ([lon, lat]) =>
+        Number.isFinite(lon) && Number.isFinite(lat) && Math.abs(lat) <= 90,
+    );
   if (valid.length === 0) return null;
 
   const lats = valid.map(([, lat]) => lat);

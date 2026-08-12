@@ -1,6 +1,15 @@
 import { memo } from 'react';
 
 interface MapZoomControlsProps {
+  /**
+   * Optional extra tool rendered above the zoom buttons.
+   *
+   * Replay belongs with the map's other controls rather than floating over
+   * the canvas on its own: it is a nice thing to have, not the headline
+   * feature, and a permanent pill in the middle of the map claimed far more
+   * attention than it deserves.
+   */
+  extraTool?: React.ReactNode;
   zoom: number;
   minZoom: number;
   maxZoom: number;
@@ -23,6 +32,7 @@ const buttonClass =
  * rest of the app.
  */
 function MapZoomControls({
+  extraTool,
   zoom,
   minZoom,
   maxZoom,
@@ -35,6 +45,8 @@ function MapZoomControls({
   return (
     // bottom-20 on mobile clears the peek bar pinned to the canvas floor.
     <div className="absolute bottom-20 lg:bottom-4 right-3 z-20 flex flex-col rounded-lg overflow-hidden shadow-lg border border-current/15 divide-y divide-current/15">
+      {extraTool}
+
       {/*
         Reset renders first, above the +/- pair.
 
