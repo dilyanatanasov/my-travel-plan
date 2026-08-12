@@ -247,10 +247,21 @@ The dev database holds the user's real travel history. It is not test data.
 
 Claim by editing this line. One holder at a time.
 
-**Holder: B** — released to B by A on 2026-08-12 for the NestJS 10 → 11
-upgrade, which needs more runtime verification than anything else queued.
+**Holder: B** — and the stack is now HEALTHY and running on `main`, rebuilt by
+A on 2026-08-12 at 15:53. B: take it, it is yours, and it is the window for
+the express 5 smoke test.
 
-**Read this before you bring the stack up — it is currently broken.**
+A broke it, then left it broken on the reasoning that B would rebuild anyway —
+which was wrong, because the user could not log in to their own app in the
+meantime. Rebuilt with `docker compose build`; verified wrong-password login
+returns a clean 401 (not a 500), `/auth/guest` 201, `/countries` 200 with 197
+rows. Data confirmed at 25 visits / 41 journeys / 117 legs, backup at
+`context/backups/dev-20260812-155330.sql`, test guest deleted.
+
+**Lesson worth keeping: a broken dev stack is a user-facing outage, not an
+internal inconvenience. Fix it before optimising anyone's time.**
+
+**The failure mode, so nobody repeats it:**
 
 The dev images are older than `package.json`. Compose mounts your code over
 `/app` but keeps `node_modules` in an *anonymous volume*, and `docker compose
@@ -737,6 +748,59 @@ Two consequences everyone should hold:
   Old page comes off the route (it was nav-hidden already); files stay.
 - Not running the dev stack; no DB access needed for fixtures. Stack lock
   untouched (A holds it).
+
+**2026-08-12 — built and verified "Where to next?"; ready for the user's review**
+- Branch `feat/search-destination-discovery`, commits `c4de192` (docs) and
+  `47828c8` (feature). Full log in
+  `context/implement/2026-08-12_search-experience_implement.md`.
+- **The name is decided: "Where to next?"** — the user picked it from four
+  proposals mid-session. A: please use it verbatim for the rail label and
+  anywhere the section is named.
+- Built per D2 and A's Q1 answer: new `features/search/**` +
+  `pages/WhereNextPage.tsx` routed at `/search` (old FlightSearchPage off the
+  route, files intact). Month pills, sort control, destination cards with a
+  day-price strip that leaves honest gaps, indicative-price labelling,
+  freshness per card, loading skeleton, designed empty month and
+  "no recent prices" states, affiliate deep links (marker empty until the
+  account exists) with click-through recorded to localStorage from day one.
+- **For A, all import-ready:** `WhereNextCard` (Overview teaser) from
+  `features/search/components`; `DiscoveryPanel` is self-contained and drops
+  into the dock as-is (`onShowOnMap` prop is the fly-to seam);
+  `buildPriceFillMap(rows, countries)` in `features/search/discovery.ts`
+  returns the agreed `Map<Alpha3, { price, bucket: 'low'|'mid'|'high' }>`
+  (per-month terciles) for the choropleth + legend.
+- Verified per the bar: frontend `tsc` exit 0; `vite build` clean (531 kB
+  main chunk — pre-existing, A owns the split); Playwright chromium against
+  a host vite server on 5174 with the API stubbed at the network layer.
+  Stubbing was deliberate: B had the backend mid-NestJS-upgrade (container
+  up, Nest not compiling — known, not a finding), and it kept test rows out
+  of the real DB entirely. Proven: visited-country filtering (stub visits
+  Italy/Hungary/France → exactly those absent, 43 of 46 cards), region
+  grouping, far-month no-data strip, deep-link shape
+  (`aviasales.com/search/SOF2309VIE1`), click log written, zero console
+  errors, light+dark, 1360/390 px. Screenshots committed under
+  `context/implement/2026-08-12_search-experience_assets/`.
+- Stack lock never claimed; the running stack was not touched (my vite ran
+  on 5174 against stubs and is stopped).
+- Open: user design review gates the merge; then A's three placements (card,
+  rail item, choropleth). Nothing blocks me — next I can build the docked
+  variant demo or refinements from review feedback.
+
+**2026-08-12 — user approved the design; merged to `main` and pushed**
+- The user reviewed the six screenshots and approved. Rebased onto `main`
+  (which had moved to `f51fff0`, coordination-only commits, no conflicts),
+  re-ran the bar (`tsc` exit 0, `vite build` clean), fast-forward merged
+  from the main checkout, pushed: `main` is now `faea862`.
+- **A: the entry placements are now the user-visible gap.** The user's first
+  question after approving was "how do I enter this view?" — today the
+  answer is "type /search", which is the orphaning D2 was written to kill.
+  When your a11y round allows, the three placements from Q1 (WhereNextCard
+  in Overview, desktop rail item labelled "Where to next?", choropleth
+  later) are top of the queue from the user's perspective. Card and fill
+  map are import-ready on `main`; happy to pair the choropleth shape
+  whenever.
+- My `wt/search` home base is parked; `feat/search-destination-discovery`
+  is fully merged.
 
 ---
 

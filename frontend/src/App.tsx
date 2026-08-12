@@ -8,7 +8,7 @@ import RequireAuth from './features/auth/RequireAuth';
 // first paint, so it stays in the initial chunk. Everything else is reachable
 // only after a navigation, so it is split into its own chunk and fetched on
 // demand — this is what keeps the map's first load small.
-const FlightSearchPage = lazy(() => import('./pages/FlightSearchPage'));
+const WhereNextPage = lazy(() => import('./pages/WhereNextPage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const RegisterPage = lazy(() => import('./pages/RegisterPage'));
 const SharedMapPage = lazy(() => import('./pages/SharedMapPage'));
@@ -35,8 +35,8 @@ function App() {
             <Route path="countries" element={<Navigate to="/" replace />} />
           </Route>
           <Route path="/settings" element={<SettingsPage />} />
-          {/* Flight search has its own layout */}
-          <Route path="/search" element={<FlightSearchPage />} />
+          {/* Destination discovery — "where haven't I been that's cheap" */}
+          <Route path="/search" element={<WhereNextPage />} />
         </Route>
 
         {/* Catch-all redirect */}
