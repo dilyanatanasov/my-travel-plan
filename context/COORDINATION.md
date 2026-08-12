@@ -110,10 +110,19 @@ git checkout worktree-smart-trip-search -- \
   context/plan/2026-08-11_smart-trip-search_plan.md
 ```
 
-Verified constraints from that research, still true: Kiwi via RapidAPI is
-Basic free 300 req/mo, Pro $5/mo 20 k; Amadeus self-service closed to new
-signups in July 2026; official Kiwi Tequila is invite-only. **Re-verify prices
-and tiers before spending anything** — that research is a year old.
+Verified constraints from that research, which is one day old and can be
+trusted as current: Kiwi via RapidAPI is Basic free 300 req/mo, Pro $5/mo
+20 k; Amadeus self-service closed to new signups in July 2026; official Kiwi
+Tequila is invite-only. Under D1 you are not subscribing to anything, so no
+re-verification is needed before starting — confirm a price only at the moment
+you are about to spend.
+
+The two facts D1 rests on, both from that research: the free
+Travelpayouts/Aviasales endpoint is `/v2/prices/month-matrix` (cheapest price
+per day of a month, served from a 48 h–7 d cache of real user searches — so
+stale and patchy on thin routes, which the UI must be honest about), and a
+single Travelpayouts signup unlocks both that free Data API **and** the Kiwi
+affiliate programme (3% of ticket price, avg ≈ €11 per booking).
 
 See Decision D1 below for the scope answer.
 
@@ -223,8 +232,7 @@ Claim by editing this line. One holder at a time.
 ## Decisions
 
 ### D1 — Search v1 scope: referral deep links first, on top of free price data
-**Status: proposed by A on 2026-08-12, awaiting the user's confirmation.**
-**Owner once confirmed: C.**
+**Status: CONFIRMED by the user on 2026-08-12. Owner: C.**
 
 The question was whether to ship affiliate links out to Kiwi and friends, or
 build the full search from the approved plan.
@@ -258,7 +266,39 @@ saved the weeks and the subscription.
 Instrument the click-through in v1 — without it this decision cannot be
 revisited on data, which is the entire point of taking the small path.
 
+**Sequencing, and the dependency nobody should discover late.** Affiliate
+approval generally wants a live site to point at, and Contrail is not deployed
+yet. That does not block building: the Data API token and the affiliate marker
+are separate credentials, the marker is a query parameter appended to an
+already-working link, and the whole feature can be built and reviewed against
+a token alone. So C builds now, and the links start earning whenever the
+marker arrives. What it does mean is that the deployment in the backlog is now
+on the revenue path, not just the "someday" path.
+
+Two things C must get right in the UI, both consequences of the data source:
+the month-matrix is a 48 h–7 d cache of other people's searches, so prices are
+indicative and must be labelled as such rather than presented as bookable
+fares; and coverage is patchy on thin routes, so "no data for this route" has
+to be an honest, designed state rather than an empty grid.
+
 ---
+
+## Blocked on the user
+
+Things no agent can do. If your work needs one of these, say so in your
+journal rather than stubbing around it silently.
+
+- [ ] **Travelpayouts account** for mycontrail.com. One signup yields two
+      things C needs: the free Data API token, and access to the Kiwi
+      affiliate programme. → unblocks real data in search v1.
+- [ ] **Affiliate marker** (the Travelpayouts partner ID appended to booking
+      links). Arrives with programme approval, which may require a live site.
+      Not needed to build.
+- [ ] **Deployment** — droplet, DNS, TLS. Runbook exists; see Backlog. Now on
+      the revenue path because of the affiliate dependency above.
+- [ ] **Privacy policy and affiliate disclosure.** Affiliate networks and
+      several jurisdictions expect disclosure that booking links earn a
+      commission. A can draft the copy; the decision to publish is the user's.
 
 ## Open questions
 
