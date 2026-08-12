@@ -13,7 +13,14 @@ function SectionRail({ activeSection, onSelect }: SectionRailProps) {
   return (
     <nav
       aria-label="Sections"
-      className="hidden lg:flex flex-col items-center gap-1 w-16 flex-shrink-0 border-r border-line bg-surface py-3"
+      /*
+        relative z-40 puts the rail on the app-chrome layer, with the header
+        and the mobile tab bar. Without it the rail is a static flex child, so
+        its hover labels resolve at root level against the map's own overlays —
+        the search dropdown and the filter card are also z-30 and come later in
+        the DOM, so they painted over the labels.
+      */
+      className="hidden lg:flex relative z-40 flex-col items-center gap-1 w-16 flex-shrink-0 border-r border-line bg-surface py-3"
     >
       {SECTIONS.map((section) => {
         const isActive = activeSection === section.id;
@@ -23,7 +30,8 @@ function SectionRail({ activeSection, onSelect }: SectionRailProps) {
             type="button"
             onClick={() => onSelect(section.id)}
             aria-current={isActive ? 'page' : undefined}
-            title={section.label}
+            /* No title attribute: the native tooltip would arrive a second
+               after the hover label below and say the same thing twice. */
             className={`group relative w-12 h-12 rounded-xl flex items-center justify-center transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500 ${
               isActive
                 ? 'bg-brand-50 text-brand-700'

@@ -96,7 +96,9 @@
       "Bash(grep -n \"}\\)}\\\\s*$\\\\|^    </Geographies>\" components/TravelMap/CountriesLayer.tsx)",
       "Bash(git rev-list *)",
       "Bash(git ls-remote *)",
-      "Bash(git merge *)"
+      "Bash(git merge *)",
+      "mcp__playwright__browser_select_option",
+      "mcp__playwright__browser_hover"
     ],
     "deny": [],
     "ask": []

@@ -3,10 +3,8 @@ import { ComposableMap, ZoomableGroup } from 'react-simple-maps';
 import {
   useGetVisitsQuery,
   useGetCountriesQuery,
-  useSetHomeCountryMutation,
 } from '../../features/visits/visitsApi';
 import { useVisitActions } from '../../features/visits/useVisitActions';
-import { useToast } from '../Toast/ToastProvider';
 import type { Alpha3, Visit, FlightJourney } from '../../types';
 import { useGetFlightsQuery } from '../../features/flights/flightsApi';
 import { useUpdateVisitMutation } from '../../features/visits/visitsApi';
@@ -68,10 +66,8 @@ function TravelMap() {
   const { data: flights = [] } = useGetFlightsQuery();
 
   // Mutations
-  const [setHomeCountry] = useSetHomeCountryMutation();
   const [updateVisit] = useUpdateVisitMutation();
   const { addVisitForCountry, removeVisitWithUndo } = useVisitActions();
-  const { showToast } = useToast();
 
   // State
   const [settings, setSettings] = useState<TravelMapSettings>(DEFAULT_SETTINGS);
@@ -263,12 +259,6 @@ function TravelMap() {
 
   // Build country display map from visits
   const countryDisplayMap = useMemo(() => buildCountryDisplayMap(visits), [visits]);
-
-  // Find home country
-  const homeVisit = useMemo(
-    () => visits.find((v) => v.visitType === 'home'),
-    [visits]
-  );
 
   // Build lookup maps
   const countryByIsoCode = useMemo(() => {
@@ -564,17 +554,6 @@ function TravelMap() {
     };
   }, [openCountryIso, countryByIsoCode, visitByCountryId]);
 
-  const handleSetHomeCountry = useCallback(
-    async (countryId: number) => {
-      try {
-        await setHomeCountry(countryId).unwrap();
-      } catch {
-        showToast('Could not set your home country', { tone: 'error' });
-      }
-    },
-    [setHomeCountry, showToast]
-  );
-
   const handleRouteHover = useCallback(
     (route: AggregatedRoute | null, event?: React.MouseEvent) => {
       setHoveredRoute(route);
@@ -811,9 +790,6 @@ function TravelMap() {
         <MapControlPanel
           settings={settings}
           onSettingsChange={setSettings}
-          countries={countries}
-          homeCountryId={homeVisit?.countryId || null}
-          onSetHomeCountry={handleSetHomeCountry}
           filters={filters}
           onFiltersChange={setFilters}
           airports={filterOptions.airports}

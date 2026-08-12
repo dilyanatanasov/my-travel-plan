@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import type { Country, Airport } from '../../types';
+import type { Airport } from '../../types';
 import type { FlightFilters } from '../FlightMap/filterTypes';
 import { DEFAULT_FILTERS, DISTANCE_RANGES, ROUTE_TYPES } from '../FlightMap/filterTypes';
 import { ALL_CONTINENTS, type Continent } from '../FlightMap/continentUtils';
@@ -14,9 +14,6 @@ export interface TravelMapSettings {
 interface MapControlPanelProps {
   settings: TravelMapSettings;
   onSettingsChange: (settings: TravelMapSettings) => void;
-  countries: Country[];
-  homeCountryId: number | null;
-  onSetHomeCountry: (countryId: number) => void;
   filters: FlightFilters;
   onFiltersChange: (filters: FlightFilters) => void;
   airports: Airport[];
@@ -102,18 +99,19 @@ function MapViewSwitch({
 
 
 /**
- * Layer toggles, home country and flight filters behind a single disclosure.
+ * Layer toggles and flight filters behind a single disclosure.
+ *
+ * Everything here changes what you are looking at and nothing else. Home
+ * country used to live here too and now lives in Settings, because it edits
+ * your data rather than the view.
  *
  * Previously these were two always-open bars totalling roughly 570px on a
- * phone, pushing the map itself below the fold. The legend lives in the map corner instead (MapLegend) — it is reference
- * material, not a control.
+ * phone, pushing the map itself below the fold. The legend lives in the map
+ * corner instead (MapLegend) — it is reference material, not a control.
  */
 function MapControlPanel({
   settings,
   onSettingsChange,
-  countries,
-  homeCountryId,
-  onSetHomeCountry,
   filters,
   onFiltersChange,
   airports,
@@ -216,27 +214,13 @@ function MapControlPanel({
               <MapViewSwitch settings={settings} onChange={onSettingsChange} />
             </div>
 
-            <div>
-              <label htmlFor="home-country" className={fieldLabelClass}>
-                Home country
-              </label>
-              <select
-                id="home-country"
-                value={homeCountryId || ''}
-                onChange={(e) => {
-                  const id = parseInt(e.target.value, 10);
-                  if (id) onSetHomeCountry(id);
-                }}
-                className={selectClass}
-              >
-                <option value="">Select home country</option>
-                {countries.map((country) => (
-                  <option key={country.id} value={country.id}>
-                    {country.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {/*
+              Home country moved to Settings. Everything left in this panel
+              changes what you are looking at; that one changed your data —
+              it rewrites a visit's type and moves the marker off whichever
+              country held it. A destructive control should not sit among
+              harmless ones.
+            */}
           </div>
 
           {/* Flight filters, only meaningful when routes are shown */}
