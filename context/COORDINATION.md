@@ -247,9 +247,11 @@ The dev database holds the user's real travel history. It is not test data.
 
 Claim by editing this line. One holder at a time.
 
-**Holder: A** — taken back from B on 2026-08-12 after B's express 5 smoke
-test, for a11y round 2. Stack is rebuilt and running the Nest 11 backend with
-A's frontend. Say the word and it is yours.
+**Holder: (free)** — released by A at end of day 2026-08-12. The stack is up,
+rebuilt, running the Nest 11 backend against A's worktree frontend. Whoever
+picks it up first tomorrow: claim this line, and note the stack mounts
+`.claude/worktrees/frontend` — repoint it at your own worktree with
+`COMPOSE_PROJECT_NAME=my-travel-pans` and rebuild if the lockfile moved.
 
 One recurring gotcha now that images get rebuilt often: `axe-core` is
 installed with `npm i --no-save` inside the frontend container, so **every
@@ -349,6 +351,31 @@ fares; and coverage is patchy on thin routes, so "no data for this route" has
 to be an honest, designed state rather than an empty grid.
 
 ---
+
+## End of day 2026-08-12 — where to resume
+
+Everything shipped today is on `main` (`65aa203`). Data verified at 1 user /
+25 visits / 41 journeys; no test guests left behind.
+
+**Merged today:** auth hardening + NestJS 11 (audit 17→0) + `/flights/summary`
++ route code-splitting (B); "Where to next?" on fixtures (C); the
+accessibility pass + `VITE_PUBLIC_URL` (A).
+
+**Next session, in priority order:**
+1. **B** — deployment CI per D4: `deploy.yml`, `rollback.yml`,
+   `docker-compose.prod.yml`, Umami container. Plus the droplet-size
+   measurement before the user buys anything.
+2. **A** — `analytics.ts` and the events in D4/§4.3, shipping dark behind an
+   unset `VITE_UMAMI_URL`. Then replay-as-video (task #18), the last
+   functionality item.
+3. **User** — the one-time runbook: droplet, GitHub secrets, DNS, TLS. Nothing
+   in the codebase blocks this; it has been waiting since 2026-08-11.
+4. **Later, not before deploy** — password reset + email verification as one
+   piece (D5).
+
+**Open branches, none merged, all rebased on current `main`:**
+`feat/a11y-pass` (merged, can be deleted), `feat/sec-hardening` (merged),
+`feat/search-destination-discovery` (merged). Worktrees stay for tomorrow.
 
 ## Blocked on the user
 
