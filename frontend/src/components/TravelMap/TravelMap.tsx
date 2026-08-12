@@ -730,7 +730,18 @@ function TravelMap() {
               {(replay.current ?? selectedJourney) && (
                 <JourneyHighlight
                   journey={replay.current ?? selectedJourney!}
-                  legDurationSeconds={replay.isActive ? REPLAY_FLIGHT_SECONDS : undefined}
+                  /*
+                    Per-leg, so the whole chain lands inside the replay step.
+                    The plane now flies every leg in one pass, so a three-leg
+                    journey at the flat per-leg duration would take three
+                    times the step and be cut off twice.
+                  */
+                  legDurationSeconds={
+                    replay.isActive
+                      ? REPLAY_FLIGHT_SECONDS /
+                        Math.max((replay.current ?? selectedJourney!).legs.length, 1)
+                      : undefined
+                  }
                   sizeScale={markerScale}
                   onClear={clearSelection}
                 />

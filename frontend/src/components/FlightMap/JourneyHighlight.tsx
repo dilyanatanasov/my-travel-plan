@@ -65,27 +65,56 @@ function JourneyHighlight({
   */
   const legDuration = legDurationSeconds ?? 9;
 
+  /*
+    Geometry for every leg, computed before rendering so the whole chain is
+    known up front — the single plane needs one continuous path, not one per
+    leg.
+  */
+  const drawn = legs
+    .map((leg) => {
+      const dep = leg.departureAirport;
+      const arr = leg.arrivalAirport;
+      if (!dep || !arr) return null;
+      const from = projection([Number(dep.longitude), Number(dep.latitude)]);
+      const to = projection([Number(arr.longitude), Number(arr.latitude)]);
+      if (!from || !to) return null;
+      return {
+        leg,
+        pathD: calculateArcPath(from as [number, number], to as [number, number]),
+      };
+    })
+    .filter((entry): entry is { leg: (typeof legs)[number]; pathD: string } =>
+      entry !== null
+    );
+
+  /*
+    One path for the whole journey.
+
+    Each arc is "M x y Q cx cy x2 y2", and every leg starts exactly where the
+    previous one ended, so dropping the M from all but the first splices them
+    into a single continuous route. One plane then flies Varna → Vienna →
+    Geneva → home in one pass, which is what a trip looks like; a plane per
+    leg had three aircraft in the air at once on the same itinerary.
+  */
+  const journeyPath = drawn
+    .map(({ pathD }, index) => (index === 0 ? pathD : pathD.replace(/^M[^Q]*/, '')))
+    .join(' ');
+
+  // Total time scales with the chain, so a three-leg trip is not flown at
+  // three times the speed of a one-leg trip.
+  const journeyDuration = legDuration * Math.max(drawn.length, 1);
+  const planeScaleShared = getZoomAdjustedSize(9 * sizeScale, zoom) / 24;
+
   return (
     <g className="journey-highlight">
-      {legs.map((leg, index) => {
+      {drawn.map(({ leg, pathD }, index) => {
         const dep = leg.departureAirport;
         const arr = leg.arrivalAirport;
-        if (!dep || !arr) return null;
-
-        const from = projection([Number(dep.longitude), Number(dep.latitude)]);
-        const to = projection([Number(arr.longitude), Number(arr.latitude)]);
-        if (!from || !to) return null;
-
-        const pathD = calculateArcPath(
-          from as [number, number],
-          to as [number, number]
-        );
         const width = getZoomAdjustedSize(2.4 * sizeScale, zoom);
         const dash = getZoomAdjustedSize(7, zoom);
         const gap = getZoomAdjustedSize(9, zoom);
         // The glyph is drawn in a 24-unit box, so this converts it to roughly
         // the diameter the old marker dot had.
-        const planeScale = getZoomAdjustedSize(9 * sizeScale, zoom) / 24;
         const delay = (index * legDuration) / Math.max(legs.length, 1);
 
         return (
@@ -123,41 +152,6 @@ function JourneyHighlight({
               style={{ animationDelay: `${delay}s` }}
               pointerEvents="none"
             />
-            {!prefersReducedMotion && (
-              // A plane rather than a dot. rotate="auto" on animateMotion
-              // turns it along the path tangent, so it banks into the arc and
-              // always points the way the leg was flown. Drawn nose-right so
-              // that rotation lines up with the direction of travel.
-              <g pointerEvents="none">
-                {/* animateMotion belongs on the group: putting it on the same
-                    element as a transform attribute makes the two fight. The
-                    group is moved and rotated; the path inside is only
-                    scaled and centred on its own origin. */}
-                <animateMotion
-                  dur={`${legDuration}s`}
-                  begin={`${delay}s`}
-                  repeatCount="indefinite"
-                  path={pathD}
-                  rotate="auto"
-                  /*
-                    Constant ground speed. Without this the browser advances
-                    along the curve's parameter rather than its arc length, so
-                    the plane crawls out of the departure, accelerates through
-                    the middle and decelerates into the arrival — which reads
-                    as a stutter, not as flight.
-                  */
-                  calcMode="paced"
-                />
-                <path
-                  d={PLANE_PATH}
-                  fill={colors.selected}
-                  stroke="#ffffff"
-                  strokeWidth={1.2}
-                  strokeLinejoin="round"
-                  transform={`scale(${planeScale}) translate(-12 -12)`}
-                />
-              </g>
-            )}
             {/* Clicking the highlighted route clears the selection. */}
             <path
               d={pathD}
@@ -171,6 +165,38 @@ function JourneyHighlight({
           </g>
         );
       })}
+
+      {/*
+        One aircraft for the whole trip, flying the legs end to end.
+
+        rotate="auto" turns it along the path tangent, so it banks into each
+        arc and always points the way it is travelling. animateMotion sits on
+        the group rather than the path: putting it on an element that also
+        carries a transform attribute makes the two fight, so the group is
+        moved and rotated while the glyph inside is only scaled and centred.
+
+        calcMode="paced" gives constant ground speed across the whole chain,
+        including through the corners at each stop.
+      */}
+      {!prefersReducedMotion && journeyPath && (
+        <g pointerEvents="none">
+          <animateMotion
+            dur={`${journeyDuration}s`}
+            repeatCount="indefinite"
+            path={journeyPath}
+            rotate="auto"
+            calcMode="paced"
+          />
+          <path
+            d={PLANE_PATH}
+            fill={colors.selected}
+            stroke="#ffffff"
+            strokeWidth={1.2}
+            strokeLinejoin="round"
+            transform={`scale(${planeScaleShared}) translate(-12 -12)`}
+          />
+        </g>
+      )}
     </g>
   );
 }
