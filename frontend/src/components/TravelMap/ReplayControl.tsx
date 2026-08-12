@@ -148,7 +148,7 @@ function ReplayControl({ replay, compact = false }: ReplayControlProps) {
 
   return (
     <div
-      className="map-glass rounded-xl border shadow-lg px-3 py-2 w-[17rem] max-w-[calc(100vw-1.5rem)]"
+      className="map-glass rounded-xl border shadow-lg px-3 py-2 w-full"
       role="group"
       aria-label="Replay controls"
     >

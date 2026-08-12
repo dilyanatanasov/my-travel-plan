@@ -833,10 +833,14 @@ function TravelMap() {
       */}
       <MapLegend showFlights={settings.showFlights} stats={stats} />
 
-      {/* Transport controls appear only while replaying, so nothing floats
-          over the map when it is idle. */}
+      {/*
+        Transport controls appear only while replaying, and take the slot the
+        search and filter cards vacate — which is exactly the space they were
+        occupying anyway. At the bottom they covered the map on a phone, where
+        vertical room is the scarce thing.
+      */}
       {replay.isActive && (
-        <div className="absolute z-20 bottom-36 lg:bottom-4 left-1/2 -translate-x-1/2">
+        <div className="absolute z-30 top-3 left-3 right-3 md:right-auto md:w-[30rem]">
           <ReplayControl replay={replay} />
         </div>
       )}
