@@ -10,6 +10,9 @@
 
   They are still strings at runtime — the brand exists only at compile time.
 */
+/** [longitude, latitude], the order d3 and GeoJSON use. */
+export type LonLatTuple = [number, number];
+
 export type Alpha2 = string & { readonly __iso: 'alpha2' };
 export type Alpha3 = string & { readonly __iso: 'alpha3' };
 

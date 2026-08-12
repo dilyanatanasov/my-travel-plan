@@ -29,6 +29,7 @@ import { useMediaQuery } from '../../hooks/useMediaQuery';
 import { buildCountryDisplayMap } from './countryColors';
 import CountriesLayer from './CountriesLayer';
 import CountryDetailCard from './CountryDetailCard';
+import MapSearch, { type SearchTarget } from './MapSearch';
 import type { AggregatedRoute } from '../FlightMap/routeUtils';
 import { fitToPoints, type LonLat } from './fitBounds';
 
@@ -187,6 +188,16 @@ function TravelMap() {
     },
     []
   );
+
+  const handleSearchGo = useCallback((target: SearchTarget) => {
+    setCenter(target.center);
+    setZoom(target.zoom);
+    // Counts as a deliberate move, so the data framing stops overriding it.
+    setHasMovedMap(true);
+    // Landing on a country you have been to opens its card, which is the
+    // question someone searching for it is usually asking.
+    setOpenCountryIso(target.isoCode ?? null);
+  }, []);
 
   const handleResetView = useCallback(() => {
     // Back to the view the map opened with, not [0,0] — otherwise "reset"
@@ -557,7 +568,17 @@ function TravelMap() {
       {/* Layers, filters and legend, floating over the canvas */}
       {/* No scrolling here: the panel caps and scrolls its own content, so the
           header stays pinned instead of scrolling away with it. */}
-      <div className="absolute top-3 left-3 right-3 md:right-auto md:w-[30rem] z-30">
+      {/* One column: search on top, filters beneath. Positioning them
+          separately put both in the same corner and the search hid the
+          filters entirely. */}
+      <div className="absolute top-3 left-3 right-3 md:right-auto md:w-[30rem] z-30 flex flex-col gap-2">
+        <MapSearch
+          countries={countries}
+          airports={airports}
+          countryCentroids={countryCentroids}
+          onGo={handleSearchGo}
+        />
+
         <MapControlPanel
           settings={settings}
           onSettingsChange={setSettings}
