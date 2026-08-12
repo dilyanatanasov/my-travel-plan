@@ -1,9 +1,12 @@
 import { useMemo } from 'react';
 import { useGetFlightsQuery } from '../../features/flights/flightsApi';
 import JourneyHighlightCard from './JourneyHighlightCard';
-import type { FlightJourney } from '../../types';
+import RegionProgress from './RegionProgress';
+import type { Country, FlightJourney, Visit } from '../../types';
 
 interface OverviewPanelProps {
+  countries: Country[];
+  visits: Visit[];
   tripCount: number;
   transitCount: number;
   worldPercent: number;
@@ -52,6 +55,8 @@ function daysFromToday(dateStr: string): number {
  * future is one you have logged but not taken. Nothing new is stored.
  */
 function OverviewPanel({
+  countries,
+  visits,
   tripCount,
   transitCount,
   worldPercent,
@@ -120,6 +125,8 @@ function OverviewPanel({
           isUpcoming={false}
         />
       )}
+
+      <RegionProgress countries={countries} visits={visits} />
 
       {!next && !last && (
         <p className="text-sm text-ink-muted">

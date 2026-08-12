@@ -110,6 +110,8 @@ function TravelMapPage() {
       case 'overview':
         return (
           <OverviewPanel
+            countries={countries}
+            visits={visits}
             tripCount={overviewStats.tripCount}
             transitCount={overviewStats.transitCount}
             worldPercent={overviewStats.worldPercent}
