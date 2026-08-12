@@ -790,9 +790,17 @@ function TravelMap() {
       {/* Layers, filters and legend, floating over the canvas */}
       {/* No scrolling here: the panel caps and scrolls its own content, so the
           header stays pinned instead of scrolling away with it. */}
-      {/* One column: search on top, filters beneath. Positioning them
-          separately put both in the same corner and the search hid the
-          filters entirely. */}
+      {/*
+        One column: search on top, filters beneath. Positioning them
+        separately put both in the same corner and the search hid the filters
+        entirely.
+
+        Both are withheld during replay. Searching flies the camera and
+        filtering changes which routes exist, either of which fights the
+        replay for control of the same map — and the replay has no way to take
+        it back.
+      */}
+      {!replay.isActive && (
       <div className="absolute top-3 left-3 right-3 md:right-auto md:w-[30rem] z-30 flex flex-col gap-2">
         <MapSearch
           countries={countries}
@@ -814,6 +822,7 @@ function TravelMap() {
           onOpenChange={setIsControlPanelOpen}
         />
       </div>
+      )}
 
       {/*
         Always visible. The panel caps its own height, so it clears these

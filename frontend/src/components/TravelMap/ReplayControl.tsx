@@ -151,11 +151,11 @@ function ReplayControl({ replay, compact = false }: ReplayControlProps) {
 
         <button
           type="button"
-          onClick={replay.skipToEnd}
-          aria-label="Skip replay and show the whole map"
+          onClick={replay.stopReplay}
+          aria-label="Stop the replay and show the whole map"
           className={`${buttonClass} text-sm font-medium`}
         >
-          Skip
+          Stop
         </button>
       </div>
     </div>

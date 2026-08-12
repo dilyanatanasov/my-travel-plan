@@ -30,8 +30,8 @@ export interface ReplayState {
   stop: () => void;
   togglePause: () => void;
   next: () => void;
-  /** Jump to the end and leave the finished map on screen. */
-  skipToEnd: () => void;
+  /** End the replay and restore the finished map. */
+  stopReplay: () => void;
 }
 
 /**
@@ -106,13 +106,22 @@ export function useJourneyReplay(journeys: FlightJourney[]): ReplayState {
     setIsPaused(false);
   }, [clearTimer]);
 
+  /*
+    Side effects stay out of the state updater.
+
+    Starting and stopping the interval inside setIsPaused looked tidy, but
+    React invokes updaters twice under StrictMode in development, so the timer
+    was cleared and immediately restarted — pause appeared to do nothing.
+  */
   const togglePause = useCallback(() => {
-    setIsPaused((paused) => {
-      if (paused) runTimer();
-      else clearTimer();
-      return !paused;
-    });
-  }, [runTimer, clearTimer]);
+    if (isPaused) {
+      setIsPaused(false);
+      runTimer();
+    } else {
+      setIsPaused(true);
+      clearTimer();
+    }
+  }, [isPaused, runTimer, clearTimer]);
 
   /*
     Stepping by hand restarts the clock, so you get a full interval to look at
@@ -123,7 +132,7 @@ export function useJourneyReplay(journeys: FlightJourney[]): ReplayState {
     if (!isPaused) runTimer();
   }, [advance, isPaused, runTimer]);
 
-  const skipToEnd = useCallback(() => {
+  const stopReplay = useCallback(() => {
     clearTimer();
     setIndex(-1);
     setIsPaused(false);
@@ -158,6 +167,6 @@ export function useJourneyReplay(journeys: FlightJourney[]): ReplayState {
     stop,
     togglePause,
     next,
-    skipToEnd,
+    stopReplay,
   };
 }
