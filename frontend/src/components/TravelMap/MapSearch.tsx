@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { Airport, Alpha3, Country, LonLatTuple } from '../../types';
+import type { Alpha3, Country, LonLatTuple } from '../../types';
+import { useSearchAirportsQuery } from '../../features/flights/flightsApi';
 
 export interface SearchTarget {
   center: [number, number];
@@ -10,7 +11,6 @@ export interface SearchTarget {
 
 interface MapSearchProps {
   countries: Country[];
-  airports: Airport[];
   countryCentroids: Map<string, LonLatTuple>;
   onGo: (target: SearchTarget) => void;
 }
@@ -35,11 +35,33 @@ const MAX_HITS = 6;
  * country hits appear once the map has drawn. Airports carry their own
  * coordinates and are searchable immediately.
  */
-function MapSearch({ countries, airports, countryCentroids, onGo }: MapSearchProps) {
+function MapSearch({ countries, countryCentroids, onGo }: MapSearchProps) {
   const [query, setQuery] = useState('');
+  /*
+    Debounced separately from the input, so typing does not fire a request per
+    keystroke. 250ms is below the threshold where a search feels laggy.
+  */
+  const [debounced, setDebounced] = useState('');
   const [isOpen, setIsOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebounced(query.trim()), 250);
+    return () => window.clearTimeout(timer);
+  }, [query]);
+
+  /*
+    Airports come from the server, not from the user's own flights.
+
+    The first version searched only airports appearing in logged journeys,
+    so looking up somewhere you had not yet been — the main reason to search
+    a map — returned nothing at all. Rio and Buenos Aires simply did not
+    exist until you had flown there.
+  */
+  const { data: airports = [] } = useSearchAirportsQuery(debounced, {
+    skip: debounced.length < 2,
+  });
 
   const hits = useMemo<Hit[]>(() => {
     const term = query.trim().toLowerCase();
@@ -76,6 +98,8 @@ function MapSearch({ countries, airports, countryCentroids, onGo }: MapSearchPro
 
     return results;
   }, [query, countries, airports, countryCentroids]);
+
+
 
   useEffect(() => setActiveIndex(0), [query]);
 

@@ -596,7 +596,6 @@ function TravelMap() {
       <div className="absolute top-3 left-3 right-3 md:right-auto md:w-[30rem] z-30 flex flex-col gap-2">
         <MapSearch
           countries={countries}
-          airports={airports}
           countryCentroids={countryCentroids}
           onGo={handleSearchGo}
         />
