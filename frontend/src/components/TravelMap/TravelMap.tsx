@@ -346,6 +346,27 @@ function TravelMap() {
     null once the country is no longer visited also closes the card after a
     removal, with no extra bookkeeping.
   */
+  /*
+    Hold a country to open its card, adding it first if it is not yet
+    visited. That gives trip / transit / home a route that does not involve
+    opening a panel — which matters most on a phone, where the panel covers
+    the map you are pointing at.
+  */
+  const handleCountryLongPress = useCallback(
+    async (isoCode: string) => {
+      if (selectedJourney) return;
+      const countryId = countryByIsoCode.get(isoCode);
+      if (!countryId) return;
+
+      clickConsumedRef.current = true;
+      if (!visitByCountryId.get(countryId)) {
+        await addVisitForCountry(countryId);
+      }
+      setOpenCountryIso(isoCode);
+    },
+    [countryByIsoCode, visitByCountryId, addVisitForCountry, selectedJourney]
+  );
+
   const openCountry = useMemo(() => {
     if (!openCountryIso) return null;
     const countryId = countryByIsoCode.get(openCountryIso);
@@ -515,6 +536,7 @@ function TravelMap() {
             onCountryClick={handleCountryClick}
             onCountryHover={canHover ? handleCountryHover : undefined}
             onCentroids={setCountryCentroids}
+            onCountryLongPress={handleCountryLongPress}
           />
 
           {/* Flight Routes */}

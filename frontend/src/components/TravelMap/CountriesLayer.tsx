@@ -60,6 +60,14 @@ interface CountriesLayerProps {
    * countries has to learn it from here.
    */
   onCentroids?: (centroids: Map<string, [number, number]>) => void;
+  /**
+   * Press and hold a country.
+   *
+   * Gives the visit-type control a route that does not involve opening a
+   * panel: hold anywhere on the map and set trip / transit / home right
+   * there.
+   */
+  onCountryLongPress?: (isoCode: string) => void;
 }
 
 /**
@@ -72,10 +80,29 @@ function CountriesLayer({
   onCountryClick,
   onCountryHover,
   onCentroids,
+  onCountryLongPress,
 }: CountriesLayerProps) {
   const isInteractive = Boolean(onCountryClick);
   // Reported once per geography load, not once per render.
   const reportedRef = useRef(false);
+
+  /*
+    Long-press plumbing.
+
+    A hold has to cancel if the finger moves, or every pan of the map would
+    fire it. The timer is also cleared on pointerup, and a fired press
+    swallows the click that follows it so the tap handler does not run too.
+  */
+  const pressTimerRef = useRef<number | null>(null);
+  const pressFiredRef = useRef(false);
+  const pressOriginRef = useRef<{ x: number; y: number } | null>(null);
+
+  const cancelPress = () => {
+    if (pressTimerRef.current !== null) {
+      window.clearTimeout(pressTimerRef.current);
+      pressTimerRef.current = null;
+    }
+  };
 
   const [geography, setGeography] = useState<unknown>(null);
   useEffect(() => {
@@ -153,8 +180,37 @@ function CountriesLayer({
               key={geo.rsmKey}
               geography={geo}
               onClick={() => {
+                // The hold already acted; do not also treat it as a tap.
+                if (pressFiredRef.current) {
+                  pressFiredRef.current = false;
+                  return;
+                }
                 if (clickable && isoCode) onCountryClick?.(isoCode);
               }}
+              onPointerDown={(event) => {
+                if (!onCountryLongPress || !isoCode) return;
+                pressFiredRef.current = false;
+                pressOriginRef.current = { x: event.clientX, y: event.clientY };
+                cancelPress();
+                // 500ms: long enough not to fire on a slow tap, short enough
+                // not to feel like the app has hung.
+                pressTimerRef.current = window.setTimeout(() => {
+                  pressFiredRef.current = true;
+                  onCountryLongPress(isoCode);
+                }, 500);
+              }}
+              onPointerMove={(event) => {
+                const origin = pressOriginRef.current;
+                if (!origin) return;
+                const moved = Math.hypot(
+                  event.clientX - origin.x,
+                  event.clientY - origin.y
+                );
+                // Same slop as the tap guard: a hold that drifts is a pan.
+                if (moved > 14) cancelPress();
+              }}
+              onPointerUp={cancelPress}
+              onPointerLeave={cancelPress}
               onMouseEnter={(event) =>
                 onCountryHover?.(geo.properties?.name ?? null, event)
               }
