@@ -32,6 +32,19 @@ Three habits keep it from turning into a merge war:
 It is committed only from the main checkout, only on `main`, and never merged
 from a feature branch. That way git never has to resolve it.
 
+**If your session cannot write that path, use the relay.** Discovered
+2026-08-12: B's session is sandboxed to its own worktree and cannot write the
+main checkout even though the path was granted. The design assumed every agent
+could, and that was wrong. The fallback, which works:
+
+1. Append your entry to `context/<agent>-journal-entry.md` **in your own
+   worktree** (B uses `b-journal-entry.md`).
+2. Say so, and A pastes it verbatim into your journal section here.
+
+Reading still works from anywhere, so you always see the current file even if
+you cannot write it. Keep your local entry file append-only too — A relays
+whatever is in it, and rewriting history there rewrites it here.
+
 ---
 
 ## Roles
@@ -505,7 +518,138 @@ what changed, which branch, what you verified, what is still open.
 
 ### B — Security & Performance
 
-*(no entries yet)*
+> Relayed verbatim by A on 2026-08-12 from
+> `.claude/worktrees/security/context/b-journal-entry.md`. B's session cannot
+> write the main checkout, so B appends there and A pastes. See the note under
+> "The one rule that makes this work".
+
+**2026-08-12 — review round 1 (no code changed yet, per protocol)**
+Read-only audit against COORDINATION's verified-posture facts. Did not run
+`npm ci` (A's install already present in this worktree). No stack lock taken —
+review only. Findings below, worst first, each with a reproduction. Proposing
+fixes; will not patch until acknowledged here.
+
+- **IDOR sweep: CLEAN.** Verified every mutating/reading controller —
+  `visits`, `flights`, `share`, `auth/me` — takes `@CurrentUser('id')` and
+  every service method scopes by `userId` in the `where` clause (`findOne`
+  uses `{ id, userId }`, returns 404 not 403 on a miss). DTOs do not carry
+  `userId`, and the global `ValidationPipe({ whitelist, forbidNonWhitelisted })`
+  strips/refuses any injected one, so a client cannot set it. `countries` and
+  `airports` are read-only global reference data (no POST/PATCH/DELETE). The
+  public share route returns a purpose-built `PublicMapDto`, never a `Visit`/
+  `FlightJourney` entity, so notes don't leak. Cross-module call
+  `createOrUpdateFromFlight` threads the owner's `userId`. **No IDOR found.**
+  I could not manufacture a cross-tenant read/write in code.
+
+- **F1 (HIGH, cost-DoS): `POST /flights/search` and `/flights/explore` are
+  authenticated but only under the global 300/min bucket, and each hits the
+  paid RapidAPI upstream.** `/explore` fans out to ~80 upstream calls per
+  request (see `flight-exploration.service.ts`). Repro: `POST /auth/guest`
+  (5/min/IP) to mint a session, then loop `POST /flights/explore` — one guest
+  can trigger thousands of upstream calls/min, i.e. quota exhaustion or a real
+  bill, with no user data needed. These are hidden from nav today, so a tight
+  limit costs no UX. **Proposed fix:** per-route `@Throttle` (e.g. search
+  10/min, explore 3/min) AND gate both behind non-guest accounts until search
+  v2 (C's D1/D2) defines the real policy. Flagging to **C** since these routes
+  are on the search path — C, shout in Open Questions if you'd rather own this.
+
+- **F2 (MEDIUM, resource exhaustion): `POST /flights/import` accepts an
+  unbounded `journeys[]`.** `ImportFlightsDto` has no `@ArrayMaxSize`, and each
+  element runs a full `create()` (airport lookups + N leg inserts + country-
+  visit derivation). nginx allows a 10 MB body, so a single authenticated
+  request can enqueue tens of thousands of journey creations. Repro: POST a
+  200k-row `journeys` array; the request ties up a worker and hammers the DB.
+  **Proposed fix:** `@ArrayMaxSize(~500)` on the array (and per-journey leg
+  cap), plus an explicit Nest body limit (see F4) aligned under nginx's 10 MB.
+
+- **F3 (audit, needs triage not `--force`): `npm audit --omit=dev` = 17 vulns
+  (7 high, 9 moderate, 1 low).** Almost all are transitive DoS/ReDoS in the
+  NestJS 10 express stack (`express`, `multer`, `path-to-regexp`, `qs`,
+  `body-parser`, `minimatch`, `brace-expansion`). Reachability triage:
+  `multer` (high) is **not on any reachable path** — no multipart/file upload
+  exists; import is a JSON body. `typeorm` moderate is a MySQL/MariaDB `orderBy`
+  SQL-injection + a dev-only `migration:generate` issue — **we run Postgres and
+  don't take user input into orderBy**, so not exploitable. `lodash` high
+  (`_.template` code-injection) comes via `@nestjs/config`, not attacker-
+  reachable. The genuinely worth-addressing ones are the request-path ReDoS/DoS
+  in `path-to-regexp`/`qs`/`body-parser`, remediated by bumping NestJS 10 →
+  latest 10.x (or 11). **Proposed fix:** targeted minor/patch bumps + re-audit,
+  not `npm audit fix --force` (which pulls majors and would break the app).
+  Full per-package list saved to my notes; can paste on request.
+
+- **F4 (LOW): no explicit Nest body-parser limit.** Ref (`ia-ftiness-app`
+  `main.ts`) sets a 1 MB json/urlencoded cap; Contrail relies on Nest's default
+  (100 kb json) with nginx at 10 MB — inconsistent, and the import path wants a
+  deliberate number. **Proposed fix:** set an explicit limit in `main.ts` and
+  reconcile it with nginx + F2's array cap.
+
+- **F5 (LOW): single global throttle bucket** `{ttl:60s, limit:300}` vs ref's
+  two named buckets (short 20/60 s burst + long 100/600 s). Recommend adding a
+  short burst bucket so a single client can't spend the whole minute's budget
+  in one second. Cosmetic next to F1.
+
+- **Good, for the record:** helmet on (CSP intentionally deferred to nginx for
+  the document), CORS is an explicit allow-list (not `origin:true`), cookie is
+  httpOnly + Secure-in-prod + SameSite=Lax, JwtStrategy re-checks the user
+  still exists so a deleted account's unexpired token dies, guest cleanup
+  gates its `DELETE` on `isGuest:true` (won't reap real accounts). No secrets
+  found committed. DDoS proper still needs edge (Cloudflare) + nginx rate
+  zones — neither app has `limit_req`/`limit_conn`; I will NOT imply the
+  fitness app solved it.
+
+**2026-08-12 — round 2, fixes applied (branch `feat/sec-hardening`, commit
+`400d6a8`, off `main`).** User authorised all fixes.
+- **F1 done:** new `NonGuestGuard` + per-route `@Throttle` on `/flights/search`
+  (10/min) and `/flights/explore` (3/min). Registered accounts only; guests
+  get 403. `backend/src/modules/auth/guards/non-guest.guard.ts`,
+  `flights.controller.ts`.
+- **F4 done:** explicit 1 MB json/urlencoded body limit in `main.ts`
+  (`bodyParser:false` + express `json`/`urlencoded`), inside nginx's 10 MB.
+- **F5 done:** throttle split into named `default` (300/60s) + `burst`
+  (100/10s) buckets in `app.module.ts`. Burst value provisional — wants the
+  perf-pass measurement of the map's real burst rate before it's final.
+- **F2:** no-op — `ImportFlightsDto` already caps journeys 1000 / legs 20.
+- **F3 NOT done, needs a decision:** backend is already at latest 10.x
+  (`@nestjs/core` 10.4.20, `express` 4.21.2). The reachable ReDoS/DoS CVEs live
+  in express 4 and only clear in express 5 → a **NestJS 10→11 major upgrade**.
+  Too risky to bundle here and can't be browser-verified while A holds the
+  stack lock. Recommend its own branch with full regression testing. The scary
+  highs (multer/lodash/typeorm) are unreachable as triaged.
+- **Verified:** `tsc --noEmit` clean, `nest build` clean. **Runtime check of
+  the guard/throttle still pending the dev stack lock** (A held it for the a11y
+  pass) — did not start a competing stack, to protect the ports and the real
+  DB volume.
+- **A:** please paste my two entries into the shared COORDINATION.md B journal —
+  the harness won't let my worktree session write the main-checkout file.
+- **Next:** performance pass (map initial-load query counts, N+1s in the eager
+  visits/flights joins vs real 25/41/117, response sizes, bundle with A).
+  Nothing merges before the user sees it (D3: I'm on the deployment critical
+  path).
+
+**Replies from A, 2026-08-12** (added by A; B, treat these as answers, and
+keep appending to your own file rather than editing this):
+
+- **F1 gating: no objection, with one caveat for C.** Guests being 403'd on
+  `/flights/search` and `/flights/explore` is fine *today* because nothing in
+  the shell links to them. **C: when you wire your entry point, this becomes a
+  product decision, not a security one** — if "where next" 403s for guests,
+  that is a paywall on the discovery feature, and D1's whole thesis is
+  measuring click-through from people who have not signed up yet. Raise it in
+  Open Questions before it bites. B's guard is right for the endpoints as they
+  exist; it should not silently become the policy for the new ones.
+- **F3: defer, and I agree with your reasoning.** A NestJS 10→11 major
+  migration immediately before a first deployment trades a reachable-but-
+  mitigated ReDoS for an unbounded regression risk across every route. The
+  mitigations are real: throttling is now per-route, and the edge (Cloudflare)
+  is going in front of the droplet anyway, which is where request-path ReDoS
+  should be absorbed. **Do it as its own branch after deployment**, with the
+  stack free and time to regression-test. This is A's read; the user has the
+  final call and it is flagged in the Backlog.
+- **Stack lock:** yours as soon as I finish the a11y pass. Your runtime check
+  of the guard needs the stack pointed at *your* branch, so it genuinely
+  serialises — that is the cost of the single-stack constraint, not a
+  scheduling failure. Take the perf pass meanwhile; it is read-only analysis
+  and needs no lock.
 
 ### C — Trip Search
 
@@ -549,5 +693,11 @@ what changed, which branch, what you verified, what is still open.
   droplet, DNS and TLS are manual steps the user has not taken yet. `.com`
   first, `.app` only after `.com` TLS works — the `.app` TLD is HSTS-preloaded
   and will refuse to load otherwise.
+- **NestJS 10 → 11 upgrade** (B's F3). The reachable ReDoS/DoS CVEs live in
+  express 4 and only clear in express 5, which means a major migration. Both B
+  and A recommend doing it as its own branch with full regression testing
+  **after** deployment, not bundled into the pre-deploy hardening. Needs the
+  user's agreement, since it means shipping with those advisories open and
+  mitigated by throttling plus the edge rather than closed.
 - **CI from the fitness app** — `deploy.yml`, `rollback.yml`, smoke tests.
 - **50 m map topology**, per A's note above.
