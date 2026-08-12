@@ -140,7 +140,20 @@ function MapControlPanel({
         onClick={() => onOpenChange(!isOpen)}
         aria-expanded={isOpen}
         aria-controls="map-control-panel"
-        className="map-glass-hover flex-shrink-0 w-full flex items-center justify-between gap-2 min-h-12 px-4 py-2 text-left focus:outline-none focus:ring-2 focus:ring-inset focus:ring-brand-400"
+        /*
+          The corners have to match the card's, because the card is
+          overflow-hidden with an 18px radius and this button sits 1px inside
+          it. Square corners plus an inset ring drew a rectangle whose corners
+          the card then sliced off, so the focus state looked cut rather than
+          curved — while the inputs below it, which are nowhere near the
+          card's edge, looked fine.
+
+          rounded-b only when collapsed: open, the bottom edge butts against
+          the panel content, and rounding it would notch the seam.
+        */
+        className={`map-glass-hover flex-shrink-0 w-full flex items-center justify-between gap-2 min-h-12 px-4 py-2 text-left rounded-t-xl ${
+          isOpen ? '' : 'rounded-b-xl'
+        } focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-400`}
       >
         <span className="flex items-center gap-2 text-sm font-medium">
           <svg

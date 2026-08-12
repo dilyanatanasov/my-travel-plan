@@ -166,7 +166,17 @@ select option {
     background-color: rgb(var(--color-ink) / 0.08);
     border-color: rgb(var(--color-ink) / 0.16);
     color: rgb(var(--color-ink));
-    /* Lighter chevron, or it disappears against the dark field. */
+  }
+
+  /*
+    Lighter chevron in dark mode, or it disappears against the dark field.
+
+    Scoped to .select-field, not .map-glass-field. map-glass-field is the
+    generic "form control on glass" skin and the continent buttons wear it
+    too, so putting the arrow here drew a chevron on every one of them — in
+    dark mode only, since light mode already scoped it correctly.
+  */
+  .dark .select-field {
     background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23c0b6a5' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
   }
 
