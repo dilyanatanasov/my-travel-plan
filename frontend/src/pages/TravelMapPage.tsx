@@ -13,6 +13,7 @@ import OverviewPanel from '../components/AppShell/OverviewPanel';
 import SharePanel from '../features/share/SharePanel';
 import MapPeekBar from '../components/AppShell/MapPeekBar';
 import { useGetFlightStatsQuery } from '../features/flights/flightsApi';
+import { useMilestones } from '../features/milestones/useMilestones';
 import { getSection, type SectionId } from '../components/AppShell/sections';
 import {
   useGetCountriesQuery,
@@ -25,6 +26,14 @@ import { useIsDesktop } from '../hooks/useMediaQuery';
 import { MapFocusProvider } from '../features/map/MapFocusContext';
 import type { VisitType, Visit } from '../types';
 
+
+/** Visited countries, excluding transit — the same rule the Overview uses. */
+function overviewStatsCountForMilestones(
+  visits: { visitType?: string | null }[]
+): number {
+  return visits.filter((visit) => (visit.visitType || 'trip') !== 'transit')
+    .length;
+}
 
 function TravelMapPage() {
   // Null means "no panel" — the map gets the whole canvas. Countries opens by
@@ -77,6 +86,18 @@ function TravelMapPage() {
     },
     [updateVisit, showToast]
   );
+
+  /*
+    Celebrate thresholds as they are crossed. Placed here because this is the
+    only component that already holds every total, and because the share
+    screen it offers is a sibling section rather than a route.
+  */
+  useMilestones({
+    countries: overviewStatsCountForMilestones(visits),
+    distanceKm: flightStats?.totalDistanceKm ?? 0,
+    flights: flightStats?.totalFlights ?? 0,
+    onShare: () => setActiveSection('share'),
+  });
 
   const overviewStats = useMemo(() => {
     const tripCount = visits.filter((v) => {
