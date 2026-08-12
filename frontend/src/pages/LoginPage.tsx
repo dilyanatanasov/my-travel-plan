@@ -1,6 +1,10 @@
 import { useForm } from 'react-hook-form';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { useLoginMutation, type LoginRequest } from '../features/auth/authApi';
+import {
+  useLoginMutation,
+  forgetAccount,
+  type LoginRequest,
+} from '../features/auth/authApi';
 import AuthLayout from '../features/auth/AuthLayout';
 import {
   inputClass,
@@ -25,6 +29,24 @@ function LoginPage() {
   // Send people back where they were headed before the redirect.
   const from =
     (location.state as { from?: string } | null)?.from ?? '/';
+
+  /**
+   * Leaves the login screen without an account.
+   *
+   * This page is reachable without asking for it: RequireAuth sends anyone
+   * whose device remembers an account here when the session has lapsed. That
+   * is right for the owner, and a dead end for everyone else — a borrowed
+   * phone, or someone who cannot remember the password had no route back to
+   * the map at all.
+   *
+   * Clearing the flag is what unblocks the gate, so it has to be deliberate
+   * rather than a stray tap: the saved map is not gone, but it is not on
+   * screen either until they sign back in.
+   */
+  const handleBrowseAsGuest = () => {
+    forgetAccount();
+    navigate('/', { replace: true });
+  };
 
   const onSubmit = async (values: LoginRequest) => {
     try {
@@ -99,6 +121,19 @@ function LoginPage() {
         <button type="submit" disabled={isLoading} className={submitClass}>
           {isLoading ? 'Signing in…' : 'Sign in'}
         </button>
+
+        <div className="pt-2 border-t border-line text-center">
+          <button
+            type="button"
+            onClick={handleBrowseAsGuest}
+            className="min-h-11 px-3 text-sm font-medium text-brand-text hover:text-brand-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 rounded-lg"
+          >
+            Look around without an account
+          </button>
+          <p className="text-xs text-ink-subtle mt-0.5">
+            Your saved map stays where it is — sign in any time to get it back.
+          </p>
+        </div>
       </form>
     </AuthLayout>
   );
