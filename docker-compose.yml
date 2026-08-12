@@ -62,6 +62,9 @@ services:
     restart: unless-stopped
     environment:
       DOMAIN: ${DOMAIN}
+      # Optional second domain that 301s to DOMAIN (e.g. mycontrail.app).
+      # Leave empty until its certificate has been issued — see setup-ssl.sh.
+      ALT_DOMAIN: ${ALT_DOMAIN:-}
     ports:
       - '80:80'
       - '443:443'

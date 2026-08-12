@@ -64,15 +64,42 @@ certbot certonly --standalone \
 
 echo "==> Certificate installed at /etc/letsencrypt/live/$DOMAIN/"
 
-echo "==> Adding a renewal hook so nginx reloads after each renewal"
-mkdir -p /etc/letsencrypt/renewal-hooks/deploy
+echo "==> Adding renewal hooks"
+# Issuance used --standalone, so certbot's renewal config remembers standalone
+# — and renewal will need port 80, which nginx holds. Without the pre/post
+# hooks the systemd renewal timer fails silently and the certificate simply
+# expires after 90 days. (Same pattern as ia-fitness-app, where it is proven.)
+mkdir -p /etc/letsencrypt/renewal-hooks/pre \
+         /etc/letsencrypt/renewal-hooks/post \
+         /etc/letsencrypt/renewal-hooks/deploy
+
+cat > /etc/letsencrypt/renewal-hooks/pre/stop-travel-tracker.sh <<'HOOK'
+#!/bin/sh
+docker stop travel_tracker_frontend 2>/dev/null || true
+HOOK
+
+cat > /etc/letsencrypt/renewal-hooks/post/start-travel-tracker.sh <<'HOOK'
+#!/bin/sh
+docker start travel_tracker_frontend 2>/dev/null || true
+HOOK
+
 cat > /etc/letsencrypt/renewal-hooks/deploy/reload-travel-tracker.sh <<'HOOK'
 #!/bin/sh
 # Certificates renew on disk; nginx keeps serving the old one until reloaded.
+# The post hook has already started the container; reload covers the case
+# where it was running the whole time (e.g. webroot renewals).
 docker exec travel_tracker_frontend nginx -s reload 2>/dev/null || true
 HOOK
-chmod +x /etc/letsencrypt/renewal-hooks/deploy/reload-travel-tracker.sh
+
+chmod +x /etc/letsencrypt/renewal-hooks/pre/stop-travel-tracker.sh \
+         /etc/letsencrypt/renewal-hooks/post/start-travel-tracker.sh \
+         /etc/letsencrypt/renewal-hooks/deploy/reload-travel-tracker.sh
+
+echo "==> Verifying renewal works end to end (dry run)"
+certbot renew --dry-run || echo "WARNING: renewal dry-run failed — investigate before the cert expires"
 
 echo
 echo "Done. The frontend will restart with HTTPS enabled."
-echo "Set DOMAIN=$DOMAIN in your .env so nginx and CORS agree."
+echo "For the primary domain: set DOMAIN=$DOMAIN in your .env so nginx and CORS agree."
+echo "For a secondary redirect domain: set ALT_DOMAIN=$DOMAIN instead, then"
+echo "  docker compose up -d --force-recreate frontend"

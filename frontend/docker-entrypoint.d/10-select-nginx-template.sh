@@ -13,17 +13,26 @@
 set -e
 
 DOMAIN="${DOMAIN:-localhost}"
+ALT_DOMAIN="${ALT_DOMAIN:-}"
 CERT="/etc/letsencrypt/live/${DOMAIN}/fullchain.pem"
+ALT_CERT="/etc/letsencrypt/live/${ALT_DOMAIN}/fullchain.pem"
 TEMPLATE_DIR=/etc/nginx/templates
 
 mkdir -p "$TEMPLATE_DIR"
 rm -f "$TEMPLATE_DIR"/*.conf.template
 
-if [ -f "$CERT" ]; then
-  echo "[nginx] certificate found for ${DOMAIN} — serving HTTPS"
-  cp /etc/nginx/available/nginx.conf.template "$TEMPLATE_DIR/default.conf.template"
-else
+if [ ! -f "$CERT" ]; then
   echo "[nginx] no certificate at ${CERT} — serving HTTP only."
   echo "[nginx] Run ./setup-ssl.sh on the host to issue one, then restart this container."
   cp /etc/nginx/available/nginx.http.conf.template "$TEMPLATE_DIR/default.conf.template"
+elif [ -n "$ALT_DOMAIN" ] && [ -f "$ALT_CERT" ]; then
+  echo "[nginx] certificates found for ${DOMAIN} and ${ALT_DOMAIN} — serving HTTPS, ${ALT_DOMAIN} redirects"
+  cp /etc/nginx/available/nginx.alt.conf.template "$TEMPLATE_DIR/default.conf.template"
+else
+  if [ -n "$ALT_DOMAIN" ]; then
+    echo "[nginx] no certificate for ${ALT_DOMAIN} yet — serving ${DOMAIN} only."
+    echo "[nginx] Run ./setup-ssl.sh for ${ALT_DOMAIN}, then restart this container."
+  fi
+  echo "[nginx] certificate found for ${DOMAIN} — serving HTTPS"
+  cp /etc/nginx/available/nginx.conf.template "$TEMPLATE_DIR/default.conf.template"
 fi
