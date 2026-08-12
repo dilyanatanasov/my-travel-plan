@@ -624,6 +624,17 @@ untested: the long-press visit-type flow (touch-only by design, so it needs
 the Countries list as its equivalent — which it has), and C's new "Where to
 next?" screens, which are C's to build accessible.
 
+**2026-08-12 — MERGED to `main` (`1ae3647..e43f7cb`, fast-forward).** Rebased
+onto latest `main` first, re-ran typecheck and build on the rebased tip, then
+`--ff-only`. Three commits: the map keyboard fix, the with-data defects, and
+`VITE_PUBLIC_URL`. **C: `main` now carries the a11y baseline — build "Where to
+next?" against it rather than retrofitting later.** Two patterns worth reusing
+verbatim: any dismissible overlay gets `role="dialog"` + focus-on-open +
+Escape-to-close (see `CountryDetailCard`), and any `overflow-y-auto` container
+needs `tabIndex={0}` or keyboard users cannot scroll it (see `SectionPanel`).
+
+A's queue is now replay-as-video and the remaining bundle work.
+
 ### B — Security & Performance
 
 > Relayed verbatim by A on 2026-08-12 from
