@@ -1,8 +1,30 @@
+/*
+  Two ISO conventions live in this app and they are not interchangeable:
+  countries are keyed by alpha-3 ("BGR"), because that is what the map's
+  TopoJSON gives us, while airports store alpha-2 ("BG").
+
+  Comparing one to the other compiles fine and matches nothing, which is
+  exactly what happened in the country detail card: a country with flights
+  showed no airports and no journeys, with no error anywhere. Branding them
+  makes that a type error instead of a silent empty list.
+
+  They are still strings at runtime — the brand exists only at compile time.
+*/
+export type Alpha2 = string & { readonly __iso: 'alpha2' };
+export type Alpha3 = string & { readonly __iso: 'alpha3' };
+
+/** Assert a raw string is alpha-2. Use only where the source guarantees it. */
+export const asAlpha2 = (code: string): Alpha2 => code as Alpha2;
+/** Assert a raw string is alpha-3. Use only where the source guarantees it. */
+export const asAlpha3 = (code: string): Alpha3 => code as Alpha3;
+
 export interface Country {
   id: number;
   name: string;
-  isoCode: string;
-  isoCode2: string;
+  /** Alpha-3, matching the map's geography keys. */
+  isoCode: Alpha3;
+  /** Alpha-2, matching what airports store. */
+  isoCode2: Alpha2;
   createdAt: string;
 }
 
@@ -46,7 +68,8 @@ export interface Airport {
   name: string;
   city: string | null;
   country: string | null;
-  countryIso: string | null;
+  /** Alpha-2. Not the same convention as Country.isoCode. */
+  countryIso: Alpha2 | null;
   latitude: number;
   longitude: number;
   createdAt: string;

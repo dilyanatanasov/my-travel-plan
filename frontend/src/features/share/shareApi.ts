@@ -1,3 +1,4 @@
+import type { Alpha2, Alpha3 } from '../../types';
 import { apiSlice } from '../../store/api/apiSlice';
 
 export interface PublicAirport {
@@ -15,8 +16,9 @@ export interface PublicRoute {
 }
 
 export interface PublicCountry {
-  isoCode: string;
-  isoCode2: string;
+  // Same two conventions as everywhere else; see types/index.ts.
+  isoCode: Alpha3;
+  isoCode2: Alpha2;
   name: string;
   visitType: 'trip' | 'transit' | 'home';
 }

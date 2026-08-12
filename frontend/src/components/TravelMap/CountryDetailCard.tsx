@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import type { FlightJourney, Visit, VisitType } from '../../types';
+import type { Alpha2, FlightJourney, Visit, VisitType } from '../../types';
 
 interface CountryDetailCardProps {
   countryName: string;
@@ -11,7 +11,7 @@ interface CountryDetailCardProps {
    * nothing, so a country with flights showed neither its airports nor its
    * journeys.
    */
-  isoAlpha2: string | null;
+  isoAlpha2: Alpha2 | null;
   visit: Visit | null;
   journeys: FlightJourney[];
   onClose: () => void;

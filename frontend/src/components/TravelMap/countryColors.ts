@@ -1,8 +1,9 @@
+import type { Alpha3 } from '../../types';
 import type { Visit, VisitType } from '../../types';
 import type { MapPalette, MapStatePalette } from '../../theme/mapColors';
 
 export interface CountryDisplayInfo {
-  isoCode: string;
+  isoCode: Alpha3;
   visitType: VisitType | 'none';
   isHome: boolean;
   hasFlights: boolean;
