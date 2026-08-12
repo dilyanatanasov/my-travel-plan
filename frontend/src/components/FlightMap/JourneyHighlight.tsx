@@ -103,7 +103,9 @@ function JourneyHighlight({
   // Total time scales with the chain, so a three-leg trip is not flown at
   // three times the speed of a one-leg trip.
   const journeyDuration = legDuration * Math.max(drawn.length, 1);
-  const planeScaleShared = getZoomAdjustedSize(9 * sizeScale, zoom) / 24;
+  // 13, not 9: at 9 the glyph was ~8px and sat directly on top of a route
+  // line of the same colour, which is why it vanished on the light map.
+  const planeScaleShared = getZoomAdjustedSize(13 * sizeScale, zoom) / 24;
 
   return (
     <g className="journey-highlight">
@@ -179,7 +181,13 @@ function JourneyHighlight({
         including through the corners at each stop.
       */}
       {!prefersReducedMotion && journeyPath && (
-        <g pointerEvents="none">
+        /*
+          Keyed by journey, so switching journeys remounts the element and the
+          animation restarts from the origin. Without it React reuses the same
+          <animateMotion>, which keeps its own clock: the plane carried on
+          from wherever it had got to and joined the next route mid-way.
+        */
+        <g key={journey.id} pointerEvents="none">
           <animateMotion
             dur={`${journeyDuration}s`}
             repeatCount="indefinite"
@@ -187,11 +195,18 @@ function JourneyHighlight({
             rotate="auto"
             calcMode="paced"
           />
+          {/*
+            routeHighlight inverts with the theme — near-black on the light
+            map, pale on the dark one — so the aircraft reads against the
+            route beneath it either way. The halo is the ocean colour, which
+            separates it from the line rather than blending into it as white
+            did on cream.
+          */}
           <path
             d={PLANE_PATH}
-            fill={colors.selected}
-            stroke="#ffffff"
-            strokeWidth={1.2}
+            fill={colors.routeHighlight}
+            stroke={colors.ocean}
+            strokeWidth={1.8}
             strokeLinejoin="round"
             transform={`scale(${planeScaleShared}) translate(-12 -12)`}
           />

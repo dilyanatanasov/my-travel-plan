@@ -139,6 +139,13 @@ function TravelMap() {
   */
   const [openCountryIso, setOpenCountryIso] = useState<string | null>(null);
 
+  /*
+    Replay draws one journey at a time, in date order, reusing the same
+    JourneyHighlight the map already uses for a selected route — so the plane,
+    the arc and the direction all come for free.
+  */
+  const replay = useJourneyReplay(flights);
+
   // The journey highlighted by clicking one of its routes.
   const [selectedJourney, setSelectedJourney] = useState<FlightJourney | null>(
     null
@@ -329,6 +336,13 @@ function TravelMap() {
       // does the clearing; this just declines to toggle.
       if (selectedJourney) return;
 
+      /*
+        The replay owns the map while it runs. Editing during it would both
+        corrupt the illusion — countries appearing that you did not fly to —
+        and quietly change real data from a tap the user meant as "pause".
+      */
+      if (replay.isActive) return;
+
       const countryId = countryByIsoCode.get(isoCode);
       if (!countryId) return;
 
@@ -346,7 +360,13 @@ function TravelMap() {
         await addVisitForCountry(countryId);
       }
     },
-    [countryByIsoCode, visitByCountryId, addVisitForCountry, selectedJourney]
+    [
+      countryByIsoCode,
+      visitByCountryId,
+      addVisitForCountry,
+      selectedJourney,
+      replay.isActive,
+    ]
   );
 
   /*
@@ -364,7 +384,7 @@ function TravelMap() {
   */
   const handleCountryLongPress = useCallback(
     async (isoCode: string) => {
-      if (selectedJourney) return;
+      if (selectedJourney || replay.isActive) return;
       const countryId = countryByIsoCode.get(isoCode);
       if (!countryId) return;
 
@@ -377,12 +397,6 @@ function TravelMap() {
     [countryByIsoCode, visitByCountryId, addVisitForCountry, selectedJourney]
   );
 
-  /*
-    Replay draws one journey at a time, in date order, reusing the same
-    JourneyHighlight the map already uses for a selected route — so the plane,
-    the arc and the direction all come for free.
-  */
-  const replay = useJourneyReplay(flights);
 
   /*
     During replay the map draws only what has been flown so far, so the trail
@@ -701,10 +715,15 @@ function TravelMap() {
           <CountriesLayer
             countryDisplayMap={replay.isActive ? replayCountryDisplayMap : countryDisplayMap}
             showVisitColors={settings.showCountries}
-            onCountryClick={handleCountryClick}
+            /*
+              Withheld during replay, which also switches the layer's hover
+              and pressed styles off — a country that lights up under the
+              cursor is promising something the guards then refuse.
+            */
+            onCountryClick={replay.isActive ? undefined : handleCountryClick}
             onCountryHover={canHover ? handleCountryHover : undefined}
             onCentroids={setCountryCentroids}
-            onCountryLongPress={handleCountryLongPress}
+            onCountryLongPress={replay.isActive ? undefined : handleCountryLongPress}
             landedIsoCode={landedIsoCode}
           />
 
