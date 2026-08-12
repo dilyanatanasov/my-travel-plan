@@ -9,6 +9,7 @@ import { useVisitActions } from '../../features/visits/useVisitActions';
 import { useToast } from '../Toast/ToastProvider';
 import type { Visit, FlightJourney } from '../../types';
 import { useGetFlightsQuery } from '../../features/flights/flightsApi';
+import { useUpdateVisitMutation } from '../../features/visits/visitsApi';
 import { aggregateRoutes, extractUniqueAirports, countAirportVisits } from '../FlightMap/routeUtils';
 import { applyFilters, extractFilterOptions } from '../FlightMap/filterUtils';
 import { DEFAULT_FILTERS, type FlightFilters } from '../FlightMap/filterTypes';
@@ -27,6 +28,7 @@ import CountryTooltip from './CountryTooltip';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
 import { buildCountryDisplayMap } from './countryColors';
 import CountriesLayer from './CountriesLayer';
+import CountryDetailCard from './CountryDetailCard';
 import type { AggregatedRoute } from '../FlightMap/routeUtils';
 import { fitToPoints, type LonLat } from './fitBounds';
 
@@ -56,6 +58,7 @@ function TravelMap() {
 
   // Mutations
   const [setHomeCountry] = useSetHomeCountryMutation();
+  const [updateVisit] = useUpdateVisitMutation();
   const { addVisitForCountry, removeVisitWithUndo } = useVisitActions();
   const { showToast } = useToast();
 
@@ -117,6 +120,13 @@ function TravelMap() {
     center: defaultCenter,
     zoom: MIN_ZOOM,
   });
+
+  /*
+    The country whose detail card is open. Held as an ISO code rather than the
+    visit, so the card survives the visit object being replaced when its type
+    changes.
+  */
+  const [openCountryIso, setOpenCountryIso] = useState<string | null>(null);
 
   // The journey highlighted by clicking one of its routes.
   const [selectedJourney, setSelectedJourney] = useState<FlightJourney | null>(
@@ -304,19 +314,41 @@ function TravelMap() {
       clickConsumedRef.current = true;
       const existingVisit = visitByCountryId.get(countryId);
       if (existingVisit) {
-        await removeVisitWithUndo(existingVisit);
+        /*
+          Open the country rather than delete it. Tapping used to remove,
+          which made the map's only interaction destructive — a stray tap at
+          the end of a pan could quietly drop somewhere you had been. Removal
+          now lives inside the card, behind a deliberate press.
+        */
+        setOpenCountryIso(isoCode);
       } else {
         await addVisitForCountry(countryId);
       }
     },
-    [
-      countryByIsoCode,
-      visitByCountryId,
-      addVisitForCountry,
-      removeVisitWithUndo,
-      selectedJourney,
-    ]
+    [countryByIsoCode, visitByCountryId, addVisitForCountry, selectedJourney]
   );
+
+  /*
+    Resolve the open country from its ISO code on every render, rather than
+    storing the visit itself. Changing the visit type replaces the visit
+    object, and a card holding the old one would show a stale badge. Returning
+    null once the country is no longer visited also closes the card after a
+    removal, with no extra bookkeeping.
+  */
+  const openCountry = useMemo(() => {
+    if (!openCountryIso) return null;
+    const countryId = countryByIsoCode.get(openCountryIso);
+    if (!countryId) return null;
+    const visit = visitByCountryId.get(countryId) ?? null;
+    if (!visit) return null;
+    return {
+      // Alpha-2, which is what the airports table stores. The map's own key
+      // is alpha-3, and joining on it matched nothing.
+      isoAlpha2: visit.country?.isoCode2 ?? null,
+      visit,
+      name: visit.country?.name ?? openCountryIso,
+    };
+  }, [openCountryIso, countryByIsoCode, visitByCountryId]);
 
   const handleSetHomeCountry = useCallback(
     async (countryId: number) => {
@@ -564,6 +596,35 @@ function TravelMap() {
           journey={selectedJourney}
           onClose={() => setSelectedJourney(null)}
         />
+      )}
+
+      {/* Same berth as the journey card — they are never open together. */}
+      {openCountry && !selectedJourney && (
+        <div className="absolute z-20 left-3 right-3 sm:right-auto bottom-20 lg:bottom-4 lg:left-auto lg:right-20">
+          <CountryDetailCard
+            countryName={openCountry.name}
+            isoAlpha2={openCountry.isoAlpha2}
+            visit={openCountry.visit}
+            journeys={flights}
+            onClose={() => setOpenCountryIso(null)}
+            onChangeType={(type) => {
+              void updateVisit({
+                id: openCountry.visit.id,
+                data: { visitType: type },
+              });
+            }}
+            onRemove={() => {
+              setOpenCountryIso(null);
+              void removeVisitWithUndo(openCountry.visit);
+            }}
+            onShowJourney={(journeyId) => {
+              const journey = flights.find((f) => f.id === journeyId);
+              if (!journey) return;
+              setOpenCountryIso(null);
+              setSelectedJourney(journey);
+            }}
+          />
+        </div>
       )}
 
       {/* Hover-only. On touch the route's details are in the card instead. */}
