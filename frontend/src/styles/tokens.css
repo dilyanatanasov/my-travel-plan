@@ -32,6 +32,15 @@
   --color-brand-400: 246 160 107;
   --color-brand-500: 214 127 72;
   --color-brand-600: 156 82 32;
+  /*
+    Accent text, as opposed to accent fill.
+
+    brand-600 exists to carry white text as a button background, which makes
+    it far too mid-toned to *be* text on a pale surface — measured 2.6:1 in
+    places. This rung is dark enough to read on cream and is never used as a
+    background.
+  */
+  --color-brand-text: 122 62 20;
   --color-brand-700: 140 73 26;
   --color-brand-800: 100 51 18;
   --color-brand-900: 64 35 16;
@@ -45,8 +54,8 @@
 
   /* Text ramp, from the neutral scale. */
   --color-ink: 32 30 29;
-  --color-ink-muted: 100 92 80;
-  --color-ink-subtle: 111 103 90;
+  --color-ink-muted: 90 82 71;
+  --color-ink-subtle: 99 91 79;
 
   /*
     Map semantics. Still ordered by lightness (home darkest -> ocean lightest)
@@ -104,7 +113,7 @@
 
   --color-ink: 249 244 237;
   --color-ink-muted: 192 182 165;
-  --color-ink-subtle: 161 151 134;
+  --color-ink-subtle: 178 168 151;
 
   /*
     The accent has to move: brand-600 is chosen for white text on a light
@@ -120,6 +129,8 @@
   --color-brand-100: 64 35 16;
   --color-brand-500: 246 160 107;
   --color-brand-600: 168 88 38;
+  /* Light enough to read on the dark surfaces, same role as above. */
+  --color-brand-text: 240 166 122;
   --color-brand-700: 246 160 107;
   --color-brand-800: 255 198 165;
 

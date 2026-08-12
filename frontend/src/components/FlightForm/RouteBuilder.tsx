@@ -74,7 +74,7 @@ function RouteBuilder({ onSubmit, isLoading }: RouteBuilderProps) {
       <div className="space-y-3">
         {airports.map((airport, index) => (
           <div key={index} className="flex items-center gap-2">
-            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-brand-100 text-brand-600 flex items-center justify-center text-sm font-medium">
+            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-brand-100 text-brand-text flex items-center justify-center text-sm font-medium">
               {index + 1}
             </div>
             <div className="flex-1">
@@ -113,7 +113,7 @@ function RouteBuilder({ onSubmit, isLoading }: RouteBuilderProps) {
       <button
         type="button"
         onClick={addLeg}
-        className="flex items-center gap-2 text-brand-600 hover:text-brand-700 text-sm font-medium"
+        className="flex items-center gap-2 text-brand-text hover:text-brand-700 text-sm font-medium"
       >
         <svg
           className="w-4 h-4"
@@ -161,7 +161,7 @@ function RouteBuilder({ onSubmit, isLoading }: RouteBuilderProps) {
               type="checkbox"
               checked={isRoundTrip}
               onChange={(e) => setIsRoundTrip(e.target.checked)}
-              className="w-4 h-4 text-brand-600 rounded focus:ring-brand-500"
+              className="w-4 h-4 text-brand-text rounded focus:ring-brand-500"
             />
             <span className="text-sm text-ink">Round trip</span>
           </label>
@@ -184,10 +184,17 @@ function RouteBuilder({ onSubmit, isLoading }: RouteBuilderProps) {
       <button
         type="submit"
         disabled={!isValid || isLoading}
-        className={`w-full py-2 px-4 rounded-lg text-white font-medium transition-colors ${
+        /*
+          text-white belongs to the enabled branch, not the base. Left on the
+          base it collided with the disabled colour — both are `color`
+          utilities, so which one won depended on their order in the generated
+          stylesheet rather than on the order written here, and white won:
+          1.23:1 on the disabled surface.
+        */
+        className={`w-full py-2 px-4 rounded-lg font-medium transition-colors ${
           isValid && !isLoading
-            ? 'bg-brand-600 hover:bg-brand-700'
-            : 'bg-gray-400 cursor-not-allowed'
+            ? 'bg-brand-600 text-white hover:bg-brand-700'
+            : 'bg-surface-sunken text-ink-muted cursor-not-allowed'
         }`}
       >
         {isLoading ? 'Adding...' : 'Add Flight'}

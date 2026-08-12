@@ -400,7 +400,7 @@ function MapControlPanel({
                 <button
                   type="button"
                   onClick={() => onFiltersChange(DEFAULT_FILTERS)}
-                  className="min-h-11 text-sm text-brand-600 hover:text-brand-800 font-medium focus:outline-none focus:ring-2 focus:ring-brand-500 rounded-lg px-2 -mx-2"
+                  className="min-h-11 text-sm text-brand-text hover:text-brand-800 font-medium focus:outline-none focus:ring-2 focus:ring-brand-500 rounded-lg px-2 -mx-2"
                 >
                   Clear all filters ({activeCount})
                 </button>

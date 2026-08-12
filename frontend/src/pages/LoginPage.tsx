@@ -44,7 +44,7 @@ function LoginPage() {
           Don't have an account?{' '}
           <Link
             to="/register"
-            className="text-brand-600 hover:text-brand-700 font-medium"
+            className="text-brand-text hover:text-brand-700 font-medium"
           >
             Create one
           </Link>

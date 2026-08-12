@@ -124,7 +124,7 @@ function AirportSearch({
               >
                 <div className="flex items-center justify-between">
                   <div>
-                    <span className="font-mono font-semibold text-brand-600">
+                    <span className="font-mono font-semibold text-brand-text">
                       {airport.iataCode}
                     </span>
                     <span className="ml-2 text-ink">{airport.name}</span>

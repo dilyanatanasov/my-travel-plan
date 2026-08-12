@@ -197,7 +197,7 @@ function ImportFlights() {
               type="button"
               onClick={handleConfirm}
               disabled={isLoading || journeyCount === 0}
-              className="flex-1 min-h-11 rounded-lg bg-brand-600 text-white text-sm font-medium hover:bg-brand-700 disabled:bg-gray-400 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-brand-500"
+              className="flex-1 min-h-11 rounded-lg bg-brand-600 text-white text-sm font-medium hover:bg-brand-700 disabled:bg-surface-sunken disabled:text-ink-muted disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-brand-500"
             >
               {isLoading
                 ? 'Importing…'

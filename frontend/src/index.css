@@ -99,7 +99,9 @@ select option {
   */
   /* Light theme: pale glass over a pale map. */
   .map-glass {
-    background-color: rgb(var(--color-surface) / 0.72);
+    /* 0.85, not 0.72: text on this panel composites against the map showing
+       through, and muted ink measured 3.27:1 against a mid-tone map. */
+    background-color: rgb(var(--color-surface) / 0.85);
     backdrop-filter: blur(16px) saturate(140%);
     -webkit-backdrop-filter: blur(16px) saturate(140%);
     border-color: rgb(var(--color-ink) / 0.1);
@@ -119,7 +121,7 @@ select option {
   .dark .map-glass {
     /* Canvas, not surface: the panel has to sink into the near-black map
        rather than sit on it as a lighter slab. */
-    background-color: rgb(var(--color-canvas) / 0.72);
+    background-color: rgb(var(--color-canvas) / 0.85);
     border-color: rgb(var(--color-ink) / 0.12);
     color: rgb(var(--color-ink));
   }

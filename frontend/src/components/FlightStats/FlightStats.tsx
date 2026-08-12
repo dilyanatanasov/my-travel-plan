@@ -126,15 +126,15 @@ function FlightStats() {
         <h3 className="text-lg font-semibold mb-4">Fun Facts</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <p className="text-white/75 text-sm">Distance to Moon</p>
+            <p className="text-white/85 text-sm">Distance to Moon</p>
             <p className="font-display font-normal text-3xl">{stats.moonDistancePercent.toFixed(1)}%</p>
           </div>
           <div>
-            <p className="text-white/75 text-sm">If you walked instead...</p>
+            <p className="text-white/85 text-sm">If you walked instead...</p>
             <p className="font-display font-normal text-3xl">{stats.walkingYears.toFixed(1)} years</p>
           </div>
           <div>
-            <p className="text-white/75 text-sm">Earth Circumferences</p>
+            <p className="text-white/85 text-sm">Earth Circumferences</p>
             <p className="font-display font-normal text-3xl">{stats.earthCircumferences.toFixed(2)}×</p>
           </div>
         </div>
@@ -153,7 +153,7 @@ function FlightStats() {
             <p className="text-sm text-ink-muted">
               {stats.longestFlight.departureCity} to {stats.longestFlight.arrivalCity}
             </p>
-            <p className="text-brand-600 font-semibold mt-1">
+            <p className="text-brand-text font-semibold mt-1">
               {formatNumber(Math.round(stats.longestFlight.distanceKm))} km
             </p>
           </div>
@@ -167,7 +167,7 @@ function FlightStats() {
             <p className="text-sm text-ink-muted">
               {stats.shortestFlight.departureCity} to {stats.shortestFlight.arrivalCity}
             </p>
-            <p className="text-map-transit font-semibold mt-1">
+            <p className="text-brand-text font-semibold mt-1">
               {formatNumber(Math.round(stats.shortestFlight.distanceKm))} km
             </p>
           </div>
@@ -219,7 +219,7 @@ function FlightStats() {
                   {airport.iataCode}
                 </span>
                 <span className="text-sm text-ink-muted">{airport.city}</span>
-                <span className="text-xs text-brand-600 font-medium">
+                <span className="text-xs text-brand-text font-medium">
                   {airport.visitCount}×
                 </span>
               </div>

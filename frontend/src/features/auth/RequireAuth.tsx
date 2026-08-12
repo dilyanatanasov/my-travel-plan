@@ -10,7 +10,7 @@ function LoadingScreen({ message }: { message: string }) {
     >
       <div className="flex flex-col items-center gap-3">
         <svg
-          className="w-8 h-8 text-brand-600 animate-spin"
+          className="w-8 h-8 text-brand-text animate-spin"
           fill="none"
           viewBox="0 0 24 24"
           aria-hidden="true"

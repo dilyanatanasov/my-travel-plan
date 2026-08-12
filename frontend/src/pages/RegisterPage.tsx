@@ -74,7 +74,7 @@ function RegisterPage() {
           Already have an account?{' '}
           <Link
             to="/login"
-            className="text-brand-600 hover:text-brand-700 font-medium"
+            className="text-brand-text hover:text-brand-700 font-medium"
           >
             Sign in
           </Link>

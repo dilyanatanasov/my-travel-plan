@@ -110,7 +110,7 @@ function YearBarChart({ byYear, strongestYear }: YearBarChartProps) {
                 }`}
               >
                 {year.flights} {year.flights === 1 ? 'flight' : 'flights'}
-                <span className="text-white/70">
+                <span className="text-white/85">
                   {' · '}
                   {Math.round(year.distanceKm).toLocaleString()} km
                 </span>

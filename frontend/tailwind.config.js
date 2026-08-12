@@ -23,6 +23,8 @@ export default {
           900: token('brand-900'),
         },
         canvas: token('canvas'),
+        // Accent text; distinct from brand-600, which is a fill. See tokens.css.
+        'brand-text': token('brand-text'),
         // Filled panel that always carries white text; see tokens.css.
         'panel-accent': token('panel-accent'),
         surface: {
