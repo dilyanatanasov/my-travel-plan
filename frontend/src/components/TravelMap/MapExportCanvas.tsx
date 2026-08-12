@@ -131,6 +131,13 @@ function MapExportCanvasInner() {
           <CountriesLayer
             countryDisplayMap={countryDisplayMap}
             onCentroids={setCountryCentroids}
+            /*
+              Borders scale with the map here, unlike the live views. This SVG
+              is serialised, rasterised at its own size and then upscaled into
+              a 1080-wide card, so a stroke pinned to device pixels would come
+              out a hairline nobody can see.
+            */
+            constantBorderWidth={false}
           />
           {routes.length > 0 && (
             <FlightRoutes

@@ -43,7 +43,17 @@ import { fitToPoints, type LonLat } from './fitBounds';
 const REPLAY_FLIGHT_SECONDS = 3.6;
 
 const MIN_ZOOM = 1;
-const MAX_ZOOM = 8;
+/**
+ * 16, not 8.
+ *
+ * Eight is enough to fill the screen with a continent, which is where the
+ * ceiling used to sit. It is not enough to pull apart a cluster of airports
+ * in one corner of Europe, which is what a well-travelled map actually needs
+ * to be readable. The topology is world-atlas 110m, so coastlines do go
+ * visibly polygonal up here — an acceptable trade, since what you are reading
+ * at this range is the routes and the airport labels, not the shape of a bay.
+ */
+const MAX_ZOOM = 16;
 
 /**
  * Slightly west of centre on desktop, so the landmass sits right of the

@@ -70,6 +70,15 @@ interface CountriesLayerProps {
   onCountryLongPress?: (isoCode: string) => void;
   /** Alpha-3 of a country the replay has just landed in; pulses once. */
   landedIsoCode?: string | null;
+  /**
+   * Hold borders at a constant on-screen width regardless of zoom.
+   *
+   * Right for anything a person can zoom, and wrong for the export canvas:
+   * that SVG is rasterised at its own size and then upscaled into the share
+   * card, so a stroke pinned to device pixels comes out a faint hairline
+   * rather than a border.
+   */
+  constantBorderWidth?: boolean;
 }
 
 /**
@@ -84,8 +93,10 @@ function CountriesLayer({
   onCentroids,
   onCountryLongPress,
   landedIsoCode,
+  constantBorderWidth = true,
 }: CountriesLayerProps) {
   const isInteractive = Boolean(onCountryClick);
+  const vectorEffect = constantBorderWidth ? 'non-scaling-stroke' : undefined;
   // Reported once per geography load, not once per render.
   const reportedRef = useRef(false);
 
@@ -239,6 +250,20 @@ function CountriesLayer({
                   fill: isLanded ? colors.home : fillColor,
                   stroke: isLanded ? colors.home : colors.countryBorder,
                   strokeWidth: isLanded ? 1.5 : 0.5,
+                  /*
+                    Borders in screen pixels, not map units.
+
+                    ZoomableGroup scales this whole layer, so a plain 0.5
+                    stroke painted at 4px once you reached zoom 8 — the
+                    borders grew heaviest exactly when you were zooming in to
+                    pick detail apart, and swallowed the airports and routes
+                    between them. Everything on the flight layer already holds
+                    a constant screen size through getZoomAdjustedSize; this
+                    is the CSS equivalent, and unlike recomputing a width from
+                    the zoom level it costs no re-render of 180 geographies
+                    per frame.
+                  */
+                  vectorEffect,
                   outline: 'none',
                   // Countries wash in and out instead of snapping, so adding
                   // one reads as something happening rather than a repaint.
@@ -249,6 +274,7 @@ function CountriesLayer({
                   fill: isInteractive ? hoverColor : fillColor,
                   stroke: colors.countryBorder,
                   strokeWidth: 0.5,
+                  vectorEffect,
                   outline: 'none',
                   cursor: clickable ? 'pointer' : 'default',
                 },
@@ -256,6 +282,7 @@ function CountriesLayer({
                   fill: isInteractive ? pressedColor : fillColor,
                   stroke: colors.countryBorder,
                   strokeWidth: 0.5,
+                  vectorEffect,
                   outline: 'none',
                 },
               }}
