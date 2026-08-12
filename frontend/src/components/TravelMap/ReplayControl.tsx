@@ -67,7 +67,49 @@ const buttonClass =
  * Hidden below two journeys — replaying one flight is just drawing it.
  */
 function ReplayControl({ replay, compact = false }: ReplayControlProps) {
-  if (replay.total < 2) return null;
+  /*
+    Present but disabled below two journeys, rather than absent.
+
+    Hiding it meant the feature simply did not exist for anyone who had not
+    yet earned it — no hint that it was there, and no idea what to do to get
+    it. A disabled control that says what it needs is a signpost; a missing
+    one is a dead end.
+  */
+  if (replay.total < 2) {
+    const reason =
+      replay.total === 0
+        ? 'Log two flights with dates to replay your travels'
+        : 'Log one more dated flight to replay your travels';
+
+    if (compact) {
+      return (
+        <button
+          type="button"
+          disabled
+          aria-label={reason}
+          title={reason}
+          className="w-11 h-11 flex items-center justify-center map-glass
+            first:rounded-t-lg opacity-40 cursor-not-allowed"
+        >
+          <PlayIcon />
+        </button>
+      );
+    }
+
+    return (
+      <button
+        type="button"
+        disabled
+        aria-label={reason}
+        title={reason}
+        className="map-glass flex items-center gap-2 min-h-11 px-3 rounded-xl border
+          shadow-lg opacity-40 cursor-not-allowed"
+      >
+        <PlayIcon />
+        <span className="text-sm font-medium">Replay</span>
+      </button>
+    );
+  }
 
   if (!replay.isActive && compact) {
     return (

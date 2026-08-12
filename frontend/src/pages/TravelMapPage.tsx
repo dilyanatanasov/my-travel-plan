@@ -12,6 +12,7 @@ import SectionPanel from '../components/AppShell/SectionPanel';
 import OverviewPanel from '../components/AppShell/OverviewPanel';
 import SharePanel from '../features/share/SharePanel';
 import MapPeekBar from '../components/AppShell/MapPeekBar';
+import MapFirstRunHint from '../components/TravelMap/MapFirstRunHint';
 import { useGetFlightStatsQuery } from '../features/flights/flightsApi';
 import { useMilestones } from '../features/milestones/useMilestones';
 import { getSection, type SectionId } from '../components/AppShell/sections';
@@ -229,6 +230,16 @@ function TravelMapPage() {
             ) : (
               <>
                 <TravelMap />
+                {/*
+                  Only while there is genuinely nothing: one country or one
+                  flight and it is gone for good.
+                */}
+                {visits.length === 0 && (flightStats?.totalFlights ?? 0) === 0 && (
+                  <div className="absolute z-20 left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 lg:top-auto lg:bottom-24">
+                    <MapFirstRunHint onAddFlights={() => setActiveSection('flights')} />
+                  </div>
+                )}
+
                 <MapPeekBar
                   countriesVisited={overviewStats.tripCount}
                   worldPercent={overviewStats.worldPercent}

@@ -63,9 +63,21 @@ function RegionProgress({ countries, visits }: RegionProgressProps) {
 
   if (rows.length === 0) return null;
 
+  const anyVisited = rows.some((row) => row.visited > 0);
+
   return (
     <div className="bg-surface border border-line rounded-2xl p-4 shadow-sm">
       <h3 className="text-sm font-semibold text-ink mb-3">By region</h3>
+      {/*
+        Six empty bars look like a loading state. Saying what fills them is
+        both an explanation and the next action.
+      */}
+      {!anyVisited && (
+        <p className="text-xs text-ink-muted mb-3 leading-relaxed">
+          Mark a country on the map and these fill in — they track how much of
+          each region you have seen.
+        </p>
+      )}
       <ul className="space-y-2.5">
         {rows.map((row) => {
           const percent = Math.round((row.visited / row.total) * 100);

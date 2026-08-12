@@ -166,6 +166,20 @@ function MapSearch({ countries, countryCentroids, onGo }: MapSearchProps) {
         />
       </div>
 
+      {/*
+        A query that matches nothing gets an answer. Without this the list
+        just did not appear, which is indistinguishable from the search being
+        broken.
+      */}
+      {isOpen && query.trim().length >= 2 && hits.length === 0 && (
+        <div className="map-glass absolute z-30 left-0 right-0 mt-1 rounded-xl border shadow-xl px-3 py-3">
+          <p className="text-sm">No match for &ldquo;{query.trim()}&rdquo;</p>
+          <p className="text-xs map-glass-muted mt-0.5">
+            Try a country name, a city, or a three-letter airport code.
+          </p>
+        </div>
+      )}
+
       {isOpen && hits.length > 0 && (
         <ul
           id="map-search-results"
