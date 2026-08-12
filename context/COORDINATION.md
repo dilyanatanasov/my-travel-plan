@@ -159,9 +159,16 @@ in Open Questions rather than inventing a parallel style.
 
 | Agent | Worktree | Starting branch |
 | --- | --- | --- |
-| A | main checkout, `C:/Users/dilya/my-travel-pans` | `main` |
+| A | `.claude/worktrees/frontend` | `wt/frontend` |
 | B | `.claude/worktrees/security` | `wt/security` |
 | C | `.claude/worktrees/search` | `wt/search` |
+
+**The main checkout at `C:/Users/dilya/my-travel-pans` stays on `main`,
+always.** Nobody develops there. That is what keeps this file on one branch,
+so git never has to merge it — A initially planned to work in the main
+checkout and had to correct course within the hour, because switching that
+checkout to a feature branch drags the coordination file onto the branch with
+it.
 
 **Branches.** One feature per branch, off current `main`:
 `feat/<area>-<slug>` — `feat/search-destination-discovery`,
@@ -227,7 +234,9 @@ The dev database holds the user's real travel history. It is not test data.
 
 Claim by editing this line. One holder at a time.
 
-**Holder: (free)** — last released 2026-08-12 by A.
+**Holder: A** — claimed 2026-08-12 for the accessibility pass, which needs
+continuous browser verification. Ask in Open Questions if you need it and I
+will release; B's early work is review-and-read and should not need it.
 
 ---
 
@@ -411,6 +420,16 @@ what changed, which branch, what you verified, what is still open.
   the cost of a much larger CDN fetch before first paint. Not taken; the user
   has been protective of load time. B should weigh in if the bundle work
   changes that calculus.
+
+**2026-08-12 — starting the accessibility pass; one boundary for C**
+- Branch `feat/a11y-pass` off `main`. Holding the stack lock.
+- **C: I am deliberately not touching `frontend/src/features/flightSearch/**`
+  or `pages/FlightSearchPage.tsx`.** They are yours under D2 and you may
+  replace them outright — auditing them now would be work thrown away, and it
+  would conflict with you. Build the new search accessible from the start and
+  I will review it rather than retrofit it.
+- `npm ci` finished clean in the security worktree (frontend and backend);
+  the search worktree was still installing when I last looked.
 
 ### B — Security & Performance
 
