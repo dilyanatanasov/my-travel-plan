@@ -145,10 +145,17 @@ function RouteBuilder({ onSubmit, isLoading }: RouteBuilderProps) {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-ink mb-1">
+          {/* htmlFor/id, not proximity: a label that only sits above an input
+              is a visual convention, not an association, and this one left
+              the date field with no accessible name at all. */}
+          <label
+            htmlFor="journey-date"
+            className="block text-sm font-medium text-ink mb-1"
+          >
             Date (optional)
           </label>
           <input
+            id="journey-date"
             type="date"
             value={journeyDate}
             onChange={(e) => setJourneyDate(e.target.value)}

@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import type { Alpha2, FlightJourney, Visit, VisitType } from '../../types';
 
 interface CountryDetailCardProps {
@@ -116,8 +116,46 @@ function CountryDetailCard({
 
   const currentType: VisitType = visit?.visitType ?? 'trip';
 
+  /*
+    Escape closes the card.
+
+    It is reachable from the keyboard — searching a visited country opens it —
+    and it was not dismissible from the keyboard, so the only way out was to
+    find the close button. Escape is what anyone tries first on a thing that
+    floats over the page.
+
+    Listener on document rather than the card, so it works whether or not
+    focus has moved inside.
+  */
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [onClose]);
+
+  /*
+    Move focus to the card when it opens.
+
+    Without this the card appears while focus is still on the search result
+    that opened it, so a screen reader says nothing and Tab continues from
+    behind the card. tabIndex={-1} makes it focusable without adding a tab
+    stop of its own.
+  */
+  const cardRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    cardRef.current?.focus();
+  }, [countryName]);
+
   return (
-    <div className="map-glass rounded-2xl border shadow-xl p-4 w-full max-w-sm">
+    <div
+      ref={cardRef}
+      tabIndex={-1}
+      role="dialog"
+      aria-label={`${countryName} details`}
+      className="map-glass rounded-2xl border shadow-xl p-4 w-full max-w-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+    >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <h3 className="font-display font-normal text-xl leading-tight truncate">

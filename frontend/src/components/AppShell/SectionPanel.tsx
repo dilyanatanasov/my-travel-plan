@@ -56,9 +56,25 @@ function SectionPanel({ title, isOpen, onClose, children }: SectionPanelProps) {
           </svg>
         </button>
       </header>
-      {/* Keyed on the section so its scroll offset does not survive a
-          switch to a different section. */}
-      <div key={title} className="flex-1 min-h-0 overflow-y-auto p-5">
+      {/*
+        Keyed on the section so its scroll offset does not survive a switch to
+        a different section.
+
+        tabIndex={0} because this scrolls. Overview's content is taller than
+        the panel and its only focusable child is the share button at the
+        bottom, so a keyboard user had no way to scroll it — arrow keys need a
+        focused scroll container, and there was nothing to focus. group
+        + aria-label so it announces as a region rather than an unexplained
+        stop, and focus:outline-none because the panel edge already bounds it
+        visually; the ring would draw inside the content.
+      */}
+      <div
+        key={title}
+        tabIndex={0}
+        role="group"
+        aria-label={`${title} content`}
+        className="flex-1 min-h-0 overflow-y-auto p-5 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-500"
+      >
         {children}
       </div>
     </aside>

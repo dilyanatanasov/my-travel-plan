@@ -152,8 +152,25 @@ function ReplayControl({ replay, compact = false }: ReplayControlProps) {
       role="group"
       aria-label="Replay controls"
     >
+      {/*
+        The replay narrates itself.
+
+        Everything the replay communicates is visual — a plane crossing arcs,
+        countries lighting up — so without this a screen reader user starts it
+        and hears nothing at all for the next several minutes. aria-live on
+        the trip label turns it into "Sofia to Vienna, March 2024", once per
+        journey, which is the replay's actual content rather than a
+        description of the animation.
+
+        polite, not assertive: it should wait its turn behind anything the
+        user is doing, and it is narration, not an alert.
+      */}
       {trip && (
-        <p className="text-xs font-mono font-bold truncate">
+        <p
+          className="text-xs font-mono font-bold truncate"
+          aria-live="polite"
+          aria-atomic="true"
+        >
           {routeLabel(trip)}
           <span className="map-glass-muted font-sans font-normal">
             {monthLabel(trip) ? ` · ${monthLabel(trip)}` : ''}

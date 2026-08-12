@@ -140,7 +140,7 @@ function SettingsPage() {
         */}
         <section
           aria-labelledby="home-heading"
-          className="bg-surface border border-line rounded-xl p-4 sm:p-5"
+          className="bg-surface border border-line rounded-xl p-4 sm:p-5 mb-4"
         >
           <h2 id="home-heading" className="text-base font-semibold text-ink">
             Home country
