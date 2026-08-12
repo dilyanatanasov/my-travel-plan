@@ -439,6 +439,57 @@ remaining queue is the other half of that gate. C is building ahead of both
 and cannot be blocked by either, which is the right shape — C's output is
 design, and design wants review time anyway.
 
+### D4 — Deployment CI, analytics, and who builds what
+**Status: CONFIRMED by the user on 2026-08-12.**
+Full plan: `context/plan/2026-08-12_deploy-and-observability_plan.md`.
+
+- **Images build in GitHub Actions, never on the droplet.** Actions builds,
+  pushes to GHCR tagged `{sha, latest}`, then SSHes in for `compose pull` +
+  `up -d --no-build`. A Vite build on a 2 GB droplet can OOM and leave the
+  site half-deployed. Port `deploy.yml` and `rollback.yml` from
+  `ia-ftiness-app`; Contrail has no `.github/workflows` at all.
+- **Manual `workflow_dispatch`**, not deploy-on-merge. Three agents merge to
+  `main`; a bad merge should not reach users before the user has seen it.
+  Revisit once smoke tests gate it.
+- **Umami, self-hosted**, sharing the Postgres instance via its own database —
+  never the app's. Cookieless, so no consent banner in most EU readings, and
+  no third party receives travel data.
+- **Split: B builds CI, prod compose and the Umami container. A builds the
+  frontend instrumentation.**
+
+**B, flag before the user pays for a year:** backend + nginx + Postgres +
+Umami on 2 GB is tight. Measure it and give them a number, rather than
+letting them discover it at 3am.
+
+**A's privacy rule, binding on both of us:** no travel data leaves the app.
+No country names, airport codes, dates or notes in any event. Section ids and
+durations only. Contrail is a private map of someone's life; instrumenting it
+must not quietly turn it into someone else's dataset.
+
+### D5 — Password reset and register spam share one dependency
+**Status: sequenced by A on 2026-08-12, user asked, B owns the work.**
+
+Verified: `RegisterDto` takes a unique validated email + password, and there
+is **no `emailVerified` column** on the user entity.
+
+- **Password reset matters more here than in a typical app.** The reason
+  anyone registers is precisely so they do not lose their map. Forgetting the
+  password is the failure they signed up to avoid. Not deploy-blocking — at
+  launch volumes a SQL reset is a legitimate stopgap — but not optional for
+  long.
+- **Email verification is the actual anti-spam control.** Per-IP throttling
+  (register 5/min) stops one machine, not a distributed script. And the
+  surface is wider than register: `/auth/guest` mints a user row for anyone
+  who asks, so a spammer never has to register at all. Guest cleanup sweeps
+  abandoned rows after 30 days, which bounds the damage but does not prevent
+  it.
+- **One email provider unlocks both**, so build them together rather than
+  twice. Resend is the cheap, simple pick.
+
+Order: ship with Cloudflare in front (already the DDoS plan, brings bot
+filtering free) plus existing throttles, and Turnstile on register if the
+noise is real. Then email provider → reset + verification as one piece.
+
 ## Open questions
 
 Ask here instead of guessing. Format:
@@ -950,9 +1001,10 @@ Two consequences everyone should hold:
 
 ## Backlog — not started, do not start without asking
 
-- **Password reset / forgot password.** Owner B. Deferred by the user on
-  2026-08-12 ("maybe for later"). Note the interaction with guest accounts:
-  a guest has no email, so recovery has to degrade gracefully rather than
+- **Password reset + email verification.** Owner B. Promoted from "maybe for
+  later" on 2026-08-12 — see D5, they share an email provider and should be
+  built as one piece. Still not deploy-blocking. Note the guest interaction:
+  a guest has no email, so recovery must degrade gracefully rather than
   assume one exists.
 - **Deployment.** Runbook on branch `worktree-deploy-mycontrail`, at
   `context/implement/2026-08-11_deployment_implement.md`. Code is done;
