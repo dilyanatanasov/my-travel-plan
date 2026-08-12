@@ -8,7 +8,10 @@ import {
   Param,
   Query,
   ParseIntPipe,
+  UseGuards,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
+import { NonGuestGuard } from '../auth/guards/non-guest.guard';
 import { FlightsService } from './flights.service';
 import { FlightsStatsService, FlightStats } from './flights-stats.service';
 import { FlightSearchService } from './services/flight-search.service';
@@ -35,6 +38,14 @@ export class FlightsController {
     private readonly filterService: FilterService,
   ) {}
 
+  /**
+   * Live flight search. Each call hits the paid RapidAPI upstream, so it is
+   * gated to registered accounts (not free guest sessions) and throttled well
+   * below the global ceiling — one script must not be able to burn the API
+   * quota or run up a bill.
+   */
+  @UseGuards(NonGuestGuard)
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Post('search')
   async searchFlights(
     @Body() searchFlightsDto: SearchFlightsDto,
@@ -54,6 +65,13 @@ export class FlightsController {
     return results;
   }
 
+  /**
+   * Flexible exploration fans out to ~80 upstream calls per request, so it is
+   * gated and throttled harder than plain search: registered accounts only,
+   * a few per minute.
+   */
+  @UseGuards(NonGuestGuard)
+  @Throttle({ default: { limit: 3, ttl: 60_000 } })
   @Post('explore')
   async exploreFlights(
     @Body() flexibleSearchDto: FlexibleSearchDto,

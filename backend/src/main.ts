@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
+import { json, urlencoded } from 'express';
 import { AppModule } from './app.module';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
 
@@ -14,7 +15,14 @@ async function bootstrap() {
     );
   }
 
-  const app = await NestFactory.create(AppModule);
+  // Own the body parser rather than taking Nest's 100 kb default. The largest
+  // legitimate request is a flight import (capped at 1000 journeys in its DTO),
+  // which fits comfortably under 1 MB; anything larger is a mistake or an
+  // attack and is rejected before it reaches a handler. nginx caps the body at
+  // 10 MB one layer out — this is the tighter, app-aware limit inside it.
+  const app = await NestFactory.create(AppModule, { bodyParser: false });
+  app.use(json({ limit: '1mb' }));
+  app.use(urlencoded({ extended: true, limit: '1mb' }));
 
   app.setGlobalPrefix('api');
 

@@ -34,9 +34,18 @@ import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
       }),
       inject: [ConfigService],
     }),
-    // Generous global ceiling; auth endpoints tighten this with @Throttle.
-    // The map legitimately fires many rapid requests when toggling countries.
-    ThrottlerModule.forRoot([{ ttl: 60_000, limit: 300 }]),
+    // Two buckets, both applied globally by the ThrottlerGuard:
+    //  - 'default' is the generous per-minute ceiling; the map legitimately
+    //    fires many rapid requests when toggling countries, and per-route
+    //    @Throttle({ default: … }) tightens it on auth and search endpoints.
+    //  - 'burst' caps a single client's short spikes so it cannot spend the
+    //    whole minute's budget in one second (a scripted hammer), while
+    //    staying well above real human interaction. Provisional value pending
+    //    the map's measured burst rate in the performance pass.
+    ThrottlerModule.forRoot([
+      { name: 'default', ttl: 60_000, limit: 300 },
+      { name: 'burst', ttl: 10_000, limit: 100 },
+    ]),
     CountriesModule,
     VisitsModule,
     AirportsModule,
