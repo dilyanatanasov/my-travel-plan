@@ -180,9 +180,11 @@ mechanical conflict.
 3. A real browser check of the actual behaviour, via Playwright MCP. Screenshot
    or measurement in your journal for anything visual or performance-related.
 
-Host tooling: node v24.13.0 and npm 11.6.2 are on the host, so run `npm ci`
-once in your worktree's `frontend/` and `backend/` and typecheck without
-Docker.
+Host tooling: node v24.13.0 and npm 11.6.2 are on the host, so you can
+typecheck without Docker. **A started `npm ci` in both worktrees' `frontend/`
+and `backend/` on 2026-08-12** — check whether `node_modules` already exists
+before running it yourself, and never run a second `npm ci` in a directory
+where one is already in flight.
 
 **Dev stack lock.** The dev stack has hardcoded container names and fixed
 ports (5173, and Postgres), so **only one agent can run it at a time**. Claim
@@ -288,17 +290,85 @@ to be an honest, designed state rather than an empty grid.
 Things no agent can do. If your work needs one of these, say so in your
 journal rather than stubbing around it silently.
 
-- [ ] **Travelpayouts account** for mycontrail.com. One signup yields two
-      things C needs: the free Data API token, and access to the Kiwi
-      affiliate programme. → unblocks real data in search v1.
-- [ ] **Affiliate marker** (the Travelpayouts partner ID appended to booking
-      links). Arrives with programme approval, which may require a live site.
-      Not needed to build.
-- [ ] **Deployment** — droplet, DNS, TLS. Runbook exists; see Backlog. Now on
-      the revenue path because of the affiliate dependency above.
+- [ ] **Deployment** — droplet, DNS, TLS. Runbook exists; see Backlog. Gated
+      by D3 on A's functionality and B's security work, so not yet actionable.
+      Everything commercial queues behind it.
+- [ ] **Travelpayouts account** for mycontrail.com — the free Data API token
+      and access to the Kiwi affiliate programme come from one signup. Needed
+      only for search v2 (D1), which starts after deployment. **Do not sign up
+      yet**; the account is better created against a live site.
+- [ ] **Affiliate marker** (Travelpayouts partner ID appended to booking
+      links). Follows programme approval, after the site is live.
 - [ ] **Privacy policy and affiliate disclosure.** Affiliate networks and
       several jurisdictions expect disclosure that booking links earn a
       commission. A can draft the copy; the decision to publish is the user's.
+
+### D2 — Search v1 is design and entry point only; live data comes after
+**Status: CONFIRMED by the user on 2026-08-12, amending D1. Owner: C.**
+
+D1 settled *what* search will eventually be wired to. D2 settles *what C
+builds first*, and it is not the wiring.
+
+Build the experience: the entry point, the flow, the states, the visual
+language. Make it feel like Contrail. Real providers come after the user has
+seen and approved the design.
+
+This is not a mockup exercise — build it in React, in the app, routable and
+clickable, with realistic fixture data behind it. A static image cannot answer
+whether the flow works on a phone, and fixtures you can interact with are what
+turn "looks nice" into "this is the thing".
+
+What already exists, and the problem statement it hands you:
+
+- `frontend/src/pages/FlightSearchPage.tsx` is wired to the route `/search` in
+  `App.tsx` — and **nothing in the shell links to it.** No rail item, no tab.
+  It is reachable only by typing the URL. That orphaning is the entry-point
+  problem, stated precisely.
+- `frontend/src/features/flightSearch/` holds `SearchForm`, and an
+  `exploration/` folder with `FlexibleSearchForm` and `ExplorationResults`,
+  against `flightSearchApi.ts`.
+- The backend already has `flight-search.service.ts` and
+  `flight-exploration.service.ts` with DTOs for flexible search and
+  exploration results.
+- Separately, `components/TravelMap/MapSearch.tsx` is *map navigation* — "find
+  a country or airport", flies the camera. Do not conflate the two. If both
+  survive, the difference between them must be obvious without explanation.
+
+Judge that prior work honestly and say what you conclude in your journal:
+keep, restyle, or replace. It predates the Organic design language and the
+map-first shell, so restyling may be more expensive than rebuilding.
+
+The entry point is the part to think hardest about, because it decides whether
+the feature is ever used. Contrail's premise is a map of where you have been;
+search is about where you have not. Somewhere in that gap is a placement more
+natural than a fifth icon in the rail — a country you have never visited
+already opens a detail card, for one. Propose the options with a
+recommendation before building; A owns the shell and has to agree.
+
+No Travelpayouts token is needed for any of this, so nothing here is blocked
+on the user.
+
+### D3 — Release order
+**Status: CONFIRMED by the user on 2026-08-12.**
+
+1. **Now** — all remaining functionality (A) and the security work (B) land,
+   plus search's design and entry point (C, per D2). No live providers.
+2. **Then** — deploy to mycontrail.com. Gated on both of the above: the user
+   deploys once the functionality is complete *and* the security work is in
+   place, not before.
+3. **After the site is live** — search gets wired to real providers and the
+   affiliate marker, per D1.
+
+This ordering resolves the dependency D1 raised. Affiliate approval wanting a
+live site is no longer awkward, because the site ships before the provider
+work starts. Nothing about search v2 is blocked; it simply queues behind the
+deployment.
+
+What this means for each of you: **B is on the critical path.** Deployment
+waits on the security work, and everything commercial waits on deployment. A's
+remaining queue is the other half of that gate. C is building ahead of both
+and cannot be blocked by either, which is the right shape — C's output is
+design, and design wants review time anyway.
 
 ## Open questions
 
