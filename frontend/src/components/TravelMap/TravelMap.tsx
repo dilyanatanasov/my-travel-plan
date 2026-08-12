@@ -846,8 +846,23 @@ function TravelMap() {
         zoom={zoom}
         minZoom={MIN_ZOOM}
         maxZoom={MAX_ZOOM}
-        onZoomIn={() => setZoom((z) => Math.min(z * 1.5, MAX_ZOOM))}
-        onZoomOut={() => setZoom((z) => Math.max(z / 1.5, MIN_ZOOM))}
+        /*
+          Stepped from the zoom actually on screen, not from the zoom state.
+          Until the map has been moved it renders openingZoom and ignores
+          zoom entirely, so these buttons wrote to a value nothing was
+          reading and appeared to be broken on first use.
+        */
+        onZoomIn={() => {
+          setZoom(Math.min(effectiveZoom * 1.5, MAX_ZOOM));
+          setHasMovedMap(true);
+        }}
+        onZoomOut={() => {
+          setZoom(Math.max(effectiveZoom / 1.5, MIN_ZOOM));
+          setHasMovedMap(true);
+        }}
+        // Every path that changes the view sets hasMovedMap, so this is the
+        // whole condition: Reset offers to undo a move that happened.
+        canReset={hasMovedMap}
         onReset={handleResetView}
       />
 

@@ -16,6 +16,15 @@ interface MapZoomControlsProps {
   onZoomIn: () => void;
   onZoomOut: () => void;
   onReset: () => void;
+  /**
+   * Whether the view has moved away from the one the map opened with.
+   *
+   * Not the same as "zoomed in past the minimum": the map now opens framed on
+   * the user's own countries, so the opening view is rarely the world view.
+   * Comparing against minZoom left Reset permanently visible, offering to
+   * return you to where you already were.
+   */
+  canReset: boolean;
 }
 
 const buttonClass =
@@ -33,6 +42,7 @@ const buttonClass =
  */
 function MapZoomControls({
   extraTool,
+  canReset,
   zoom,
   minZoom,
   maxZoom,
@@ -40,7 +50,8 @@ function MapZoomControls({
   onZoomOut,
   onReset,
 }: MapZoomControlsProps) {
-  const isDefaultView = zoom <= minZoom + 0.001;
+  // Only governs the zoom-out button: you genuinely cannot go below minZoom.
+  const isFullyZoomedOut = zoom <= minZoom + 0.001;
 
   return (
     // bottom-20 on mobile clears the peek bar pinned to the canvas floor.
@@ -55,7 +66,7 @@ function MapZoomControls({
         moment you first zoomed. Putting the conditional button at the top
         means the two permanent ones never move.
       */}
-      {!isDefaultView && (
+      {canReset && (
         <button
           type="button"
           onClick={onReset}
@@ -106,7 +117,7 @@ function MapZoomControls({
       <button
         type="button"
         onClick={onZoomOut}
-        disabled={isDefaultView}
+        disabled={isFullyZoomedOut}
         className={buttonClass}
         aria-label="Zoom out"
       >
