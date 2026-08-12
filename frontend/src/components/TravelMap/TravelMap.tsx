@@ -7,7 +7,7 @@ import {
 } from '../../features/visits/visitsApi';
 import { useVisitActions } from '../../features/visits/useVisitActions';
 import { useToast } from '../Toast/ToastProvider';
-import type { Visit, FlightJourney } from '../../types';
+import type { Alpha3, Visit, FlightJourney } from '../../types';
 import { useGetFlightsQuery } from '../../features/flights/flightsApi';
 import { useUpdateVisitMutation } from '../../features/visits/visitsApi';
 import { aggregateRoutes, extractUniqueAirports, countAirportVisits } from '../FlightMap/routeUtils';
@@ -26,7 +26,7 @@ import { useMapFocus } from '../../features/map/MapFocusContext';
 import { useMapColors } from '../../theme/mapColors';
 import CountryTooltip from './CountryTooltip';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
-import { buildCountryDisplayMap } from './countryColors';
+import { buildCountryDisplayMap, type CountryDisplayInfo } from './countryColors';
 import CountriesLayer from './CountriesLayer';
 import CountryDetailCard from './CountryDetailCard';
 import MapSearch, { type SearchTarget } from './MapSearch';
@@ -390,6 +390,31 @@ function TravelMap() {
     per step, which is cheap: aggregateRoutes runs over a growing slice, not
     the whole history each time.
   */
+  /*
+    Countries revealed so far in this replay.
+
+    The map starts blank: no visited fills at all, so the colour spreading is
+    the story. A departure country appears as its journey begins — you were
+    already there — and an arrival appears the moment the plane lands, which
+    is when the flash fires. Flashing a country that was already orange was
+    invisible, which is why this had to change rather than just get brighter.
+  */
+  const [revealedIsos, setRevealedIsos] = useState<Set<string>>(new Set());
+
+  const replayCountryDisplayMap = useMemo(() => {
+    const map = new Map<string, CountryDisplayInfo>();
+    for (const iso of revealedIsos) {
+      map.set(iso, {
+        isoCode: iso as Alpha3,
+        visitType: 'trip',
+        isHome: false,
+        hasFlights: true,
+        visit: null,
+      });
+    }
+    return map;
+  }, [revealedIsos]);
+
   const replayRoutes = useMemo(
     () => (replay.isActive ? aggregateRoutes(replay.played) : []),
     [replay.isActive, replay.played]
@@ -444,8 +469,12 @@ function TravelMap() {
   */
   const landedBeforeRef = useRef<Set<string>>(new Set());
 
+
   useEffect(() => {
-    if (!replay.isActive) landedBeforeRef.current.clear();
+    if (!replay.isActive) {
+      landedBeforeRef.current.clear();
+      setRevealedIsos(new Set());
+    }
   }, [replay.isActive]);
 
   const alpha2ToAlpha3 = useMemo(() => {
@@ -464,13 +493,44 @@ function TravelMap() {
     const iso3 = alpha2ToAlpha3.get(arrival);
     if (!iso3) return;
 
-    if (landedBeforeRef.current.has(iso3)) return;
+    // The departure is somewhere you already were, so it appears at once.
+    const departure = legs[0]?.departureAirport.countryIso;
+    const departureIso3 = departure ? alpha2ToAlpha3.get(departure) : undefined;
+    if (departureIso3) {
+      setRevealedIsos((current) =>
+        current.has(departureIso3) ? current : new Set(current).add(departureIso3)
+      );
+    }
 
-    const timer = window.setTimeout(() => {
+    if (landedBeforeRef.current.has(iso3)) {
+      // Already on the map; no second arrival flash, but keep it revealed.
+      setRevealedIsos((current) =>
+        current.has(iso3) ? current : new Set(current).add(iso3)
+      );
+      return;
+    }
+
+    const landTimer = window.setTimeout(() => {
       landedBeforeRef.current.add(iso3);
       setLandedIsoCode(iso3);
+      // Revealed for good: this is what makes the map fill in as you watch.
+      setRevealedIsos((current) => new Set(current).add(iso3));
     }, REPLAY_FLIGHT_SECONDS * 1000);
-    return () => window.clearTimeout(timer);
+
+    /*
+      Release the flash so the country settles into its ordinary visited
+      colour. The fill transition needs a change in both directions to read
+      as a flash rather than a new permanent state.
+    */
+    const fadeTimer = window.setTimeout(
+      () => setLandedIsoCode(null),
+      REPLAY_FLIGHT_SECONDS * 1000 + 1400
+    );
+
+    return () => {
+      window.clearTimeout(landTimer);
+      window.clearTimeout(fadeTimer);
+    };
   }, [replay.isActive, replay.current, alpha2ToAlpha3]);
 
   const openCountry = useMemo(() => {
@@ -637,7 +697,7 @@ function TravelMap() {
 
           {/* Countries */}
           <CountriesLayer
-            countryDisplayMap={countryDisplayMap}
+            countryDisplayMap={replay.isActive ? replayCountryDisplayMap : countryDisplayMap}
             showVisitColors={settings.showCountries}
             onCountryClick={handleCountryClick}
             onCountryHover={canHover ? handleCountryHover : undefined}
