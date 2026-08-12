@@ -40,8 +40,16 @@ function SectionRail({ activeSection, onSelect }: SectionRailProps) {
           >
             {section.icon}
             <span className="sr-only">{section.label}</span>
-            {/* Hover label, since an icon-only rail is otherwise a guessing game */}
-            <span className="pointer-events-none absolute left-full ml-2 px-2 py-1 rounded bg-slate-900 text-white text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity z-30">
+            {/*
+              Hover label, since an icon-only rail is otherwise a guessing
+              game. aria-hidden because the sr-only span above already names
+              the button — without it the accessible name is the two
+              concatenated, and every tab stop announced "Overview Overview".
+            */}
+            <span
+              aria-hidden="true"
+              className="pointer-events-none absolute left-full ml-2 px-2 py-1 rounded bg-slate-900 text-white text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity z-30"
+            >
               {section.label}
             </span>
           </button>

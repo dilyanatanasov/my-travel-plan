@@ -209,6 +209,26 @@ function CountriesLayer({
             <Geography
               key={geo.rsmKey}
               geography={geo}
+              /*
+                Out of the tab order.
+
+                react-simple-maps puts tabIndex={0} on every Geography, which
+                gave the map 177 tab stops. Each one was unnamed (a screen
+                reader announces nothing useful for a bare <path>), had no
+                role, and — measured, not assumed — did nothing when
+                activated: onClick is a mouse handler, and SVG shapes have no
+                default Enter/Space behaviour, so a keyboard user tabbed
+                through 177 countries and could not select one.
+
+                Naming them all would fix the announcement and leave the
+                interaction broken and the tab order unusable. The countries
+                are reachable, searchable and editable in the Countries
+                section, so the honest fix is to stop pretending these are
+                controls: the parent <svg> carries role="img" and a summary
+                that points there.
+              */
+              tabIndex={-1}
+              aria-hidden="true"
               onClick={() => {
                 // The hold already acted; do not also treat it as a tap.
                 if (pressFiredRef.current) {

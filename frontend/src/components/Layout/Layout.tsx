@@ -10,6 +10,26 @@ function Layout() {
     // 100dvh, not 100vh — iOS Safari's URL bar makes 100vh taller than what is
     // actually visible, which would push the bottom tab bar off screen.
     <div className="h-[100dvh] min-h-0 flex flex-col overflow-hidden bg-canvas">
+      {/*
+        Skip link — the first thing in the tab order, visible only once
+        focused.
+
+        Seven stops of chrome sit before the content on every route, and a
+        section panel can put a list of 195 countries behind them. Jumping
+        straight to <main> is the difference between reaching a country list
+        in one keypress and reaching it in eight.
+
+        `sr-only focus:not-sr-only` is the standard pattern: present for
+        assistive tech always, painted only when it has focus.
+      */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:top-2 focus:left-2
+          focus:px-4 focus:py-2 focus:rounded-lg focus:bg-brand-600 focus:text-white
+          focus:text-sm focus:font-medium focus:outline-none focus:ring-2 focus:ring-brand-500"
+      >
+        Skip to main content
+      </a>
       {/* Installed as a PWA there is no browser chrome above this, so the
           header itself has to clear the status bar / notch. */}
       <header
@@ -46,7 +66,12 @@ function Layout() {
       </header>
       {/* min-h-0 is required for the flex child to be allowed to shrink, which
           is what lets inner panels scroll instead of the page. */}
-      <main className="flex-1 min-h-0">
+      {/*
+        tabIndex={-1} so the skip link can actually move focus here. Without
+        it the browser scrolls to the anchor but leaves focus on the link, and
+        the next Tab returns to the header — the skip does nothing.
+      */}
+      <main id="main-content" tabIndex={-1} className="flex-1 min-h-0 focus:outline-none">
         <Outlet />
       </main>
     </div>

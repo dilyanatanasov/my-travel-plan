@@ -323,6 +323,35 @@ function TravelMap() {
     };
   }, [visits, countries, routes, airports]);
 
+  /*
+    What the map says to someone who cannot see it.
+
+    Built from the same numbers the legend renders, so a change to one shows
+    up in the other. The pointer to the Countries section is the important
+    part: a description of a map is not equivalent access, but a route to the
+    list that does the same job is.
+  */
+  const mapSummary = useMemo(() => {
+    // Anonymous visitors get a 401 on /countries, so the total is 0 until
+    // they write something. "0 of 0 countries visited" reads as a broken app
+    // rather than an empty one.
+    if (stats.totalCountries === 0) {
+      return 'World map. No countries marked yet. Use the Countries section to add one.';
+    }
+    const parts = [
+      `World map. ${stats.visitedCount} of ${stats.totalCountries} countries visited`,
+    ];
+    if (stats.transitCount > 0) {
+      parts.push(`${stats.transitCount} visited in transit only`);
+    }
+    if (stats.flightRoutes > 0) {
+      parts.push(
+        `${stats.flightRoutes} flight ${stats.flightRoutes === 1 ? 'route' : 'routes'} across ${stats.airports} airports`
+      );
+    }
+    return `${parts.join('. ')}. Use the Countries section to add, change or remove a country.`;
+  }, [stats]);
+
   // Handlers
   const handleCountryClick = useCallback(
     async (isoCode: string) => {
@@ -667,7 +696,16 @@ function TravelMap() {
       onClickCapture={handleClickCapture}
       onClick={handleContainerClick}
     >
-      {/* Map fills the canvas; chrome floats over it. */}
+      {/*
+        The map as a screen reader meets it.
+
+        role="img" with a summary, rather than a tree of 177 nameless paths.
+        Everything the map can do — marking a country, changing its type,
+        removing it — is also in the Countries section as a searchable list
+        and an editable list, so this is a genuine equivalent rather than a
+        shrug. `mapSummary` carries the same counts the legend shows, so the
+        two cannot drift.
+      */}
       <ComposableMap
         width={width}
         height={height}
@@ -675,6 +713,8 @@ function TravelMap() {
           rotate: [-10, 0, 0],
           scale,
         }}
+        role="img"
+        aria-label={mapSummary}
         className={`w-full h-full ${replay.isActive ? 'replay-camera' : ''}`}
       >
         <ZoomableGroup
