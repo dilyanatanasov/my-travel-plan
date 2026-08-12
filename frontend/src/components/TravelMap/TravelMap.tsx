@@ -488,49 +488,51 @@ function TravelMap() {
     if (!replay.isActive || !replay.current) return;
 
     const legs = [...replay.current.legs].sort((a, b) => a.legOrder - b.legOrder);
-    const arrival = legs[legs.length - 1]?.arrivalAirport.countryIso;
-    if (!arrival) return;
-    const iso3 = alpha2ToAlpha3.get(arrival);
-    if (!iso3) return;
+    if (legs.length === 0) return;
 
-    // The departure is somewhere you already were, so it appears at once.
-    const departure = legs[0]?.departureAirport.countryIso;
-    const departureIso3 = departure ? alpha2ToAlpha3.get(departure) : undefined;
-    if (departureIso3) {
-      setRevealedIsos((current) =>
-        current.has(departureIso3) ? current : new Set(current).add(departureIso3)
-      );
-    }
+    const timers: number[] = [];
 
-    if (landedBeforeRef.current.has(iso3)) {
-      // Already on the map; no second arrival flash, but keep it revealed.
+    /**
+     * Put a country on the map, flashing it the first time it is touched.
+     *
+     * "First time" is per replay, not per journey, so a home airport does not
+     * strobe on every step — but every country still lights up once, whether
+     * it is an origin, a connection or a destination.
+     */
+    const reveal = (iso3: string) => {
       setRevealedIsos((current) =>
         current.has(iso3) ? current : new Set(current).add(iso3)
       );
-      return;
-    }
-
-    const landTimer = window.setTimeout(() => {
+      if (landedBeforeRef.current.has(iso3)) return;
       landedBeforeRef.current.add(iso3);
       setLandedIsoCode(iso3);
-      // Revealed for good: this is what makes the map fill in as you watch.
-      setRevealedIsos((current) => new Set(current).add(iso3));
-    }, REPLAY_FLIGHT_SECONDS * 1000);
+      // Release it so the fill transitions back and reads as a flash rather
+      // than a permanent state change.
+      timers.push(
+        window.setTimeout(() => setLandedIsoCode(null), 1400)
+      );
+    };
+
+    const isoOf = (code: string | null) =>
+      code ? alpha2ToAlpha3.get(code) : undefined;
+
+    // You are already standing in the origin when the journey begins.
+    const origin = isoOf(legs[0].departureAirport.countryIso);
+    if (origin) reveal(origin);
 
     /*
-      Release the flash so the country settles into its ordinary visited
-      colour. The fill transition needs a change in both directions to read
-      as a flash rather than a new permanent state.
+      Every stop, in order, spread across the flight window — a connection is
+      somewhere you were, and skipping it meant a two-leg journey lit up its
+      origin and destination while the country in the middle stayed dark.
     */
-    const fadeTimer = window.setTimeout(
-      () => setLandedIsoCode(null),
-      REPLAY_FLIGHT_SECONDS * 1000 + 1400
-    );
+    legs.forEach((leg, index) => {
+      const iso3 = isoOf(leg.arrivalAirport.countryIso);
+      if (!iso3) return;
+      const at = ((index + 1) / legs.length) * REPLAY_FLIGHT_SECONDS * 1000;
+      timers.push(window.setTimeout(() => reveal(iso3), at));
+    });
 
-    return () => {
-      window.clearTimeout(landTimer);
-      window.clearTimeout(fadeTimer);
-    };
+    return () => timers.forEach((timer) => window.clearTimeout(timer));
   }, [replay.isActive, replay.current, alpha2ToAlpha3]);
 
   const openCountry = useMemo(() => {
