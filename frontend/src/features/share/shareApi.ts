@@ -56,6 +56,18 @@ export const shareApi = apiSlice.injectEndpoints({
       invalidatesTags: ['Share'],
     }),
 
+    // The rendered card, sent as a raw PNG body so link previews for
+    // /s/:token can show this user's actual map. The server replaces the
+    // previous card — one per user, no history.
+    uploadShareCard: builder.mutation<{ ok: true }, Blob>({
+      query: (card) => ({
+        url: '/share/card',
+        method: 'POST',
+        body: card,
+        headers: { 'Content-Type': 'image/png' },
+      }),
+    }),
+
     // Public: no session required, and served by a controller that builds its
     // own payload so private notes can never leak into it.
     getPublicMap: builder.query<PublicMap, string>({
@@ -68,5 +80,6 @@ export const {
   useGetShareStatusQuery,
   useEnableShareMutation,
   useDisableShareMutation,
+  useUploadShareCardMutation,
   useGetPublicMapQuery,
 } = shareApi;

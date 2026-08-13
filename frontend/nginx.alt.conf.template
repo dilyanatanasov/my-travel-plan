@@ -10,6 +10,16 @@
 # single-domain template is used, so the alternate can be added later without
 # touching the primary.
 
+# Link-preview crawlers, for the UA-split on /s/ below. `map` must live at
+# http level; this file is rendered into conf.d, which nginx.conf includes
+# inside http{}, so top-of-file is that level. $http_user_agent and
+# $is_crawler survive the envsubst step — NGINX_ENVSUBST_FILTER only
+# substitutes DOMAIN-ish names.
+map $http_user_agent $is_crawler {
+    default 0;
+    "~*(facebookexternalhit|twitterbot|whatsapp|telegrambot|linkedinbot|slackbot|discordbot|pinterest|skypeuripreview)" 1;
+}
+
 server {
     listen 80;
     listen [::]:80;
@@ -162,6 +172,18 @@ server {
     location /health {
         access_log off;
         return 200 "ok\n";
+    }
+
+    # Shared-map links: crawlers get server-rendered OG tags, humans get the
+    # SPA exactly as before. rewrite…last re-enters location matching, so the
+    # /api block above supplies the proxy plumbing (variable upstream +
+    # resolver) — one upstream definition, not two. rewrite-last is one of
+    # the forms that is safe inside `if`.
+    location /s/ {
+        if ($is_crawler) {
+            rewrite ^/s/(.*)$ /api/share/unfurl/$1 last;
+        }
+        try_files $uri $uri/ /index.html;
     }
 
     # SPA routes (/s/:token, /login, …) are resolved client-side.

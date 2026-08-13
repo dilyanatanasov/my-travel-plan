@@ -2,7 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
-import { json, urlencoded } from 'express';
+import { json, raw, urlencoded } from 'express';
 import { AppModule } from './app.module';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
 
@@ -21,6 +21,10 @@ async function bootstrap() {
   // attack and is rejected before it reaches a handler. nginx caps the body at
   // 10 MB one layer out — this is the tighter, app-aware limit inside it.
   const app = await NestFactory.create(AppModule, { bodyParser: false });
+  // The share card arrives as a raw PNG, not JSON — scoped to its one route
+  // (path as seen on the wire, so with the /api prefix) and to image/png, so
+  // no other endpoint grows a binary body by accident. Same 1 MB ceiling.
+  app.use('/api/share/card', raw({ type: 'image/png', limit: '1mb' }));
   app.use(json({ limit: '1mb' }));
   app.use(urlencoded({ extended: true, limit: '1mb' }));
 
