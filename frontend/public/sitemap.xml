@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Only the genuinely public pages. Shared maps (/s/<token>) are deliberately
+     absent: they are public-by-link, not public-by-listing - a sitemap entry
+     would advertise what the owner only meant to hand to friends. -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://mycontrail.com/</loc>
+  </url>
+  <url>
+    <loc>https://mycontrail.com/login</loc>
+  </url>
+  <url>
+    <loc>https://mycontrail.com/register</loc>
+  </url>
+</urlset>

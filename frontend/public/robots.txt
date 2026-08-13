@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /umami/
+
+Sitemap: https://mycontrail.com/sitemap.xml
