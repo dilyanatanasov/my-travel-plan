@@ -12,6 +12,7 @@ import { CreateFlightDto } from './dto/create-flight.dto';
 import { UpdateFlightDto } from './dto/update-flight.dto';
 import type { ImportJourneyDto, ImportResultDto } from './dto/import-flights.dto';
 import { calculateAirportDistance } from '../../common/utils/haversine';
+import { splitChainAtGroundTransfers } from './flight-chain.util';
 import { VisitsService } from '../visits/visits.service';
 import { VisitType } from '../visits/entities/visit.entity';
 
@@ -93,33 +94,9 @@ export class FlightsService {
       throw new BadRequestException('One or more airports not found');
     }
 
-    /*
-      Split the chain at ground transfers (user decision, 2026-08-13).
-
-      A chain like SOF→AMS→NRT · HND→CDG→AMS→SOF encodes one real trip, but
-      NRT→HND is a train across Tokyo — no commercial flight is this short.
-      Distance, not city names, is the detector: Narita's city field says
-      "Narita" while Haneda's says "Tokyo", so string matching would miss
-      exactly the case that prompted this. Each run of genuine flights
-      becomes its own journey.
-    */
-    const GROUND_TRANSFER_KM = 100;
-    const segments: (typeof legData)[] = [];
-    let currentSegment: typeof legData = [];
-    for (const leg of legData) {
-      const from = airportMap.get(leg.departureAirportId)!;
-      const to = airportMap.get(leg.arrivalAirportId)!;
-      const isGroundTransfer =
-        leg.departureAirportId !== leg.arrivalAirportId &&
-        calculateAirportDistance(from, to) < GROUND_TRANSFER_KM;
-      if (isGroundTransfer) {
-        if (currentSegment.length > 0) segments.push(currentSegment);
-        currentSegment = [];
-      } else {
-        currentSegment.push(leg);
-      }
-    }
-    if (currentSegment.length > 0) segments.push(currentSegment);
+    // Split the chain at ground transfers — see flight-chain.util.ts, where
+    // the rules live and are tested.
+    const segments = splitChainAtGroundTransfers(legData, airportMap);
     if (segments.length === 0) {
       throw new BadRequestException(
         'Every hop in this chain is a ground transfer — nothing to record as a flight',
