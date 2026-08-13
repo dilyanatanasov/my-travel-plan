@@ -279,7 +279,12 @@ function CountriesLayer({
                   // the highest-contrast value against land in both themes —
                   // opacity alone faded dark-on-dark and was easy to miss.
                   fill: isLanded || isBlinking ? colors.home : fillColor,
-                  stroke: isLanded || isBlinking ? colors.home : colors.countryBorder,
+                  stroke:
+                    isLanded || isBlinking
+                      ? colors.home
+                      : visitType !== 'none'
+                        ? colors.visitedBorder
+                        : colors.countryBorder,
                   strokeWidth: isLanded || isBlinking ? 1.5 : 0.5,
                   /*
                     Borders in screen pixels, not map units.

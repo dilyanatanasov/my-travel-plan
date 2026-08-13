@@ -287,12 +287,30 @@ export async function renderShareCard(
     drawWarm(ctx, mapImage, content, p);
   }
 
+  drawWatermark(ctx, p);
+
   return new Promise((resolve, reject) => {
     canvas.toBlob((blob) => {
       if (blob) resolve(blob);
       else reject(new ShareCardError('Your browser could not create the image'));
     }, 'image/png');
   });
+}
+
+/**
+ * The domain, bottom-right on every style. The kicker names the product but
+ * a stranger seeing the card in a chat has no idea where it lives — the
+ * watermark is the card's only actionable pointer back, i.e. the marketing.
+ */
+function drawWatermark(ctx: CanvasRenderingContext2D, p: Palette) {
+  ctx.save();
+  ctx.font = mono(24, '600');
+  ctx.fillStyle = p.muted;
+  ctx.globalAlpha = 0.9;
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'alphabetic';
+  ctx.fillText('mycontrail.com', CARD_WIDTH - 72, CARD_HEIGHT - 40);
+  ctx.restore();
 }
 
 function drawWarm(

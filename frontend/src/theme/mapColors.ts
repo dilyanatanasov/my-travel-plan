@@ -22,6 +22,13 @@ export interface MapPalette {
   ocean: string;
   land: string;
   countryBorder: string;
+  /**
+   * Border for countries with a visit color. One stroke value cannot read
+   * against both dark land and bright terracotta: visited neighbours merged
+   * into one blob. Colored countries take a border from the opposite end of
+   * the lightness scale.
+   */
+  visitedBorder: string;
   home: string;
   visited: string;
   transit: string;
@@ -48,6 +55,7 @@ const DARK: MapPalette = {
   // Clearly lighter than land: the first value (#4a443a) was one shade off
   // and adjacent countries merged into a single landmass at a glance.
   countryBorder: '#6e6656',
+  visitedBorder: '#1f1b18',
   home: '#ffe1d0',
   visited: '#b2622d',
   transit: '#aebf92',
@@ -81,6 +89,7 @@ const LIGHT: MapPalette = {
   // between countries rather than a border, and disappeared entirely
   // between visited neighbours.
   countryBorder: '#b8a88c',
+  visitedBorder: '#8c491a',
   // Darker than the dark theme's equivalents: these sit on pale land, so they
   // must descend in lightness rather than climb.
   home: '#402310',
