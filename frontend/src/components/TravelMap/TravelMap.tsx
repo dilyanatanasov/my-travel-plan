@@ -38,6 +38,7 @@ import {
   STOP_PAUSE_SECONDS,
 } from './useJourneyReplay';
 import ReplayControl from './ReplayControl';
+import GlobeView from './GlobeView';
 import type { AggregatedRoute } from '../FlightMap/routeUtils';
 import { fitToPoints, type LonLat } from './fitBounds';
 
@@ -68,6 +69,12 @@ const DEFAULT_SETTINGS: TravelMapSettings = {
   showAirports: true,
 };
 
+/**
+ * Globe mode persists like a display preference, not a session whim: someone
+ * who chose to look at their world as a globe gets it back next visit.
+ */
+const GLOBE_MODE_KEY = 'contrail:globe-mode';
+
 function TravelMap() {
   // Data queries
   const { data: visits = [] } = useGetVisitsQuery();
@@ -81,6 +88,31 @@ function TravelMap() {
 
   // State
   const [settings, setSettings] = useState<TravelMapSettings>(DEFAULT_SETTINGS);
+
+  /*
+    Globe mode is strictly additive: the flat map stays the default and the
+    primary experience, and everything below this component's return branch
+    is untouched by the mode being off. When it is on, GlobeView takes the
+    canvas and this component keeps owning the data, settings, filters and
+    the replay clock — so switching modes never loses state.
+  */
+  const [globeMode, setGlobeMode] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(GLOBE_MODE_KEY) === '1';
+    } catch {
+      return false;
+    }
+  });
+  const handleGlobeModeChange = useCallback((on: boolean) => {
+    setGlobeMode(on);
+    try {
+      localStorage.setItem(GLOBE_MODE_KEY, on ? '1' : '0');
+    } catch {
+      /* private browsing; the mode simply does not persist */
+    }
+    // Which mode, never what it shows.
+    track('map_interact', { kind: on ? 'globe-on' : 'globe-off' });
+  }, []);
   const [filters, setFilters] = useState<FlightFilters>(DEFAULT_FILTERS);
   const [hoveredRoute, setHoveredRoute] = useState<AggregatedRoute | null>(null);
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
@@ -849,6 +881,40 @@ function TravelMap() {
   const effectiveCenter = hasMovedMap ? center : openingCenter;
   const effectiveZoom = hasMovedMap ? zoom : openingZoom;
 
+  if (globeMode) {
+    return (
+      <GlobeView
+        containerRef={containerRef}
+        width={width}
+        height={height}
+        markerScale={markerScale}
+        mapSummary={mapSummary}
+        countryDisplayMap={
+          replay.isActive ? replayCountryDisplayMap : countryDisplayMap
+        }
+        settings={settings}
+        onSettingsChange={setSettings}
+        filters={filters}
+        onFiltersChange={setFilters}
+        filterAirports={filterOptions.airports}
+        filterYears={filterOptions.years}
+        isControlPanelOpen={isControlPanelOpen}
+        onControlPanelOpenChange={setIsControlPanelOpen}
+        onGlobeModeChange={handleGlobeModeChange}
+        routes={replay.isActive ? replayRoutes : routes}
+        maxRouteCount={replay.isActive ? replayMaxRouteCount : maxRouteCount}
+        airports={replay.isActive ? replayAirports : airports}
+        airportVisitCounts={airportVisitCounts}
+        replay={replay}
+        landedIsoCode={landedIsoCode}
+        popAirport={popAirport}
+        yearChip={yearChip}
+        stats={stats}
+        homeCenter={openingCenter}
+      />
+    );
+  }
+
   return (
     <div
       ref={containerRef}
@@ -1039,6 +1105,8 @@ function TravelMap() {
           years={filterOptions.years}
           isOpen={isControlPanelOpen}
           onOpenChange={setIsControlPanelOpen}
+          globeMode={globeMode}
+          onGlobeModeChange={handleGlobeModeChange}
         />
       </div>
       )}

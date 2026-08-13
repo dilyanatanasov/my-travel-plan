@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type RefObject } from 'react';
+import { useCallback, useEffect, useState, type RefCallback } from 'react';
 
 interface MapViewport {
   /** viewBox dimensions, matched to the measured container so nothing letterboxes. */
@@ -69,16 +69,24 @@ function computeScale(width: number, height: number): number {
  * whatever space is left after the rail, panel and header, so it has to be
  * measured. viewBox === container size also means preserveAspectRatio has
  * nothing to letterbox.
+ *
+ * The ref is a callback, not a RefObject: globe mode swaps the container
+ * element in and out, and an effect that captured `ref.current` once at mount
+ * kept observing the detached div — after a mode switch, resizes silently
+ * stopped landing (and with globe persisted on, the flat map was never
+ * measured at all). Tracking the element in state re-arms the observer on
+ * every element change; for a container that never changes, the behaviour is
+ * identical to before.
  */
 export function useMapViewport<T extends HTMLElement>(): {
-  ref: RefObject<T>;
+  ref: RefCallback<T>;
   viewport: MapViewport;
 } {
-  const ref = useRef<T>(null);
+  const [element, setElement] = useState<T | null>(null);
+  const ref = useCallback<RefCallback<T>>((node) => setElement(node), []);
   const [viewport, setViewport] = useState<MapViewport>(INITIAL);
 
   useEffect(() => {
-    const element = ref.current;
     if (!element) return;
 
     let frame = 0;
@@ -110,7 +118,7 @@ export function useMapViewport<T extends HTMLElement>(): {
       cancelAnimationFrame(frame);
       observer.disconnect();
     };
-  }, []);
+  }, [element]);
 
   return { ref, viewport };
 }
