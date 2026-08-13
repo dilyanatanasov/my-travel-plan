@@ -40,6 +40,20 @@ The droplet never builds. On deploy day, after runbook steps 1–2 (droplet, rep
   `context/backups/dev-20260813-093532.sql` — 25 visits, 41 flight_journeys, 117 flight_legs, 1 user (matches production-data expectations exactly). Gitignored; take a fresh dump on deploy day if more data has been added since.
 - Workflows not yet exercised — they need the repo secrets and can only be tested by a real `workflow_dispatch` run (build jobs are testable before any droplet exists).
 
+## DEPLOYED — 2026-08-13
+
+Full production deploy completed the same day:
+
+- Droplet 157.230.227.115 (Ubuntu 24.04, 2 GB, NYC1), ufw 22/80/443, key `~/.ssh/contrail_deploy` (local Windows), user `root`, repo at `~/my-travel-plan`.
+- First deploy required fixing lint: neither package had an ESLint config committed (`809a5bc`); `setup-ssl.sh` also had to be pointed at the prod compose file (`84a1f3b`).
+- Backend crash-looped on the empty DB (42P01 at startup) until the dump was restored — harmless, self-healed; expect it again only on a from-scratch rebuild.
+- Data restored from `dev-20260813-102651.sql`: 25/41/117/1 verified in prod.
+- DNS at Namecheap (BasicDNS), A records apex+www for both domains, TTL 1 min.
+- TLS: certbot standalone certs for `mycontrail.com` and `mycontrail.app` (apex+www each), renewal hooks installed, dry-run verified. `ALT_DOMAIN=mycontrail.app` set; `.app` 301s to `.com` with valid cert.
+- First prod backup taken on the droplet: `~/my-travel-plan/context/backups/prod-20260813-074752.sql`.
+- Known deviation from the old checklist: `www.mycontrail.com` serves the app (200) rather than 301-ing to apex. Cosmetic; fix in nginx template someday.
+- From now on: deploys via Actions button with `run_migrations=true`; smoke tests should be green.
+
 ## Remaining before deploy (not code)
 
 - GitHub repo secrets: `GHCR_USERNAME`, `GHCR_TOKEN` (classic PAT, `write:packages` + `read:packages`), `SSH_HOST`, `SSH_USER`, `SSH_KEY`.
