@@ -8,7 +8,11 @@
  * cache API responses, because stale travel data presented as current is
  * worse than an honest failure.
  */
-const CACHE = 'contrail-v1';
+// Bump on any change to the app shell (manifest included!): the cache is
+// consulted before the network, so a shell change without a version bump is
+// invisible to every browser that has visited before — that is exactly how
+// the myContrail rename failed to reach installed/returning visitors.
+const CACHE = 'mycontrail-v2';
 
 const APP_SHELL = [
   '/',
