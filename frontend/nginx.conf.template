@@ -148,6 +148,31 @@ server {
         try_files $uri $uri/ /index.html;
     }
 
+    # Umami tracker ONLY — script + collect endpoint ride the main origin, so
+    # there is no extra DNS/cert and no cross-site request for ad-blockers to
+    # flag. The dashboard is deliberately not proxied: it binds to the
+    # droplet's localhost and is reached over an SSH tunnel. Exact-match
+    # locations, so the fingerprinted-asset regex can never capture script.js.
+    location = /umami/script.js {
+        resolver 127.0.0.11 valid=10s ipv6=off;
+        set $umami_upstream http://umami:3000;
+        rewrite ^ /script.js break;
+        proxy_pass $umami_upstream;
+        proxy_set_header Host $host;
+    }
+    location = /umami/api/send {
+        resolver 127.0.0.11 valid=10s ipv6=off;
+        set $umami_upstream http://umami:3000;
+        rewrite ^ /api/send break;
+        proxy_pass $umami_upstream;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        # Umami hashes the visitor from this — without it every visitor is
+        # the nginx container.
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
     # SPA routes (/s/:token, /login, …) are resolved client-side.
     location / {
         try_files $uri $uri/ /index.html;

@@ -18,7 +18,7 @@ import {
 import MapExportCanvas, {
   EXPORT_SVG_ID,
 } from '../../components/TravelMap/MapExportCanvas';
-import { useGetVisitsQuery } from '../visits/visitsApi';
+import { useGetCountriesQuery, useGetVisitsQuery } from '../visits/visitsApi';
 import { useGetFlightStatsQuery } from '../flights/flightsApi';
 import { useAuth, useResendVerificationMutation } from '../auth/authApi';
 
@@ -52,6 +52,9 @@ function SharePanel() {
   const { user, isGuest } = useAuth();
   const { showToast } = useToast();
   const { data: visits = [], isLoading: visitsLoading } = useGetVisitsQuery();
+  // Only for the "% of the world" math on the flightless card variant.
+  const { data: allCountries = [] } = useGetCountriesQuery();
+  const totalCountries = allCountries.length;
   const { data: flightStats, isLoading: statsLoading } = useGetFlightStatsQuery();
   const isLoadingData = visitsLoading || statsLoading;
   const { data: shareStatus } = useGetShareStatusQuery(undefined, {
@@ -100,9 +103,43 @@ function SharePanel() {
     const airports = flightStats?.uniqueAirports ?? 0;
     const earths = flightStats?.earthCircumferences ?? 0;
 
+    const kicker = `${new Date().getFullYear()} · myContrail`;
+    const headline = `${countries} ${countries === 1 ? 'country' : 'countries'} and counting`;
+
+    /*
+      A card full of zeros undersells a real traveller: someone who came by
+      bus, train or ship has countries worth bragging about and no flights at
+      all. So the card celebrates whichever story exists — flights when they
+      are logged, the country tally when they are not.
+    */
+    if (flights === 0) {
+      const transit = visits.filter((v) => v.visitType === 'transit').length;
+      const worldPercent =
+        totalCountries > 0
+          ? Math.round((countries / totalCountries) * 1000) / 10
+          : 0;
+      return {
+        kicker,
+        headline,
+        hero: {
+          value: String(countries),
+          caption: `${countries === 1 ? 'country' : 'countries'} · ${worldPercent}% of the world`,
+        },
+        facts: [
+          { label: 'countries visited', value: String(countries) },
+          { label: 'of the world', value: `${worldPercent}%` },
+          { label: 'passed through', value: String(transit) },
+          {
+            label: 'still to see',
+            value: String(Math.max(totalCountries - countries, 0)),
+          },
+        ],
+      };
+    }
+
     return {
-      kicker: `${new Date().getFullYear()} · myContrail`,
-      headline: `${countries} ${countries === 1 ? 'country' : 'countries'} and counting`,
+      kicker,
+      headline,
       hero: {
         value: km.toLocaleString(),
         caption: `kilometres · ${countries} countries · ${airports} airports`,
@@ -114,7 +151,7 @@ function SharePanel() {
         { label: 'airports touched', value: String(airports) },
       ],
     };
-  }, [visits, flightStats]);
+  }, [visits, flightStats, totalCountries]);
 
   /*
     Render the card whenever the style or the numbers change. The resulting

@@ -198,7 +198,9 @@ jobs:
 
             echo "==> Starting service: $SERVICE"
             if [ "$SERVICE" = "all" ]; then
-              IMAGE_TAG="$IMAGE_TAG" $COMPOSE up -d --no-build backend frontend db
+              # No service list: everything in the compose file, so additions
+              # like the umami container deploy without editing this workflow.
+              IMAGE_TAG="$IMAGE_TAG" $COMPOSE up -d --no-build
             else
               # Use default :latest tag so the other service keeps its current image
               $COMPOSE up -d --no-build "$SERVICE"

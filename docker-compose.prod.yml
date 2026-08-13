@@ -77,6 +77,27 @@ services:
     networks:
       - travel_network
 
+  # Self-hosted analytics (plan 2026-08-12 §3.5). Shares the Postgres
+  # instance with its OWN database — never the app's. The dashboard is not
+  # exposed publicly: it binds to the droplet's localhost and is reached over
+  # an SSH tunnel; only /umami/script.js and /umami/api/send are proxied by
+  # nginx on the public domain.
+  umami:
+    image: ghcr.io/umami-software/umami:postgresql-latest
+    container_name: travel_tracker_umami
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/umami
+      DATABASE_TYPE: postgresql
+      APP_SECRET: ${UMAMI_APP_SECRET}
+    ports:
+      - '127.0.0.1:3001:3000'
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - travel_network
+
 volumes:
   pgdata:
   certbot_webroot:
