@@ -180,7 +180,10 @@ function RouteBuilder({ onSubmit, isLoading }: RouteBuilderProps) {
             memories, and the exact-date picker forced people to either
             invent a day or skip the date entirely (user request, 2026-08-13).
           */}
-          <div className="flex gap-1.5">
+          {/* flex-wrap + real minimum widths: the previous min-w-0 let the
+              month select shrink to a bare chevron inside this narrow grid
+              cell. Short month names keep the closed select compact. */}
+          <div className="flex flex-wrap gap-1.5">
             <input
               id="journey-year"
               type="number"
@@ -190,7 +193,7 @@ function RouteBuilder({ onSubmit, isLoading }: RouteBuilderProps) {
               placeholder="Year"
               value={dateYear}
               onChange={(e) => setDateYear(e.target.value)}
-              className="w-24 min-h-11 px-3 border border-line rounded-lg bg-surface text-ink placeholder:text-ink-subtle focus:outline-none focus:ring-2 focus:ring-brand-500"
+              className="w-20 min-h-11 px-2 border border-line rounded-lg bg-surface text-ink placeholder:text-ink-subtle focus:outline-none focus:ring-2 focus:ring-brand-500"
             />
             <select
               aria-label="Month (optional)"
@@ -200,12 +203,12 @@ function RouteBuilder({ onSubmit, isLoading }: RouteBuilderProps) {
                 setDateMonth(e.target.value);
                 if (!e.target.value) setDateDay('');
               }}
-              className="flex-1 min-w-0 min-h-11 px-2 border border-line rounded-lg bg-surface text-ink disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-brand-500"
+              className="min-w-[5.5rem] flex-1 min-h-11 px-2 border border-line rounded-lg bg-surface text-ink disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-brand-500"
             >
               <option value="">Month?</option>
               {MONTH_NAMES.map((name, i) => (
                 <option key={name} value={String(i + 1).padStart(2, '0')}>
-                  {name}
+                  {name.slice(0, 3)}
                 </option>
               ))}
             </select>
@@ -214,7 +217,7 @@ function RouteBuilder({ onSubmit, isLoading }: RouteBuilderProps) {
               value={dateDay}
               disabled={!dateMonth}
               onChange={(e) => setDateDay(e.target.value)}
-              className="w-20 min-h-11 px-2 border border-line rounded-lg bg-surface text-ink disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-brand-500"
+              className="min-w-[4.5rem] min-h-11 px-2 border border-line rounded-lg bg-surface text-ink disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-brand-500"
             >
               <option value="">Day?</option>
               {Array.from({ length: 31 }, (_, i) => (
