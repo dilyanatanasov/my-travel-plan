@@ -48,3 +48,14 @@ Globe agent (in flight) owns TravelMap/CountriesLayer/JourneyHighlight/MapContro
 - D2 Puzzle guessing: autocomplete + distance/direction hints (recommended) vs multiple-choice (easier, less addictive).
 - D3 Completion granularity: continents only first (recommended) vs continents + curated regions from day one.
 - D4 Duel OG unfurls in v1 (recommended — the crawler pipeline exists) vs later.
+
+## Post-build token musings (2026-08-13, user)
+
+- Email-derived tokens: REJECTED — guessability breaks the consent model
+  (tokens are deliberately not derivable; a guessable token makes every map
+  visible to anyone knowing the email). The readable-identity desire points
+  at opt-in usernames (/duel/@handle aliasing the token) — public-profile
+  territory, parked with it.
+- Dropping the public /s/ link to keep tokens duel-only: deferred; duels are
+  built from the public-map payload and /s/ is the unfurl-card viral surface.
+  Decide later from share_render vs duel analytics, not intuition.
