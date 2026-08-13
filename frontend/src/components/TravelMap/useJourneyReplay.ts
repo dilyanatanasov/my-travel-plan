@@ -10,7 +10,9 @@ export const STOP_PAUSE_SECONDS = 0.9;
 
 /** One leg's flight time from its distance — same sqrt reasoning as below. */
 export function legFlightSeconds(km: number): number {
-  return Math.min(6, Math.max(1.6, 0.07 * Math.sqrt(Math.max(km, 0))));
+  // 0.062, trimmed from 0.07 by owner feel-test: ~12% brisker everywhere,
+  // clamps tightened to match so short hops and long hauls speed up too.
+  return Math.min(5.4, Math.max(1.45, 0.062 * Math.sqrt(Math.max(km, 0))));
 }
 
 /**

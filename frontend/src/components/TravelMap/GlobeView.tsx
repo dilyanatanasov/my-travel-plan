@@ -671,6 +671,12 @@ function GlobeView({
               sizeScale={markerScale}
               popIata={replay.isActive ? popAirport?.iata : undefined}
               popKey={popAirport?.key}
+              // Globe zoom runs 1–8 and the horizon already culls half the
+              // world, so labels come out much earlier than on the flat map.
+              // labelZoom because the globe pins the context k at 1.
+              labelZoom={camera.zoom}
+              labelsFromZoom={1.3}
+              cityNamesFromZoom={2.8}
             />
           )}
         </ZoomPanProvider>

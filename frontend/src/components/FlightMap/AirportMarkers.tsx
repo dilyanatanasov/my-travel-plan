@@ -18,6 +18,21 @@ interface AirportMarkersProps {
   popIata?: string | null;
   /** Changes per pop so the same airport can pop twice in one journey. */
   popKey?: number;
+  /**
+   * Zoom thresholds for labels — the defaults suit the flat map's zoom
+   * scale (1–24); the globe's runs 1–8 and its horizon culling already
+   * thins the field, so it labels much earlier.
+   */
+  labelsFromZoom?: number;
+  cityNamesFromZoom?: number;
+  /**
+   * Zoom used for the LABEL decisions only. The globe pins the layers'
+   * zoom-pan context at k=1 (its magnification lives in the projection
+   * scale, so pixel sizes need no correction) — which also meant labels
+   * could never appear there. It passes its camera zoom through this
+   * instead; sizes keep using the context.
+   */
+  labelZoom?: number;
 }
 
 function AirportMarkers({
@@ -27,6 +42,9 @@ function AirportMarkers({
   sizeScale = 1,
   popIata,
   popKey,
+  labelsFromZoom = 2.5,
+  cityNamesFromZoom = 4.5,
+  labelZoom,
 }: AirportMarkersProps) {
   const { map: colors } = useMapColors();
   const { projection } = useMapContext();
@@ -38,9 +56,10 @@ function AirportMarkers({
     "which airport is that". Below it, labelling 39 airports clustered over
     Europe would be a wall of text.
   */
-  const showLabels = zoom >= 2.5;
+  const effectiveLabelZoom = labelZoom ?? zoom;
+  const showLabels = effectiveLabelZoom >= labelsFromZoom;
   // City names need more room than a 3-letter code, so they wait for more zoom.
-  const useCityNames = zoom >= 4.5;
+  const useCityNames = effectiveLabelZoom >= cityNamesFromZoom;
 
   // Calculate max visit count for scaling
   const maxVisits = Math.max(...Array.from(visitCounts.values()), 1);
@@ -56,9 +75,21 @@ function AirportMarkers({
     return (2 + normalized * 2.2) * sizeScale; // Range: 2 to 4.2
   };
 
+  /*
+    SVG has no z-index — paint order is document order — so a popping
+    airport rendered early got its pill overpainted by any neighbour's
+    label drawn after it. The pop always paints last.
+  */
+  const orderedAirports = popIata
+    ? [
+        ...airports.filter((a) => a.iataCode !== popIata),
+        ...airports.filter((a) => a.iataCode === popIata),
+      ]
+    : airports;
+
   return (
     <g className="airport-markers">
-      {airports.map((airport) => {
+      {orderedAirports.map((airport) => {
         const coords = projection([airport.longitude, airport.latitude]);
 
         if (!coords) return null;
