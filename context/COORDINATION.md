@@ -517,6 +517,37 @@ Order: ship with Cloudflare in front (already the DDoS plan, brings bot
 filtering free) plus existing throttles, and Turnstile on register if the
 noise is real. Then email provider → reset + verification as one piece.
 
+### D6 — Daily puzzle guessing mechanic: autocomplete + distance/direction hints
+**Status: CONFIRMED by the user on 2026-08-13. Recorded by a fourth session
+in the main checkout.**
+
+Resolves the puzzle research's open decision D2 (see
+`context/research/2026-08-13_duels-completion-puzzle_research.md`):
+free-text guess with autocomplete from the countries list, per wrong guess
+reveal distance + compass direction to the answer, 6 guesses — not
+multiple-choice. The puzzle itself is still research-stage (no plan doc,
+no code, queues behind the consolidation pass).
+
+One flag before whoever builds it writes the plan: the research recommends
+the puzzle be **anonymous-friendly** (top-of-funnel, streaks in
+localStorage); the user separately mentioned "for logged users" in passing
+and did not re-raise it after the anonymous rationale was laid out. Confirm
+which it is at plan time rather than assuming.
+
+### D7 — Globe-mode search: wanted, feasible, queued behind consolidation M4
+**Status: user asked for the flat/globe search discrepancy to be removed,
+2026-08-13. Feasibility confirmed — research at
+`context/research/2026-08-13_globe-search_research.md`.**
+
+Everything hard already exists: `MapSearch` is projection-agnostic,
+`chaseCamera` (test-pinned by consolidation M2b) is the fly-to primitive,
+and fit-to-country framing on a sphere is the same angular-extent formula
+the replay already uses. ~Half a day with tests. **Do not build until M4's
+`useSearchLanding` extraction lands** — it moves the exact seam this
+consumes. A owns the files; recommendation in the research doc is that A
+takes it as the first post-consolidation item, fly + blink only for v1
+(no CountryDetailCard on the globe yet — G1 there).
+
 ## Open questions
 
 Ask here instead of guessing. Format:
