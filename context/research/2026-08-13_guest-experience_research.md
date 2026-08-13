@@ -24,6 +24,10 @@
 - **D2 Settings discovery**: add a gear icon next to the account menu in the header, or leave Settings inside the dropdown?
 - **D3 Undated journeys in replay**: keep skipping them (honest ordering) with the new clearer messaging, or append them at the end of the replay in entry order?
 
+## Decisions confirmed (2026-08-13, same day)
+
+D1 countries-first hint (flights demoted to text link) · D2 gear icon in header · D3 replay keeps skipping undated journeys. All implemented alongside the bug fixes.
+
 ## Files
 
 `frontend/src/features/flights/flightsApi.ts` · `frontend/src/components/TravelMap/{ReplayControl,useJourneyReplay,MapFirstRunHint}.tsx/.ts` · `frontend/src/features/auth/AccountMenu.tsx` · `frontend/src/components/Layout/Layout.tsx` · backend auto-visit: `backend/src/modules/flights/flights.service.ts`

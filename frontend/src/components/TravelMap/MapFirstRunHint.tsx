@@ -15,20 +15,26 @@ interface MapFirstRunHintProps {
  * disappears for good.
  */
 function MapFirstRunHint({ onAddFlights }: MapFirstRunHintProps) {
+  /*
+    Countries lead, flights follow (user decision, 2026-08-13): the first
+    real user test read the old flights-first button as "the map is locked
+    until I add flights". Tapping a country is the whole first interaction,
+    so it gets the headline; flights are an invitation, not a prerequisite.
+  */
   return (
     <div className="map-glass rounded-2xl border shadow-xl px-4 py-3 w-[19rem] max-w-[calc(100vw-1.5rem)]">
-      <p className="text-sm font-semibold">Your map is empty</p>
+      <p className="text-sm font-semibold">Tap any country you've been to</p>
       <p className="text-xs map-glass-muted mt-1 leading-relaxed">
-        Tap any country to mark it visited. Add flights and the routes draw
-        themselves between the airports.
+        That's all it takes — it turns into part of your map. Countries you
+        tap are saved as visited.
       </p>
       <button
         type="button"
         onClick={onAddFlights}
-        className="mt-2.5 w-full min-h-10 rounded-xl bg-brand-600 text-white text-sm font-medium
-          hover:bg-brand-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+        className="mt-2 text-xs font-medium text-brand-text hover:text-brand-700 underline
+          min-h-8 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 rounded"
       >
-        Add your flights
+        Flown somewhere? Add your flights too
       </button>
     </div>
   );
