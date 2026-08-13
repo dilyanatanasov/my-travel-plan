@@ -53,13 +53,32 @@ function Layout() {
           </Link>
           <div className="flex items-center gap-2 flex-shrink-0">
             {/*
-              Flight search is hidden from the nav, not removed. The route,
-              the page and the whole backend still work at /search — this only
-              takes it out of the way while the map is the product being
-              shaped. Its differentiator is persistent personal constraints
-              (preferred airports, minimum layover, departure hour), which no
-              mainstream flight search offers, so it is worth keeping.
+              Entry point for the "Where to next?" discovery page. /search
+              used to be the hidden flight search; it now hosts destination
+              discovery, which is meant to be found — icon-only below sm to
+              keep the header inside h-14.
             */}
+            <Link
+              to="/search"
+              aria-label="Where to next?"
+              className="flex items-center gap-1.5 min-h-11 px-3 rounded-lg border border-line
+                text-sm font-medium text-ink hover:bg-canvas"
+            >
+              <svg
+                className="w-4 h-4 flex-shrink-0"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <circle cx="12" cy="12" r="10" />
+                <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" />
+              </svg>
+              <span className="hidden sm:block">Where to next?</span>
+            </Link>
             <AccountMenu />
           </div>
         </div>
