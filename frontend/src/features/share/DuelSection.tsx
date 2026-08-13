@@ -5,6 +5,7 @@ import {
   useRemoveDuelMutation,
 } from './shareApi';
 import { useToast } from '../../components/Toast/ToastProvider';
+import { extractTokens } from './duelTokens';
 
 /**
  * Duels live on share tokens, not a friend graph (decision 2026-08-13):
@@ -12,29 +13,6 @@ import { useToast } from '../../components/Toast/ToastProvider';
  * is a pasted link, and a saved duel is a bookmark that dies with either
  * side's token — exactly like the share links it is made of.
  */
-
-/**
- * Every token in the pasted input, in order. A duel URL carries TWO tokens —
- * naively taking the first meant pasting an existing duel link handed you
- * your own token back ("you cannot duel yourself"). The caller filters self
- * out and duels whoever remains.
- */
-function extractTokens(input: string): string[] {
-  const trimmed = input.trim();
-  if (!trimmed) return [];
-  const fromUrl = [
-    ...trimmed.matchAll(/\/(?:s|duel)\/([A-Za-z0-9_-]{8,24})/g),
-  ].flatMap((match) => {
-    // A /duel/a/b URL: the second token rides after the captured first.
-    const tail = trimmed
-      .slice((match.index ?? 0) + match[0].length)
-      .match(/^\/([A-Za-z0-9_-]{8,24})/);
-    return tail ? [match[1], tail[1]] : [match[1]];
-  });
-  if (fromUrl.length > 0) return [...new Set(fromUrl)];
-  if (/^[A-Za-z0-9_-]{8,24}$/.test(trimmed)) return [trimmed];
-  return [];
-}
 
 function DuelSection({ myToken }: { myToken: string }) {
   const navigate = useNavigate();
