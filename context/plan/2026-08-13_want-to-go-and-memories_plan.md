@@ -27,3 +27,13 @@ Backend: visit DTO whitelist + public-map filter. Frontend: `VisitType` union, m
 
 ## Out of scope
 Wishlist on Where-next (later, natural fit), share-card wishlist count, monthly digests, Wrapped.
+
+## Part 3 — Partial journey dates (queued 2026-08-13, user request)
+
+`date_precision` (`'day' | 'month' | 'year'`) beside `journey_date`, stored as
+the first day of the period so ordering (incl. replay) works unchanged. Form
+becomes progressive: year, optionally month, optionally day. Labels render per
+precision ("2024" / "Mar 2024" / "5 Mar 2024"). Pairs naturally with the
+split-journey flow, where a return's exact date is often the thing nobody
+remembers — a year is better than nothing and now nothing is also fine
+(entry-order replay shipped 2026-08-13).
