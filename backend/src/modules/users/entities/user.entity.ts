@@ -38,6 +38,14 @@ export class User {
   @Column({ name: 'is_guest', type: 'boolean', default: false })
   isGuest: boolean;
 
+  /**
+   * Gates sharing, not the app itself: an unverified account works privately
+   * but cannot publish a public map link. That asymmetry is the register-spam
+   * defense — a throwaway signup gains nothing visible to anyone else.
+   */
+  @Column({ name: 'email_verified', type: 'boolean', default: false })
+  emailVerified: boolean;
+
   /** Drives cleanup of abandoned guest accounts. */
   @Column({ name: 'last_seen_at', type: 'timestamp', default: () => 'now()' })
   lastSeenAt: Date;

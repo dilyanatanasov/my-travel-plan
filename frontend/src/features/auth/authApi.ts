@@ -11,6 +11,8 @@ export interface AuthUser {
   displayName: string | null;
   /** True until the account is claimed with an email and password. */
   isGuest: boolean;
+  /** False until the emailed verify link is clicked; gates sharing only. */
+  emailVerified: boolean;
   createdAt: string;
 }
 
@@ -83,6 +85,45 @@ export const authApi = apiSlice.injectEndpoints({
       },
     }),
 
+    /* Always resolves {ok:true} — the server never reveals whether the
+       email has an account (user-enumeration defense). */
+    forgotPassword: builder.mutation<{ ok: boolean }, { email: string }>({
+      query: (body) => ({
+        url: '/auth/forgot-password',
+        method: 'POST',
+        body,
+      }),
+    }),
+
+    resetPassword: builder.mutation<
+      { ok: boolean },
+      { token: string; password: string }
+    >({
+      query: (body) => ({
+        url: '/auth/reset-password',
+        method: 'POST',
+        body,
+      }),
+    }),
+
+    verifyEmail: builder.mutation<{ ok: boolean }, { token: string }>({
+      query: (body) => ({
+        url: '/auth/verify-email',
+        method: 'POST',
+        body,
+      }),
+      // The signed-in profile now carries emailVerified — refetch it so the
+      // banner disappears without a reload.
+      invalidatesTags: ['Auth'],
+    }),
+
+    resendVerification: builder.mutation<{ ok: boolean }, void>({
+      query: () => ({
+        url: '/auth/resend-verification',
+        method: 'POST',
+      }),
+    }),
+
     logout: builder.mutation<{ success: boolean }, void>({
       query: () => ({
         url: '/auth/logout',
@@ -93,6 +134,16 @@ export const authApi = apiSlice.injectEndpoints({
       // property of the device ("an account exists somewhere"), not of the
       // session, and clearing it would send someone who just signed out into
       // a brand new guest map. Only abandoning a guest session clears it.
+      /*
+        Invalidation alone is not enough here: a refetch that now 401s keeps
+        serving the last good data (stale-while-revalidate), so the previous
+        account's map stayed visible to whoever used the device next. Reset
+        drops the cache entirely — anonymous means an empty map, immediately.
+      */
+      async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
+        await queryFulfilled;
+        dispatch(apiSlice.util.resetApiState());
+      },
     }),
   }),
 });
@@ -102,6 +153,10 @@ export const {
   useCreateGuestMutation,
   useRegisterMutation,
   useLoginMutation,
+  useForgotPasswordMutation,
+  useResetPasswordMutation,
+  useVerifyEmailMutation,
+  useResendVerificationMutation,
   useLogoutMutation,
 } = authApi;
 

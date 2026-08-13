@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { randomBytes } from 'crypto';
@@ -40,6 +44,15 @@ export class ShareService {
     const user = await this.userRepository.findOne({ where: { id: userId } });
     if (!user) {
       throw new NotFoundException('User not found');
+    }
+    // The register-spam defense: publishing a public link is the one thing
+    // an unverified account cannot do. The code is what the frontend keys
+    // on to show the verify prompt instead of a generic error.
+    if (!user.emailVerified) {
+      throw new ForbiddenException({
+        code: 'EMAIL_UNVERIFIED',
+        message: 'Verify your email to share your map',
+      });
     }
     if (!user.shareToken) {
       user.shareToken = this.generateToken();

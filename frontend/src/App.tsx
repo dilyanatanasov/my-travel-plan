@@ -11,6 +11,9 @@ import RequireAuth from './features/auth/RequireAuth';
 const WhereNextPage = lazy(() => import('./pages/WhereNextPage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const RegisterPage = lazy(() => import('./pages/RegisterPage'));
+const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'));
+const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'));
+const VerifyEmailPage = lazy(() => import('./pages/VerifyEmailPage'));
 const SharedMapPage = lazy(() => import('./pages/SharedMapPage'));
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
 
@@ -24,6 +27,10 @@ function App() {
         {/* Public */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
+        {/* Emailed-link landings — public: the email may open a fresh browser */}
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
+        <Route path="/verify-email" element={<VerifyEmailPage />} />
         {/* Public shared map — deliberately outside RequireAuth */}
         <Route path="/s/:token" element={<SharedMapPage />} />
 

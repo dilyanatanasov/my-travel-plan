@@ -1,5 +1,7 @@
 import { useForm } from 'react-hook-form';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { useDispatch } from 'react-redux';
+import { apiSlice } from '../store/api/apiSlice';
 import {
   useLoginMutation,
   forgetAccount,
@@ -17,6 +19,7 @@ import {
 
 function LoginPage() {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
   const location = useLocation();
   const [login, { isLoading, error }] = useLoginMutation();
 
@@ -45,6 +48,10 @@ function LoginPage() {
    */
   const handleBrowseAsGuest = () => {
     forgetAccount();
+    // Same reasoning as logout: whatever the previous session cached must not
+    // survive into an anonymous browse — a 401 refetch keeps stale data, a
+    // reset does not.
+    dispatch(apiSlice.util.resetApiState());
     navigate('/', { replace: true });
   };
 
@@ -116,6 +123,14 @@ function LoginPage() {
           {errors.password && (
             <p className={fieldErrorClass}>{errors.password.message}</p>
           )}
+          <p className="mt-1.5 text-right">
+            <Link
+              to="/forgot-password"
+              className="text-xs text-brand-text hover:text-brand-700 font-medium"
+            >
+              Forgot password?
+            </Link>
+          </p>
         </div>
 
         <button type="submit" disabled={isLoading} className={submitClass}>

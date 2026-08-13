@@ -1,6 +1,6 @@
 {
-  "name": "Contrail",
-  "short_name": "Contrail",
+  "name": "myContrail",
+  "short_name": "myContrail",
   "description": "Every country you have been to. Every flight you have taken.",
   "start_url": "/",
   "scope": "/",

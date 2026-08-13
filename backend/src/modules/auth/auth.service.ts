@@ -1,5 +1,6 @@
 import {
   Injectable,
+  BadRequestException,
   ConflictException,
   UnauthorizedException,
   Logger,
@@ -10,6 +11,8 @@ import { DataSource, Repository } from 'typeorm';
 import { hash, verify } from '@node-rs/argon2';
 import { User } from '../users/entities/user.entity';
 import { UsersService } from '../users/users.service';
+import { MailService } from '../mail/mail.service';
+import { AuthTokensService } from './auth-tokens.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { JwtPayload } from './jwt.strategy';
@@ -20,6 +23,8 @@ export interface PublicUser {
   email: string | null;
   displayName: string | null;
   isGuest: boolean;
+  /** False until the verify link is clicked; gates sharing, nothing else. */
+  emailVerified: boolean;
   createdAt: Date;
 }
 
@@ -40,6 +45,8 @@ export class AuthService {
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     @InjectDataSource() private readonly dataSource: DataSource,
+    private readonly mailService: MailService,
+    private readonly authTokensService: AuthTokensService,
   ) {}
 
   private toPublicUser(user: User): PublicUser {
@@ -48,6 +55,7 @@ export class AuthService {
       isGuest: user.isGuest,
       email: user.email,
       displayName: user.displayName,
+      emailVerified: user.emailVerified,
       createdAt: user.createdAt,
     };
   }
@@ -115,7 +123,7 @@ export class AuthService {
 
     const passwordHash = await hash(dto.password);
 
-    return this.dataSource.transaction(async (manager) => {
+    const result = await this.dataSource.transaction(async (manager) => {
       /*
         Signing up from a guest session converts that row rather than creating
         a new one. Everything the guest built is already attached to this id,
@@ -191,6 +199,81 @@ export class AuthService {
         claimed,
       };
     });
+
+    // Outside the transaction, and not awaited: a mail outage must never
+    // fail or slow a signup. The banner's resend button covers the gap.
+    if (result.user.email) {
+      this.sendVerificationTo(result.user.id, result.user.email);
+    }
+
+    return result;
+  }
+
+  /** Fire-and-forget: issue a verify token and email the link. */
+  private sendVerificationTo(userId: number, email: string): void {
+    void (async () => {
+      const token = await this.authTokensService.issue(userId, 'verify');
+      const link = `${this.mailService.appUrl()}/verify-email?token=${token}`;
+      await this.mailService.sendVerificationEmail(email, link);
+    })().catch((err) =>
+      this.logger.error(`Verification email to ${email} failed: ${err}`),
+    );
+  }
+
+  /**
+   * Uniform by design: the response never says whether the account exists,
+   * and the mail is sent out-of-band so timing gives little away either.
+   */
+  async forgotPassword(email: string): Promise<void> {
+    const user = await this.usersService.findByEmail(email);
+    if (!user || user.isGuest || !user.passwordHash || !user.email) {
+      return;
+    }
+    const to = user.email;
+    void (async () => {
+      const token = await this.authTokensService.issue(user.id, 'reset');
+      const link = `${this.mailService.appUrl()}/reset-password?token=${token}`;
+      await this.mailService.sendPasswordResetEmail(to, link);
+    })().catch((err) =>
+      this.logger.error(`Password reset email to ${to} failed: ${err}`),
+    );
+  }
+
+  async resetPassword(token: string, password: string): Promise<void> {
+    const userId = await this.authTokensService.redeem(token, 'reset');
+    if (userId === null) {
+      throw new BadRequestException('This link is invalid or has expired');
+    }
+    const passwordHash = await hash(password);
+    // Arriving here proves control of the email — that is exactly what
+    // verification asks, so an unverified account gets verified for free.
+    await this.userRepository.update(
+      { id: userId },
+      { passwordHash, emailVerified: true },
+    );
+  }
+
+  async verifyEmail(token: string): Promise<void> {
+    const userId = await this.authTokensService.redeem(token, 'verify');
+    if (userId === null) {
+      throw new BadRequestException('This link is invalid or has expired');
+    }
+    await this.userRepository.update({ id: userId }, { emailVerified: true });
+  }
+
+  /** Idempotent: verified accounts get an ok and no mail. */
+  async resendVerification(userId: number): Promise<void> {
+    const user = await this.usersService.findById(userId);
+    if (!user) {
+      throw new UnauthorizedException();
+    }
+    if (user.isGuest || !user.email) {
+      throw new BadRequestException('This account has no email address');
+    }
+    if (user.emailVerified) {
+      return;
+    }
+    this.sendVerificationTo(user.id, user.email);
   }
 
   async login(dto: LoginDto): Promise<AuthResult> {

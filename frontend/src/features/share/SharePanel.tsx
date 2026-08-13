@@ -19,7 +19,7 @@ import MapExportCanvas, {
 } from '../../components/TravelMap/MapExportCanvas';
 import { useGetVisitsQuery } from '../visits/visitsApi';
 import { useGetFlightStatsQuery } from '../flights/flightsApi';
-import { useAuth } from '../auth/authApi';
+import { useAuth, useResendVerificationMutation } from '../auth/authApi';
 
 const STYLES: { id: ShareStyle; label: string; hint: string }[] = [
   { id: 'warm', label: 'Warm', hint: 'Cream and terracotta' },
@@ -58,6 +58,23 @@ function SharePanel() {
   });
   const [enableShare, { isLoading: isEnabling }] = useEnableShareMutation();
   const [disableShare, { isLoading: isDisabling }] = useDisableShareMutation();
+  const [resendVerification, { isLoading: isResending }] =
+    useResendVerificationMutation();
+  // One send per panel visit — the server throttles too, but the button
+  // saying "sent" beats a throttle error.
+  const [resendDone, setResendDone] = useState(false);
+
+  const handleResendVerification = async () => {
+    try {
+      await resendVerification().unwrap();
+      setResendDone(true);
+      showToast('Verification email sent', { tone: 'success' });
+    } catch {
+      showToast('Could not send the email — try again in a minute', {
+        tone: 'error',
+      });
+    }
+  };
 
   const countriesCount = visits.filter((visit) => {
     const type = visit.visitType || 'trip';
@@ -78,7 +95,7 @@ function SharePanel() {
     const earths = flightStats?.earthCircumferences ?? 0;
 
     return {
-      kicker: `${new Date().getFullYear()} · Contrail`,
+      kicker: `${new Date().getFullYear()} · myContrail`,
       headline: `${countries} ${countries === 1 ? 'country' : 'countries'} and counting`,
       hero: {
         value: km.toLocaleString(),
@@ -183,7 +200,8 @@ function SharePanel() {
       try {
         await navigator.share({
           files: [file],
-          title: 'My Contrail map',
+          // Reads naturally as "my Contrail map" while spelling the brand.
+          title: 'myContrail map',
           text: content.headline,
         });
         return;
@@ -355,6 +373,27 @@ function SharePanel() {
             >
               Create free account
             </Link>
+          </>
+        ) : !user?.emailVerified ? (
+          <>
+            {/* Server enforces this too (403 EMAIL_UNVERIFIED); the panel
+                just explains it before the button can fail. */}
+            <p className="text-xs text-ink-muted mt-1 leading-relaxed">
+              Verify your email first — it proves the account is a person, and
+              it's what keeps the public-map space free of throwaway spam.
+            </p>
+            <button
+              type="button"
+              onClick={handleResendVerification}
+              disabled={isResending || resendDone}
+              className="mt-3 flex items-center justify-center w-full min-h-11 rounded-xl bg-brand-600 text-white text-sm font-medium hover:bg-brand-700 disabled:opacity-50"
+            >
+              {resendDone
+                ? 'Sent — check your inbox'
+                : isResending
+                  ? 'Sending…'
+                  : `Email a verify link to ${user?.email ?? 'you'}`}
+            </button>
           </>
         ) : (
           <>

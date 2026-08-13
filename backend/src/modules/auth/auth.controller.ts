@@ -14,6 +14,9 @@ import { Throttle } from '@nestjs/throttler';
 import { AuthService, AuthResult } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
+import { VerifyEmailDto } from './dto/verify-email.dto';
 import { Public } from '../../common/decorators/public.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { ACCESS_TOKEN_COOKIE } from './jwt.strategy';
@@ -100,6 +103,48 @@ export class AuthController {
     const { maxAge, ...options } = this.cookieOptions();
     res.clearCookie(ACCESS_TOKEN_COOKIE, options);
     return { success: true };
+  }
+
+  /**
+   * Always {ok:true}, whether or not the account exists — this endpoint must
+   * not be a user-enumeration oracle. Throttled hardest of all: each real hit
+   * sends an email on someone's behalf.
+   */
+  @Public()
+  @Throttle({ default: { limit: 3, ttl: 60_000 } })
+  @Post('forgot-password')
+  @HttpCode(HttpStatus.OK)
+  async forgotPassword(@Body() dto: ForgotPasswordDto) {
+    await this.authService.forgotPassword(dto.email);
+    return { ok: true };
+  }
+
+  @Public()
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Post('reset-password')
+  @HttpCode(HttpStatus.OK)
+  async resetPassword(@Body() dto: ResetPasswordDto) {
+    await this.authService.resetPassword(dto.token, dto.password);
+    return { ok: true };
+  }
+
+  /** @Public: the link is often opened in a browser with no session. */
+  @Public()
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Post('verify-email')
+  @HttpCode(HttpStatus.OK)
+  async verifyEmail(@Body() dto: VerifyEmailDto) {
+    await this.authService.verifyEmail(dto.token);
+    return { ok: true };
+  }
+
+  /** Authenticated: resending is only meaningful for the logged-in account. */
+  @Throttle({ default: { limit: 3, ttl: 60_000 } })
+  @Post('resend-verification')
+  @HttpCode(HttpStatus.OK)
+  async resendVerification(@CurrentUser('id') userId: number) {
+    await this.authService.resendVerification(userId);
+    return { ok: true };
   }
 
   /** Protected on purpose: the 401 is the frontend's "logged out" signal. */

@@ -182,7 +182,7 @@ function DiscoveryPanel({ onShowOnMap }: DiscoveryPanelProps) {
 
       {status === 'ready' && sorted.length > 0 && (
         <p className="text-[11px] text-ink-subtle">
-          Booking opens Aviasales in a new tab. Contrail may earn a commission
+          Booking opens Aviasales in a new tab. myContrail may earn a commission
           on bookings once the affiliate programme is live.
         </p>
       )}

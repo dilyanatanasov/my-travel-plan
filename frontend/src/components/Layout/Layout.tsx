@@ -1,5 +1,6 @@
 import { Outlet, Link } from 'react-router-dom';
 import AccountMenu from '../../features/auth/AccountMenu';
+import VerifyEmailBanner from '../../features/auth/VerifyEmailBanner';
 import BrandMark from '../BrandMark';
 
 function Layout() {
@@ -42,7 +43,10 @@ function Layout() {
               <BrandMark className="w-5 h-5" />
             </span>
             <span className="flex flex-col justify-center min-w-0">
+              {/* Two-tone lockup: "my" is the possessive whisper, "Contrail"
+                  the brand voice. Screen readers read it as one word. */}
               <h1 className="font-display font-normal text-xl sm:text-2xl text-ink leading-tight">
+                <span className="text-base sm:text-lg text-brand-600">my</span>
                 Contrail
               </h1>
               {/* Subtitle only where there is room for it */}
@@ -83,6 +87,7 @@ function Layout() {
           </div>
         </div>
       </header>
+      <VerifyEmailBanner />
       {/* min-h-0 is required for the flex child to be allowed to shrink, which
           is what lets inner panels scroll instead of the page. */}
       {/*
