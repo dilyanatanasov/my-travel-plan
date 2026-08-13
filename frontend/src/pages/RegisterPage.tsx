@@ -8,6 +8,7 @@ import {
 import { useGetVisitsQuery } from '../features/visits/visitsApi';
 import { useGetFlightStatsQuery } from '../features/flights/flightsApi';
 import AuthLayout from '../features/auth/AuthLayout';
+import { track } from '../lib/analytics';
 import {
   inputClass,
   inputErrorClass,
@@ -54,11 +55,17 @@ function RegisterPage() {
   } = useForm<RegisterRequest>();
 
   const onSubmit = async (values: RegisterRequest) => {
+    // Captured before the mutation flips it: was this a guest converting?
+    const wasGuest = isGuest;
     try {
       await registerUser({
         ...values,
         displayName: values.displayName?.trim() || undefined,
       }).unwrap();
+      if (wasGuest) {
+        // The funnel number that matters. No properties at all.
+        track('guest_convert');
+      }
       navigate('/', { replace: true });
     } catch {
       // Surfaced below via the `error` from the mutation hook.

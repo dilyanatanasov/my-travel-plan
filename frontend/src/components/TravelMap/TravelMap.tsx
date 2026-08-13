@@ -5,6 +5,7 @@ import {
   useGetCountriesQuery,
 } from '../../features/visits/visitsApi';
 import { useVisitActions } from '../../features/visits/useVisitActions';
+import { track } from '../../lib/analytics';
 import type { Alpha3, Visit, FlightJourney } from '../../types';
 import { useGetFlightsQuery } from '../../features/flights/flightsApi';
 import { useUpdateVisitMutation } from '../../features/visits/visitsApi';
@@ -118,6 +119,7 @@ function TravelMap() {
 
   // Zoom is controlled so the +/- buttons and d3's own gestures stay in sync.
   const [zoom, setZoom] = useState(MIN_ZOOM);
+  const lastZoomRef = useRef(MIN_ZOOM);
   const [center, setCenter] = useState<[number, number]>(DESKTOP_CENTER);
   // Track whether the user has moved the map; until then, follow the
   // breakpoint's default centre rather than stranding a phone off-centre.
@@ -205,6 +207,12 @@ function TravelMap() {
 
   const handleMoveEnd = useCallback(
     (position: { coordinates: [number, number]; zoom: number }) => {
+      // One event per settled gesture; zoom vs pan by whether zoom changed.
+      // Coordinates are never sent — where someone looks is travel data.
+      track('map_interact', {
+        kind: position.zoom !== lastZoomRef.current ? 'zoom' : 'pan',
+      });
+      lastZoomRef.current = position.zoom;
       setZoom(position.zoom);
       setCenter(position.coordinates);
       setHasMovedMap(true);

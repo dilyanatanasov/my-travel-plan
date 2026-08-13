@@ -21,6 +21,7 @@ import MapExportCanvas, {
 import { useGetCountriesQuery, useGetVisitsQuery } from '../visits/visitsApi';
 import { useGetFlightStatsQuery } from '../flights/flightsApi';
 import { useAuth, useResendVerificationMutation } from '../auth/authApi';
+import { track } from '../../lib/analytics';
 
 const STYLES: { id: ShareStyle; label: string; hint: string }[] = [
   { id: 'warm', label: 'Warm', hint: 'Cream and terracotta' },
@@ -198,6 +199,8 @@ function SharePanel() {
       try {
         const blob = await renderShareCard(svg, content, style);
         if (cancelled) return;
+        // Which style, and whether share is used at all — style name only.
+        track('share_render', { style });
         blobRef.current = blob;
         // Keep the stored card in step with what just rendered, so the link
         // preview shows the map people will actually see. Fire-and-forget:

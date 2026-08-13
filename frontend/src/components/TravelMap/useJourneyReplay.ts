@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { FlightJourney } from '../../types';
+import { track } from '../../lib/analytics';
 
 /**
  * How long each journey holds the screen.
@@ -79,6 +80,8 @@ export function useJourneyReplay(journeys: FlightJourney[]): ReplayState {
       const next = current + 1;
       if (next >= ordered.length) {
         clearTimer();
+        // Count only — does anyone watch to the end? (Never which journeys.)
+        track('replay_complete', { journeys: ordered.length });
         /*
           Leave replay entirely rather than parking on the last journey.
 
@@ -101,6 +104,7 @@ export function useJourneyReplay(journeys: FlightJourney[]): ReplayState {
 
   const start = useCallback(() => {
     if (ordered.length === 0) return;
+    track('replay_start', { journeys: ordered.length });
     setIndex(0);
     setIsPaused(false);
     runTimer();

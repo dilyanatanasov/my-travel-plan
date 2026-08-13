@@ -23,6 +23,8 @@ import {
 } from '../features/visits/visitsApi';
 import { useVisitActions } from '../features/visits/useVisitActions';
 import { useToast } from '../components/Toast/ToastProvider';
+import { track } from '../lib/analytics';
+import { useSectionDwell } from '../lib/useSectionDwell';
 import { useIsDesktop } from '../hooks/useMediaQuery';
 import { MapFocusProvider } from '../features/map/MapFocusContext';
 import type { VisitType, Visit } from '../types';
@@ -49,6 +51,9 @@ function TravelMapPage() {
   const [hintDismissed, setHintDismissed] = useState(false);
   const isDesktop = useIsDesktop();
 
+  // "Where do they stay the most" — null section means the bare map.
+  useSectionDwell(activeSection ?? 'map');
+
   const { data: countries = [] } = useGetCountriesQuery();
   const { data: visits = [], isLoading: visitsLoading } = useGetVisitsQuery();
   // The initial view needs only a flight count and total distance, so it uses
@@ -74,6 +79,8 @@ function TravelMapPage() {
   const handleToggleCountry = useCallback(
     async (countryId: number) => {
       const existingVisit = visitByCountryId.get(countryId);
+      // kind only — never which country (analytics privacy rule).
+      track('map_interact', { kind: 'country_open' });
       if (existingVisit) {
         await removeVisitWithUndo(existingVisit);
         return;
