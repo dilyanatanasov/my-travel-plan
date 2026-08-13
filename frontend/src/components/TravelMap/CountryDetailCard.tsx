@@ -182,11 +182,12 @@ function CountryDetailCard({
         </button>
       </div>
 
-      {/* Visit type as a segmented control: three states, one choice. */}
+      {/* Visit type as a 2×2 grid: four states no longer fit one row —
+          "Want to go" wrapped and squeezed the others. */}
       <div
         role="radiogroup"
         aria-label={`How you visited ${countryName}`}
-        className="flex gap-1 p-1 rounded-xl bg-current/10 mt-3"
+        className="grid grid-cols-2 gap-1 p-1 rounded-xl bg-current/10 mt-3"
       >
         {(Object.keys(TYPE_LABELS) as VisitType[]).map((type) => {
           const isActive = currentType === type;

@@ -5,6 +5,7 @@ import {
   useGetCountriesQuery,
 } from '../../features/visits/visitsApi';
 import { useVisitActions } from '../../features/visits/useVisitActions';
+import { useToast } from '../Toast/ToastProvider';
 import { track } from '../../lib/analytics';
 import type { Alpha3, Visit, FlightJourney } from '../../types';
 import { useGetFlightsQuery } from '../../features/flights/flightsApi';
@@ -79,6 +80,7 @@ function TravelMap() {
   // Mutations
   const [updateVisit] = useUpdateVisitMutation();
   const { addVisitForCountry, removeVisitWithUndo } = useVisitActions();
+  const { showToast } = useToast();
 
   // State
   const [settings, setSettings] = useState<TravelMapSettings>(DEFAULT_SETTINGS);
@@ -398,22 +400,52 @@ function TravelMap() {
 
       clickConsumedRef.current = true;
       const existingVisit = visitByCountryId.get(countryId);
-      if (existingVisit) {
-        /*
-          Open the country rather than delete it. Tapping used to remove,
-          which made the map's only interaction destructive — a stray tap at
-          the end of a pan could quietly drop somewhere you had been. Removal
-          now lives inside the card, behind a deliberate press.
-        */
-        setOpenCountryIso(isoCode);
-      } else {
+      /*
+        Tap cycles the state (user's design, 2026-08-13):
+        none → visited → transit → want to go → removed (undo toast).
+
+        The detail card moved to long-press — it was the tap-on-visited
+        action before, which is why the cycle "didn't register" in testing:
+        the card swallowed every tap after the first. Home stays out of the
+        cycle entirely; tapping it opens its card, and only the card can
+        change or remove a home. Removal at the end of the cycle is
+        acceptable where tap-to-remove once was not: it takes three
+        deliberate taps to reach, each announced, and undo remains.
+      */
+      if (!existingVisit) {
         await addVisitForCountry(countryId);
+        return;
+      }
+      const type = existingVisit.visitType || 'trip';
+      if (type === 'home') {
+        setOpenCountryIso(isoCode);
+      } else if (type === 'trip') {
+        await updateVisit({
+          id: existingVisit.id,
+          data: { visitType: 'transit' },
+        }).unwrap();
+        showToast('Transit — tap again for "want to go", hold for details', {
+          durationMs: 3000,
+        });
+      } else if (type === 'transit') {
+        await updateVisit({
+          id: existingVisit.id,
+          data: { visitType: 'wishlist' },
+        }).unwrap();
+        showToast('On your "want to go" list — tap again to clear', {
+          durationMs: 3000,
+        });
+      } else {
+        await removeVisitWithUndo(existingVisit);
       }
     },
     [
       countryByIsoCode,
       visitByCountryId,
       addVisitForCountry,
+      updateVisit,
+      removeVisitWithUndo,
+      showToast,
       selectedJourney,
       replay.isActive,
     ]
