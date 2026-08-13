@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout/Layout';
 import TravelMapPage from './pages/TravelMapPage';
 import RequireAuth from './features/auth/RequireAuth';
+import { useVersionCheck } from './lib/useVersionCheck';
 
 // TravelMapPage is the index route and the map library it pulls is needed at
 // first paint, so it stays in the initial chunk. Everything else is reachable
@@ -18,6 +19,9 @@ const SharedMapPage = lazy(() => import('./pages/SharedMapPage'));
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
 
 function App() {
+  // Stale open tabs get a "new version — reload" toast after deploys.
+  useVersionCheck();
+
   return (
     // A lazy route resolves in well under a paint on a warm cache; the empty
     // fallback avoids a flash of spinner on fast navigations while still

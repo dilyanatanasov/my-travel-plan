@@ -13,7 +13,15 @@ COPY . .
 ARG VITE_API_URL=/api
 ENV VITE_API_URL=$VITE_API_URL
 
+# The deploy SHA, baked into the bundle AND written to version.json. The
+# version-check hook compares the two at runtime: a mismatch means this tab
+# is running a stale build and offers a reload. Empty in local builds, which
+# disables the check.
+ARG VITE_APP_VERSION=""
+ENV VITE_APP_VERSION=$VITE_APP_VERSION
+
 RUN npm run build
+RUN printf '{"version":"%s"}' "$VITE_APP_VERSION" > dist/version.json
 
 # Production stage
 FROM nginx:alpine

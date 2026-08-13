@@ -158,6 +158,13 @@ server {
         types { } default_type application/manifest+json;
     }
 
+    # The version stamp behind the stale-tab reload prompt: always from the
+    # server, or a cached copy would just report the cached build.
+    location = /version.json {
+        include /etc/nginx/snippets/security-headers.conf;
+        add_header Cache-Control "no-cache, no-store, must-revalidate" always;
+    }
+
     location = /index.html {
         include /etc/nginx/snippets/security-headers.conf;
         add_header Cache-Control "no-cache, no-store, must-revalidate" always;

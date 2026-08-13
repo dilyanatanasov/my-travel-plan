@@ -275,9 +275,12 @@ function CountriesLayer({
               onMouseLeave={() => onCountryHover?.(null)}
               style={{
                 default: {
-                  fill: isLanded ? colors.home : fillColor,
-                  stroke: isLanded ? colors.home : colors.countryBorder,
-                  strokeWidth: isLanded ? 1.5 : 0.5,
+                  // Blink borrows the landing flash's color logic: home is
+                  // the highest-contrast value against land in both themes —
+                  // opacity alone faded dark-on-dark and was easy to miss.
+                  fill: isLanded || isBlinking ? colors.home : fillColor,
+                  stroke: isLanded || isBlinking ? colors.home : colors.countryBorder,
+                  strokeWidth: isLanded || isBlinking ? 1.5 : 0.5,
                   /*
                     Borders in screen pixels, not map units.
 

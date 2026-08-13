@@ -125,14 +125,17 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # No build-args: VITE_API_URL defaults to the nginx-proxied /api inside
-      # the Dockerfile, and VITE_PUBLIC_URL (Open Graph URLs) comes from the
-      # checked-in frontend/.env.production, which Vite reads during build.
+      # VITE_API_URL defaults to the nginx-proxied /api inside the Dockerfile,
+      # and VITE_PUBLIC_URL (Open Graph URLs) comes from the checked-in
+      # frontend/.env.production. The deploy SHA feeds the stale-tab reload
+      # prompt: baked into the bundle and served as /version.json.
       - uses: docker/build-push-action@v6
         with:
           context: ./frontend
           file: ./frontend/Dockerfile
           push: true
+          build-args: |
+            VITE_APP_VERSION=${{ github.sha }}
           tags: |
             ghcr.io/dilyanatanasov/contrail-frontend:${{ github.sha }}
             ghcr.io/dilyanatanasov/contrail-frontend:latest
