@@ -10,6 +10,14 @@ interface AirportMarkersProps {
   highlightedAirports: string[];
   /** Trims marker size on small screens, where dots otherwise swamp the map. */
   sizeScale?: number;
+  /**
+   * Replay arrival: this airport's own marker+label pops as the plane
+   * reaches it — reusing the label that is already on the map instead of
+   * stacking a second one on top (user decision, 2026-08-13).
+   */
+  popIata?: string | null;
+  /** Changes per pop so the same airport can pop twice in one journey. */
+  popKey?: number;
 }
 
 function AirportMarkers({
@@ -17,6 +25,8 @@ function AirportMarkers({
   visitCounts,
   highlightedAirports,
   sizeScale = 1,
+  popIata,
+  popKey,
 }: AirportMarkersProps) {
   const { map: colors } = useMapColors();
   const { projection } = useMapContext();
@@ -55,6 +65,7 @@ function AirportMarkers({
 
         const [x, y] = coords;
         const isHighlighted = highlightedAirports.includes(airport.iataCode);
+        const isPopping = airport.iataCode === popIata;
         const baseRadius = getRadius(airport.iataCode);
         // Emphasised rather than merely constant: zooming in is a request for
         // detail, and a dot that holds exactly still reads as less important
@@ -63,14 +74,25 @@ function AirportMarkers({
         const strokeWidth = getZoomAdjustedSize(0.7 * sizeScale, zoom);
         const highlightOffset = getZoomAdjustedSize(3, zoom);
         const highlightStroke = getZoomAdjustedSize(2, zoom);
-        const fontSize = getZoomAdjustedSize(isHighlighted ? 11 : 10, zoom);
+        const fontSize = getZoomAdjustedSize(
+          isPopping ? 12 : isHighlighted ? 11 : 10,
+          zoom,
+        );
         const labelOffset = radius + getZoomAdjustedSize(6, zoom);
-        const label = useCityNames
-          ? airport.city || airport.iataCode
-          : airport.iataCode;
+        // A popping arrival announces the city even at world zoom — that is
+        // the "you have landed in…" moment.
+        const label =
+          useCityNames || isPopping
+            ? airport.city || airport.iataCode
+            : airport.iataCode;
 
         return (
-          <g key={airport.iataCode}>
+          <g
+            key={
+              isPopping ? `${airport.iataCode}-${popKey}` : airport.iataCode
+            }
+            className={isPopping ? 'airport-pop' : undefined}
+          >
             {/* Outer ring for highlighted airports */}
             {isHighlighted && (
               <circle
@@ -107,13 +129,28 @@ function AirportMarkers({
               coastline or another route rather than needing a solid plate
               behind it.
             */}
-            {(showLabels || isHighlighted) && (
+            {/* The pill behind a popping label — the "you have landed in…"
+                moment reads as an announcement, not a stray caption. */}
+            {isPopping && (
+              <rect
+                x={x - (label.length * fontSize * 0.62 + fontSize * 1.6) / 2}
+                y={y - labelOffset - fontSize * 1.25}
+                width={label.length * fontSize * 0.62 + fontSize * 1.6}
+                height={fontSize * 1.8}
+                rx={fontSize * 0.9}
+                fill={colors.ocean}
+                fillOpacity={0.88}
+                stroke={colors.routeHighlight}
+                strokeWidth={getZoomAdjustedSize(1, zoom)}
+              />
+            )}
+            {(showLabels || isHighlighted || isPopping) && (
               <text
                 x={x}
                 y={y - labelOffset}
                 textAnchor="middle"
                 fontSize={fontSize}
-                fontWeight={isHighlighted ? 700 : 600}
+                fontWeight={isHighlighted || isPopping ? 700 : 600}
                 fill={colors.label}
                 stroke={colors.ocean}
                 strokeWidth={getZoomAdjustedSize(2.5, zoom)}

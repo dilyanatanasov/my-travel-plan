@@ -1,18 +1,28 @@
-import { memo } from 'react';
+import { memo, useEffect, useRef } from 'react';
 import { useMapContext, useZoomPanContext } from 'react-simple-maps';
 import { calculateArcPath, getZoomAdjustedSize } from './routeUtils';
+import {
+  legFlightSeconds,
+  STOP_PAUSE_SECONDS,
+} from '../TravelMap/useJourneyReplay';
 import { useMapColors } from '../../theme/mapColors';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
 import type { FlightJourney } from '../../types';
 
 /**
- * Plane silhouette in a 24x24 box, nose pointing right (+x).
+ * Airliner silhouette in a 24x24 box, nose pointing right (+x): tapered
+ * fuselage, swept wings, tailplane and tail cone. Vector on purpose — the
+ * glyph scales 1.9× mid-flight and recolors with the theme, both of which a
+ * raster plane cannot survive.
  *
  * The direction matters: animateMotion's rotate="auto" aligns +x with the
  * path tangent, so a nose-up drawing would fly permanently sideways.
  */
 const PLANE_PATH =
-  'M2.5 12 L9 9.5 L9 4.2 A1.5 1.5 0 0 1 12 4.2 L12 8.4 L21.5 12 L12 15.6 L12 19.8 A1.5 1.5 0 0 1 9 19.8 L9 14.5 Z';
+  'M21.8 12 C22 11.4 21 10.9 19.5 10.9 L14.5 10.9 L9.5 5.2 L7.6 5.2 L11.4 10.9 ' +
+  'L5.8 10.9 L3.4 8.6 L2.2 8.6 L3.6 11.2 L2.6 11.6 L2.6 12.4 L3.6 12.8 ' +
+  'L2.2 15.4 L3.4 15.4 L5.8 13.1 L11.4 13.1 L7.6 18.8 L9.5 18.8 L14.5 13.1 ' +
+  'L19.5 13.1 C21 13.1 22 12.6 21.8 12 Z';
 
 interface JourneyHighlightProps {
   journey: FlightJourney;
@@ -25,6 +35,13 @@ interface JourneyHighlightProps {
    */
   legDurationSeconds?: number;
   sizeScale?: number;
+  /**
+   * Loop the flight (ambient selected-route mode) or fly once and park at
+   * the destination (replay mode). The replay's settle pause is longer than
+   * the flight, and a looping plane visibly took off again right before the
+   * step switched.
+   */
+  loop?: boolean;
   /** Clicking the highlighted route clears it — one of several exits. */
   onClear?: () => void;
 }
@@ -48,8 +65,37 @@ function JourneyHighlight({
   journey,
   legDurationSeconds,
   sizeScale = 1,
+  loop = true,
   onClear,
 }: JourneyHighlightProps) {
+  const repeat = loop ? 'indefinite' : '1';
+
+  /*
+    SMIL clocks start at DOCUMENT time zero, not element insertion. A journey
+    mounted a minute into the session, playing once with fill=freeze, would
+    consider itself long finished and render a frozen plane at the
+    destination — which is exactly how the replay broke while the looping
+    ambient mode kept working. begin="indefinite" + beginElement() on mount
+    pins every animation's t=0 to the moment its journey appears.
+  */
+  type Beginable = SVGElement & { beginElement: () => void };
+  const motionRef = useRef<Beginable | null>(null);
+  const altitudeRef = useRef<Beginable | null>(null);
+  const trailDrawRef = useRef<Beginable | null>(null);
+  const trailFadeRef = useRef<Beginable | null>(null);
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      for (const ref of [motionRef, altitudeRef, trailDrawRef, trailFadeRef]) {
+        try {
+          ref.current?.beginElement();
+        } catch {
+          /* detached mid-switch; the next mount will begin it */
+        }
+      }
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [journey.id]);
+
   const { map: colors } = useMapColors();
   const { projection } = useMapContext();
   const { k: zoom } = useZoomPanContext();
@@ -81,10 +127,23 @@ function JourneyHighlight({
       return {
         leg,
         pathD: calculateArcPath(from as [number, number], to as [number, number]),
+        // Projected chord length: the weight that maps time onto keyPoints,
+        // so a pause lands exactly on the airport rather than at a km-based
+        // guess distorted by the projection.
+        screenLen: Math.hypot(
+          (to as [number, number])[0] - (from as [number, number])[0],
+          (to as [number, number])[1] - (from as [number, number])[1],
+        ),
       };
     })
-    .filter((entry): entry is { leg: (typeof legs)[number]; pathD: string } =>
-      entry !== null
+    .filter(
+      (
+        entry,
+      ): entry is {
+        leg: (typeof legs)[number];
+        pathD: string;
+        screenLen: number;
+      } => entry !== null,
     );
 
   /*
@@ -100,12 +159,72 @@ function JourneyHighlight({
     .map(({ pathD }, index) => (index === 0 ? pathD : pathD.replace(/^M[^Q]*/, '')))
     .join(' ');
 
-  // Total time scales with the chain, so a three-leg trip is not flown at
-  // three times the speed of a one-leg trip.
-  const journeyDuration = legDuration * Math.max(drawn.length, 1);
   // 13, not 9: at 9 the glyph was ~8px and sat directly on top of a route
   // line of the same colour, which is why it vanished on the light map.
   const planeScaleShared = getZoomAdjustedSize(13 * sizeScale, zoom) / 24;
+
+  /*
+    The journey's timeline: fly a leg (time from its own distance), land,
+    pause on the ground, fly the next. Built as parallel keyPoints (position
+    as a fraction of on-screen path length) and keyTimes (fractions of total
+    time), with a pause encoded as the same keyPoint twice. The altitude
+    profile rides the same clock: climb to a held 1.9× cruise inside each
+    leg's slice, ground size through every stop.
+
+    Replay mode times legs by distance; the ambient selected-route loop keeps
+    its flat per-leg pace (it is scenery, not narration).
+  */
+  const legSeconds = drawn.map(({ leg }) =>
+    legDurationSeconds !== undefined
+      ? legFlightSeconds(Number(leg.distanceKm) || 0)
+      : legDuration,
+  );
+  const totalSeconds =
+    legSeconds.reduce((a, b) => a + b, 0) +
+    STOP_PAUSE_SECONDS * Math.max(drawn.length - 1, 0);
+  const totalScreenLen = drawn.reduce((a, d) => a + d.screenLen, 0) || 1;
+
+  const keyPoints: string[] = ['0'];
+  const keyTimes: string[] = ['0'];
+  const altitudeValuesArr: string[] = ['1'];
+  const altitudeKeyTimesArr: string[] = ['0'];
+  {
+    let t = 0;
+    let len = 0;
+    drawn.forEach((d, i) => {
+      const legT = legSeconds[i];
+      altitudeValuesArr.push('1.9', '1.9', '1');
+      altitudeKeyTimesArr.push(
+        ((t + 0.3 * legT) / totalSeconds).toFixed(4),
+        ((t + 0.7 * legT) / totalSeconds).toFixed(4),
+        ((t + legT) / totalSeconds).toFixed(4),
+      );
+      t += legT;
+      len += d.screenLen;
+      keyPoints.push((len / totalScreenLen).toFixed(4));
+      keyTimes.push((t / totalSeconds).toFixed(4));
+      if (i < drawn.length - 1) {
+        t += STOP_PAUSE_SECONDS;
+        keyPoints.push((len / totalScreenLen).toFixed(4));
+        keyTimes.push((t / totalSeconds).toFixed(4));
+        altitudeValuesArr.push('1');
+        altitudeKeyTimesArr.push((t / totalSeconds).toFixed(4));
+      }
+    });
+    // Guard against rounding: SMIL wants the lists to end exactly at 1.
+    keyPoints[keyPoints.length - 1] = '1';
+    keyTimes[keyTimes.length - 1] = '1';
+    altitudeKeyTimesArr[altitudeKeyTimesArr.length - 1] = '1';
+  }
+  const journeyDuration = totalSeconds;
+  const motionKeyPoints = keyPoints.join(';');
+  const motionKeyTimes = keyTimes.join(';');
+  const altitudeValues = altitudeValuesArr.join(';');
+  const altitudeKeyTimes = altitudeKeyTimesArr.join(';');
+  // The contrail's tip tracks the plane: dashoffset is 1 - lengthFraction.
+  const contrailValues = keyPoints
+    .map((p) => (1 - Number(p)).toFixed(4))
+    .join(';');
 
   return (
     <g className="journey-highlight">
@@ -188,28 +307,96 @@ function JourneyHighlight({
           from wherever it had got to and joined the next route mid-way.
         */
         <g key={journey.id} pointerEvents="none">
-          <animateMotion
-            dur={`${journeyDuration}s`}
-            repeatCount="indefinite"
-            path={journeyPath}
-            rotate="auto"
-            calcMode="paced"
-          />
           {/*
-            routeHighlight inverts with the theme — near-black on the light
-            map, pale on the dark one — so the aircraft reads against the
-            route beneath it either way. The halo is the ocean colour, which
-            separates it from the line rather than blending into it as white
-            did on cream.
+            The contrail. The app is named after one; the plane finally
+            leaves one. pathLength={1} normalises the whole chain so the
+            dashoffset animation can track the plane without measuring the
+            path, and the same ease as the motion keeps the trail's tip
+            glued to the tail. It dissolves before landing — contrails do.
           */}
           <path
-            d={PLANE_PATH}
-            fill={colors.routeHighlight}
-            stroke={colors.ocean}
-            strokeWidth={1.8}
-            strokeLinejoin="round"
-            transform={`scale(${planeScaleShared}) translate(-12 -12)`}
+            d={journeyPath}
+            fill="none"
+            stroke={colors.routeHighlight}
+            strokeWidth={getZoomAdjustedSize(1.3 * sizeScale, zoom)}
+            strokeLinecap="round"
+            pathLength={1}
+            strokeDasharray="1"
+            strokeDashoffset={1}
+            opacity={0.5}
+          >
+            <animate
+              ref={trailDrawRef as React.RefObject<SVGElement>}
+              begin="indefinite"
+              attributeName="stroke-dashoffset"
+              values={contrailValues}
+              keyTimes={motionKeyTimes}
+              calcMode="linear"
+              dur={`${journeyDuration}s`}
+              repeatCount={repeat}
+              fill="freeze"
+            />
+            <animate
+              ref={trailFadeRef as React.RefObject<SVGElement>}
+              begin="indefinite"
+              attributeName="opacity"
+              values="0.5;0.5;0"
+              keyTimes="0;0.72;1"
+              dur={`${journeyDuration}s`}
+              repeatCount={repeat}
+            fill="freeze"
+            />
+          </path>
+          {/*
+            linear over the timeline: fly, hold at the airport (same keyPoint
+            twice), fly on. Per-leg speed comes from the timeline itself.
+          */}
+          <animateMotion
+            ref={motionRef as React.RefObject<SVGElement>}
+            begin="indefinite"
+            dur={`${journeyDuration}s`}
+            repeatCount={repeat}
+            fill="freeze"
+            path={journeyPath}
+            rotate="auto"
+            calcMode="linear"
+            keyPoints={motionKeyPoints}
+            keyTimes={motionKeyTimes}
           />
+          {/*
+            Altitude illusion: the glyph grows to cruise size mid-leg and
+            shrinks for every landing — one climb-and-descent per leg, built
+            from the leg count so a three-leg trip dips at each stop.
+          */}
+          <g>
+            <animateTransform
+              ref={altitudeRef as React.RefObject<SVGElement>}
+              begin="indefinite"
+              attributeName="transform"
+              type="scale"
+              values={altitudeValues}
+              keyTimes={altitudeKeyTimes}
+              calcMode="linear"
+              dur={`${journeyDuration}s`}
+              repeatCount={repeat}
+            fill="freeze"
+            />
+            {/*
+              routeHighlight inverts with the theme — near-black on the light
+              map, pale on the dark one — so the aircraft reads against the
+              route beneath it either way. The halo is the ocean colour, which
+              separates it from the line rather than blending into it as white
+              did on cream.
+            */}
+            <path
+              d={PLANE_PATH}
+              fill={colors.routeHighlight}
+              stroke={colors.planeOutline}
+              strokeWidth={1.8}
+              strokeLinejoin="round"
+              transform={`scale(${planeScaleShared}) translate(-12 -12)`}
+            />
+          </g>
         </g>
       )}
     </g>

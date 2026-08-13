@@ -142,6 +142,10 @@ export class FlightsService {
           segmentIndex === 0 && createFlightDto.journeyDate
             ? new Date(createFlightDto.journeyDate)
             : null,
+        datePrecision:
+          segmentIndex === 0 && createFlightDto.journeyDate
+            ? (createFlightDto.datePrecision ?? 'day')
+            : 'day',
         isRoundTrip,
         notes: createFlightDto.notes || null,
       });
@@ -383,12 +387,62 @@ export class FlightsService {
       journey.journeyDate = updateFlightDto.journeyDate
         ? new Date(updateFlightDto.journeyDate)
         : null;
+      // A cleared date has no precision worth keeping.
+      if (!updateFlightDto.journeyDate) journey.datePrecision = 'day';
+    }
+    if (updateFlightDto.datePrecision !== undefined) {
+      journey.datePrecision = updateFlightDto.datePrecision;
     }
     if (updateFlightDto.isRoundTrip !== undefined) {
       journey.isRoundTrip = updateFlightDto.isRoundTrip;
     }
     if (updateFlightDto.notes !== undefined) {
       journey.notes = updateFlightDto.notes;
+    }
+
+    /*
+      Route editing: a new airport chain replaces the legs wholesale, with
+      distances recomputed and auto-visits created for newly touched
+      countries. Visits from the old route stay — they record where the
+      user has been, which editing a typo does not undo (same policy as
+      deleting a journey). Ground transfers are rejected rather than
+      silently split: splitting an existing journey in place would have to
+      invent a second journey mid-edit.
+    */
+    if (updateFlightDto.airportIds && updateFlightDto.airportIds.length >= 2) {
+      const chain = updateFlightDto.airportIds;
+      const airports = await this.airportRepository.findByIds([
+        ...new Set(chain),
+      ]);
+      const airportMap = new Map(airports.map((a) => [a.id, a]));
+      if (airportMap.size !== new Set(chain).size) {
+        throw new BadRequestException('One or more airports not found');
+      }
+
+      const legs: FlightLeg[] = [];
+      for (let i = 0; i < chain.length - 1; i++) {
+        const from = airportMap.get(chain[i])!;
+        const to = airportMap.get(chain[i + 1])!;
+        const distance = calculateAirportDistance(from, to);
+        if (chain[i] !== chain[i + 1] && distance < 100) {
+          throw new BadRequestException(
+            `${from.iataCode} to ${to.iataCode} looks like a ground transfer, not a flight — record the parts before and after it as separate journeys`,
+          );
+        }
+        legs.push(
+          this.legRepository.create({
+            journeyId: id,
+            legOrder: i + 1,
+            departureAirportId: chain[i],
+            arrivalAirportId: chain[i + 1],
+            distanceKm: distance,
+          }),
+        );
+      }
+
+      await this.legRepository.delete({ journeyId: id });
+      await this.legRepository.save(legs);
+      await this.createVisitsFromLegs(userId, legs, airportMap, id, undefined);
     }
 
     await this.journeyRepository.save(journey);

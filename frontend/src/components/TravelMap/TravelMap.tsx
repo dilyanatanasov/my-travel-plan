@@ -17,6 +17,7 @@ import FlightRoutes from '../FlightMap/FlightRoutes';
 import AirportMarkers from '../FlightMap/AirportMarkers';
 import RouteTooltip from '../FlightMap/RouteTooltip';
 import JourneyHighlight from '../FlightMap/JourneyHighlight';
+import ArrivalChip from '../FlightMap/ArrivalChip';
 import SelectedJourneyCard from './SelectedJourneyCard';
 import MapControlPanel, { type TravelMapSettings } from './MapControlPanel';
 import MapZoomControls from './MapZoomControls';
@@ -30,32 +31,28 @@ import { buildCountryDisplayMap, type CountryDisplayInfo } from './countryColors
 import CountriesLayer from './CountriesLayer';
 import CountryDetailCard from './CountryDetailCard';
 import MapSearch, { type SearchTarget } from './MapSearch';
-import { useJourneyReplay } from './useJourneyReplay';
+import {
+  useJourneyReplay,
+  journeyFlightSeconds,
+  legFlightSeconds,
+  STOP_PAUSE_SECONDS,
+} from './useJourneyReplay';
 import ReplayControl from './ReplayControl';
 import type { AggregatedRoute } from '../FlightMap/routeUtils';
 import { fitToPoints, type LonLat } from './fitBounds';
 
 
-/**
- * Seconds the plane takes to fly a leg during replay.
- *
- * Comfortably inside the step, so it lands and the arrival registers before
- * the next journey begins.
- */
-const REPLAY_FLIGHT_SECONDS = 3.6;
-
 const MIN_ZOOM = 1;
 /**
- * 16, not 8.
+ * 24, raised twice from the original 8.
  *
- * Eight is enough to fill the screen with a continent, which is where the
- * ceiling used to sit. It is not enough to pull apart a cluster of airports
- * in one corner of Europe, which is what a well-travelled map actually needs
- * to be readable. The topology is world-atlas 110m, so coastlines do go
- * visibly polygonal up here — an acceptable trade, since what you are reading
- * at this range is the routes and the airport labels, not the shape of a bay.
+ * Eight filled the screen with a continent; sixteen pulled apart a cluster
+ * of European airports; twenty-four is for reading one metro area's routes.
+ * The topology is world-atlas 110m, so coastlines are frankly polygonal up
+ * here — an accepted trade, since what you are reading at this range is the
+ * routes and the airport labels, not the shape of a bay.
  */
-const MAX_ZOOM = 16;
+const MAX_ZOOM = 24;
 
 /**
  * Slightly west of centre on desktop, so the landmass sits right of the
@@ -273,6 +270,21 @@ function TravelMap() {
         2000,
       );
     }
+    // Airports get a ping at the exact coordinates: many searched airports
+    // have no marker (markers exist only for airports actually flown).
+    if (target.airportLabel) {
+      setSearchPing({
+        label: target.airportLabel,
+        lon: target.center[0],
+        lat: target.center[1],
+        key: Date.now(),
+      });
+      if (pingTimerRef.current) window.clearTimeout(pingTimerRef.current);
+      pingTimerRef.current = window.setTimeout(
+        () => setSearchPing(null),
+        2600,
+      );
+    }
   }, [countryBounds]);
 
   const handleResetView = useCallback(() => {
@@ -307,6 +319,10 @@ function TravelMap() {
 
   const handleSelectRoute = useCallback((route: AggregatedRoute) => {
     if (wasDragRef.current) return;
+    // The replay owns the map while it runs — same rule the countries
+    // follow. Selecting a route mid-replay stacked a second highlighted
+    // journey on top of the narration.
+    if (replay.isActive) return;
     // Stops the container handler below from immediately clearing what this
     // click just selected.
     clickConsumedRef.current = true;
@@ -318,7 +334,7 @@ function TravelMap() {
       return bDate - aDate;
     })[0];
     setSelectedJourney(journey ?? null);
-  }, []);
+  }, [replay.isActive]);
 
   // Build country display map from visits
   const countryDisplayMap = useMemo(() => buildCountryDisplayMap(visits), [visits]);
@@ -588,9 +604,25 @@ function TravelMap() {
     airports store alpha-2 and the map keys on alpha-3.
   */
   const [landedIsoCode, setLandedIsoCode] = useState<string | null>(null);
+  /** Airport whose own marker pops as the replay plane reaches it. */
+  const [popAirport, setPopAirport] = useState<{
+    iata: string;
+    key: number;
+  } | null>(null);
+  /** Year chapter: flashes when the replay crosses into a new year. */
+  const [yearChip, setYearChip] = useState<string | null>(null);
+  const lastYearRef = useRef<string | null>(null);
   /** Search landing: the found country blinks so it can be told apart. */
   const [searchBlinkIso, setSearchBlinkIso] = useState<string | null>(null);
   const blinkTimerRef = useRef<number | null>(null);
+  /** Search landing for an airport: a blinking name-ping at the exact spot. */
+  const [searchPing, setSearchPing] = useState<{
+    label: string;
+    lon: number;
+    lat: number;
+    key: number;
+  } | null>(null);
+  const pingTimerRef = useRef<number | null>(null);
   /*
     Countries already lit during this replay.
 
@@ -604,7 +636,10 @@ function TravelMap() {
   useEffect(() => {
     if (!replay.isActive) {
       landedBeforeRef.current.clear();
+      lastYearRef.current = null;
       setRevealedIsos(new Set());
+      setPopAirport(null);
+      setYearChip(null);
     }
   }, [replay.isActive]);
 
@@ -616,12 +651,52 @@ function TravelMap() {
 
   useEffect(() => {
     setLandedIsoCode(null);
+    setPopAirport(null);
     if (!replay.isActive || !replay.current) return;
 
     const legs = [...replay.current.legs].sort((a, b) => a.legOrder - b.legOrder);
     if (legs.length === 0) return;
 
+    /*
+      Same clock the plane flies on: each leg's own sqrt-distance seconds
+      plus the ground stop before it — so every flash and pop fires at the
+      moment of touchdown, not at an equal-split guess.
+    */
+    const legSecs = legs.map((leg) =>
+      legFlightSeconds(Number(leg.distanceKm) || 0),
+    );
+    const arrivalMsAt = (index: number) =>
+      (legSecs.slice(0, index + 1).reduce((a, b) => a + b, 0) +
+        STOP_PAUSE_SECONDS * index) *
+      1000;
+
     const timers: number[] = [];
+
+    // Year chapter beat, at the step's start — only when the year changes,
+    // so a busy year reads as one chapter, not a strobe. Undated journeys
+    // (sequenced last) simply have no chapter.
+    const year = replay.current.journeyDate?.slice(0, 4) ?? null;
+    if (year && year !== lastYearRef.current) {
+      lastYearRef.current = year;
+      setYearChip(year);
+      timers.push(window.setTimeout(() => setYearChip(null), 1900));
+    }
+
+    /*
+      Each stop's own marker pops as the plane reaches it — sequentially,
+      matching the country reveals' timing, so a three-leg journey greets
+      you at every connection, not just the destination.
+    */
+    legs.forEach((leg, index) => {
+      const airport = leg.arrivalAirport;
+      if (!airport) return;
+      const at = arrivalMsAt(index);
+      timers.push(
+        window.setTimeout(() => {
+          setPopAirport({ iata: airport.iataCode, key: Date.now() });
+        }, at),
+      );
+    });
 
     /**
      * Put a country on the map, flashing it the first time it is touched.
@@ -659,7 +734,7 @@ function TravelMap() {
     legs.forEach((leg, index) => {
       const iso3 = isoOf(leg.arrivalAirport.countryIso);
       if (!iso3) return;
-      const at = ((index + 1) / legs.length) * REPLAY_FLIGHT_SECONDS * 1000;
+      const at = arrivalMsAt(index);
       timers.push(window.setTimeout(() => reveal(iso3), at));
     });
 
@@ -875,15 +950,29 @@ function TravelMap() {
                   */
                   legDurationSeconds={
                     replay.isActive
-                      ? REPLAY_FLIGHT_SECONDS /
+                      ? journeyFlightSeconds(replay.current ?? selectedJourney!) /
                         Math.max((replay.current ?? selectedJourney!).legs.length, 1)
                       : undefined
                   }
                   sizeScale={markerScale}
+                  loop={!replay.isActive}
                   onClear={clearSelection}
                 />
               )}
             </>
+          )}
+
+          {/* Search ping: blinks thrice at the found airport's exact spot. */}
+          {searchPing && (
+            <g className="map-ping" pointerEvents="none">
+              <ArrivalChip
+                key={searchPing.key}
+                label={searchPing.label}
+                lon={searchPing.lon}
+                lat={searchPing.lat}
+                showDot
+              />
+            </g>
           )}
 
           {/* Airport Markers */}
@@ -893,6 +982,8 @@ function TravelMap() {
               visitCounts={airportVisitCounts}
               highlightedAirports={highlightedAirports}
               sizeScale={markerScale}
+              popIata={replay.isActive ? popAirport?.iata : undefined}
+              popKey={popAirport?.key}
             />
           )}
         </ZoomableGroup>
@@ -918,6 +1009,19 @@ function TravelMap() {
         replay for control of the same map — and the replay has no way to take
         it back.
       */}
+      {/* Year chapter: a beat between journeys when the replay crosses
+          into a new year — gives a long history its rhythm. */}
+      {replay.isActive && yearChip && (
+        <div
+          key={yearChip}
+          aria-hidden="true"
+          className="year-chip absolute top-16 left-1/2 z-30 map-glass rounded-2xl border shadow-xl
+            px-6 py-2 font-display text-3xl pointer-events-none"
+        >
+          {yearChip}
+        </div>
+      )}
+
       {!replay.isActive && (
       <div className="absolute top-3 left-3 right-3 md:right-auto md:w-[30rem] z-30 flex flex-col gap-2">
         <MapSearch

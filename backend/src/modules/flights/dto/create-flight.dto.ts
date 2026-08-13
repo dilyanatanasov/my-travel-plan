@@ -4,6 +4,7 @@ import {
   IsOptional,
   IsString,
   IsDateString,
+  IsIn,
   IsInt,
   ArrayMinSize,
   ValidateNested,
@@ -22,6 +23,10 @@ export class CreateFlightDto {
   @IsOptional()
   @IsDateString()
   journeyDate?: string;
+
+  @IsOptional()
+  @IsIn(['day', 'month', 'year'])
+  datePrecision?: 'day' | 'month' | 'year';
 
   @IsOptional()
   @IsBoolean()

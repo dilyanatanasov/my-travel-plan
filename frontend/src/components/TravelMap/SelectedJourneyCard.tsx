@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import type { FlightJourney } from '../../types';
+import { formatJourneyDate } from '../../utils/journeyDate';
 
 interface SelectedJourneyCardProps {
   journey: FlightJourney;
@@ -39,13 +40,7 @@ function SelectedJourneyCard({ journey, onClose }: SelectedJourneyCardProps) {
     0
   );
 
-  const date = journey.journeyDate
-    ? new Date(journey.journeyDate).toLocaleDateString(undefined, {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-      })
-    : null;
+  const date = formatJourneyDate(journey);
 
   return (
     <div

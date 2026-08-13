@@ -7,6 +7,9 @@ export interface SearchTarget {
   zoom: number;
   /** Set when the hit was a country, so the map can open its card. */
   isoCode?: Alpha3;
+  /** Set when the hit was an airport, so the map can ping the exact spot —
+      searched airports often have no marker to point at. */
+  airportLabel?: string;
 }
 
 interface MapSearchProps {
@@ -98,6 +101,9 @@ function MapSearch({ countries, countryCentroids, onGo }: MapSearchProps) {
           // Closer than the old 4.5: an airport is a point, so there is
           // nothing a tighter camera can crop.
           zoom: 6,
+          airportLabel: airport.city
+            ? `${airport.city} · ${airport.iataCode}`
+            : airport.iataCode,
         },
       });
     }

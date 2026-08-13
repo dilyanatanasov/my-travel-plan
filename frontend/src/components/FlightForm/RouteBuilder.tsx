@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import AirportSearch from '../AirportSearch';
 import type { Airport } from '../../types';
+import { MONTH_NAMES } from '../../utils/journeyDate';
 
 interface RouteBuilderProps {
   onSubmit: (data: {
     airportIds: number[];
     journeyDate?: string;
+    datePrecision?: 'day' | 'month' | 'year';
     isRoundTrip: boolean;
     notes?: string;
   }) => void;
@@ -14,7 +16,9 @@ interface RouteBuilderProps {
 
 function RouteBuilder({ onSubmit, isLoading }: RouteBuilderProps) {
   const [airports, setAirports] = useState<(Airport | null)[]>([null, null]);
-  const [journeyDate, setJourneyDate] = useState('');
+  const [dateYear, setDateYear] = useState('');
+  const [dateMonth, setDateMonth] = useState('');
+  const [dateDay, setDateDay] = useState('');
   const [isRoundTrip, setIsRoundTrip] = useState(false);
   const [notes, setNotes] = useState('');
 
@@ -39,16 +43,33 @@ function RouteBuilder({ onSubmit, isLoading }: RouteBuilderProps) {
     const validAirports = airports.filter((a): a is Airport => a !== null);
     if (validAirports.length < 2) return;
 
+    // The date is stored as the first day of the asserted period; precision
+    // records how much of it the user actually claimed.
+    const year = dateYear.trim();
+    const journeyDate = year
+      ? `${year.padStart(4, '0')}-${dateMonth || '01'}-${dateDay || '01'}`
+      : undefined;
+    const datePrecision = year
+      ? dateDay
+        ? ('day' as const)
+        : dateMonth
+          ? ('month' as const)
+          : ('year' as const)
+      : undefined;
+
     onSubmit({
       airportIds: validAirports.map((a) => a.id),
-      journeyDate: journeyDate || undefined,
+      journeyDate,
+      datePrecision,
       isRoundTrip,
       notes: notes || undefined,
     });
 
     // Reset form
     setAirports([null, null]);
-    setJourneyDate('');
+    setDateYear('');
+    setDateMonth('');
+    setDateDay('');
     setIsRoundTrip(false);
     setNotes('');
   };
@@ -149,18 +170,60 @@ function RouteBuilder({ onSubmit, isLoading }: RouteBuilderProps) {
               is a visual convention, not an association, and this one left
               the date field with no accessible name at all. */}
           <label
-            htmlFor="journey-date"
+            htmlFor="journey-year"
             className="block text-sm font-medium text-ink mb-1"
           >
-            Date (optional)
+            When (optional — year is enough)
           </label>
-          <input
-            id="journey-date"
-            type="date"
-            value={journeyDate}
-            onChange={(e) => setJourneyDate(e.target.value)}
-            className="w-full min-h-11 px-3 border border-line rounded-lg bg-surface text-ink placeholder:text-ink-subtle focus:outline-none focus:ring-2 focus:ring-brand-500"
-          />
+          {/*
+            Progressive, not all-or-nothing: "May 2019" and "2016" are real
+            memories, and the exact-date picker forced people to either
+            invent a day or skip the date entirely (user request, 2026-08-13).
+          */}
+          <div className="flex gap-1.5">
+            <input
+              id="journey-year"
+              type="number"
+              inputMode="numeric"
+              min={1930}
+              max={2100}
+              placeholder="Year"
+              value={dateYear}
+              onChange={(e) => setDateYear(e.target.value)}
+              className="w-24 min-h-11 px-3 border border-line rounded-lg bg-surface text-ink placeholder:text-ink-subtle focus:outline-none focus:ring-2 focus:ring-brand-500"
+            />
+            <select
+              aria-label="Month (optional)"
+              value={dateMonth}
+              disabled={!dateYear}
+              onChange={(e) => {
+                setDateMonth(e.target.value);
+                if (!e.target.value) setDateDay('');
+              }}
+              className="flex-1 min-w-0 min-h-11 px-2 border border-line rounded-lg bg-surface text-ink disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-brand-500"
+            >
+              <option value="">Month?</option>
+              {MONTH_NAMES.map((name, i) => (
+                <option key={name} value={String(i + 1).padStart(2, '0')}>
+                  {name}
+                </option>
+              ))}
+            </select>
+            <select
+              aria-label="Day (optional)"
+              value={dateDay}
+              disabled={!dateMonth}
+              onChange={(e) => setDateDay(e.target.value)}
+              className="w-20 min-h-11 px-2 border border-line rounded-lg bg-surface text-ink disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-brand-500"
+            >
+              <option value="">Day?</option>
+              {Array.from({ length: 31 }, (_, i) => (
+                <option key={i + 1} value={String(i + 1).padStart(2, '0')}>
+                  {i + 1}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
         <div className="flex items-end">
           <label className="flex items-center gap-2 cursor-pointer">

@@ -1,4 +1,14 @@
-import type { FlightJourney } from '../../types';
+import { useState } from 'react';
+import type { Airport, FlightJourney } from '../../types';
+import AirportSearch from '../AirportSearch';
+import {
+  formatJourneyDate,
+  journeyDateParts,
+  buildDateDto,
+  MONTH_NAMES,
+} from '../../utils/journeyDate';
+import { useUpdateFlightMutation } from '../../features/flights/flightsApi';
+import { useToast } from '../../components/Toast/ToastProvider';
 
 interface FlightCardProps {
   journey: FlightJourney;
@@ -6,6 +16,75 @@ interface FlightCardProps {
 }
 
 function FlightCard({ journey, onDelete }: FlightCardProps) {
+  /*
+    Inline editing for what the backend can change on an existing journey:
+    date (at any precision), notes, the round-trip label. The route itself
+    stays delete-and-re-add — leg editing is a different feature. Split-off
+    return journeys land here with no date, so this is where they get one.
+  */
+  const [isEditing, setIsEditing] = useState(false);
+  const [updateFlight, { isLoading: isSaving }] = useUpdateFlightMutation();
+  const { showToast } = useToast();
+  const initialParts = journeyDateParts(journey);
+  const [editYear, setEditYear] = useState(initialParts.year);
+  const [editMonth, setEditMonth] = useState(initialParts.month);
+  const [editDay, setEditDay] = useState(initialParts.day);
+  const [editNotes, setEditNotes] = useState(journey.notes ?? '');
+  const [editRoundTrip, setEditRoundTrip] = useState(journey.isRoundTrip);
+
+  /** The journey as a stop chain: leg 1's departure, then every arrival. */
+  const chainFromLegs = (): (Airport | null)[] => {
+    const sorted = [...journey.legs].sort((a, b) => a.legOrder - b.legOrder);
+    if (sorted.length === 0) return [null, null];
+    return [
+      sorted[0].departureAirport,
+      ...sorted.map((leg) => leg.arrivalAirport),
+    ];
+  };
+  const [editStops, setEditStops] = useState<(Airport | null)[]>(chainFromLegs);
+
+  const startEdit = () => {
+    const parts = journeyDateParts(journey);
+    setEditYear(parts.year);
+    setEditMonth(parts.month);
+    setEditDay(parts.day);
+    setEditNotes(journey.notes ?? '');
+    setEditRoundTrip(journey.isRoundTrip);
+    setEditStops(chainFromLegs());
+    setIsEditing(true);
+  };
+
+  const saveEdit = async () => {
+    const stops = editStops.filter((a): a is Airport => a !== null);
+    if (stops.length !== editStops.length || stops.length < 2) {
+      showToast('Every stop needs an airport', { tone: 'error' });
+      return;
+    }
+    const newChain = stops.map((a) => a.id);
+    const oldChain = chainFromLegs().map((a) => a?.id);
+    const routeChanged =
+      newChain.length !== oldChain.length ||
+      newChain.some((idValue, i) => idValue !== oldChain[i]);
+    try {
+      await updateFlight({
+        id: journey.id,
+        data: {
+          ...buildDateDto(editYear, editMonth, editDay),
+          notes: editNotes.trim(),
+          isRoundTrip: editRoundTrip,
+          // Only when actually changed: a rebuild resets leg rows for nothing
+          // otherwise.
+          ...(routeChanged ? { airportIds: newChain } : {}),
+        },
+      }).unwrap();
+      setIsEditing(false);
+    } catch (error) {
+      const message =
+        (error as { data?: { message?: string } })?.data?.message ??
+        'Could not save the changes';
+      showToast(message, { tone: 'error' });
+    }
+  };
   const routeString = journey.legs
     .map((leg, index) => {
       if (index === 0) {
@@ -20,14 +99,9 @@ function FlightCard({ journey, onDelete }: FlightCardProps) {
     0
   );
 
-  const formatDate = (dateString: string | null) => {
-    if (!dateString) return 'No date';
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
-  };
+  // Precision-aware: shows "2016" or "May 2019" instead of pretending the
+  // stored period-start day is a real memory.
+  const formatDate = () => formatJourneyDate(journey) ?? 'No date';
 
   return (
     <div className="bg-surface border border-line rounded-lg p-4 hover:shadow-md transition-shadow">
@@ -46,18 +120,38 @@ function FlightCard({ journey, onDelete }: FlightCardProps) {
             )}
           </div>
           <div className="flex items-center gap-4 text-sm text-ink-muted">
-            <span>{formatDate(journey.journeyDate)}</span>
+            <span>{formatDate()}</span>
             <span>{Math.round(totalDistance).toLocaleString()} km</span>
             <span>
               {journey.legs.length} {journey.legs.length === 1 ? 'flight' : 'flights'}
             </span>
           </div>
-          {journey.notes && (
+          {journey.notes && !isEditing && (
             <p className="mt-2 text-sm text-ink-muted">{journey.notes}</p>
           )}
         </div>
         <button
+          onClick={startEdit}
+          aria-label="Edit this journey"
+          className="p-2 text-ink-subtle hover:text-brand-700 hover:bg-brand-50 rounded-lg transition-colors"
+        >
+          <svg
+            className="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+            />
+          </svg>
+        </button>
+        <button
           onClick={() => onDelete(journey.id)}
+          aria-label="Delete this journey"
           className="p-2 text-ink-subtle hover:text-red-500 hover:bg-danger-soft rounded-lg transition-colors"
         >
           <svg
@@ -75,6 +169,133 @@ function FlightCard({ journey, onDelete }: FlightCardProps) {
           </svg>
         </button>
       </div>
+
+      {isEditing && (
+        <div className="mt-3 pt-3 border-t border-line space-y-2">
+          {/* The route as editable stops. A ground-transfer chain (NRT→HND)
+              is rejected server-side with a message pointing at separate
+              journeys, matching the add form's split behavior. */}
+          <div className="space-y-1.5">
+            {editStops.map((stop, index) => (
+              <div key={index} className="flex items-center gap-1.5">
+                <div className="flex-1 min-w-0">
+                  <AirportSearch
+                    value={stop}
+                    onChange={(airport) => {
+                      const next = [...editStops];
+                      next[index] = airport;
+                      setEditStops(next);
+                    }}
+                    placeholder={index === 0 ? 'From airport' : 'To airport'}
+                  />
+                </div>
+                {editStops.length > 2 && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setEditStops(editStops.filter((_, i) => i !== index))
+                    }
+                    aria-label="Remove this stop"
+                    className="flex-shrink-0 p-1.5 text-ink-subtle hover:text-red-500 rounded"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={() => setEditStops([...editStops, null])}
+              className="text-xs font-medium text-brand-text hover:text-brand-700 underline min-h-8"
+            >
+              + Add a stop
+            </button>
+          </div>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <input
+              type="number"
+              inputMode="numeric"
+              min={1930}
+              max={2100}
+              placeholder="Year"
+              aria-label="Year"
+              value={editYear}
+              onChange={(e) => {
+                setEditYear(e.target.value);
+                if (!e.target.value) {
+                  setEditMonth('');
+                  setEditDay('');
+                }
+              }}
+              className="w-24 min-h-10 px-2 border border-line rounded-lg bg-surface text-ink text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+            />
+            <select
+              aria-label="Month (optional)"
+              value={editMonth}
+              disabled={!editYear}
+              onChange={(e) => {
+                setEditMonth(e.target.value);
+                if (!e.target.value) setEditDay('');
+              }}
+              className="min-h-10 px-2 border border-line rounded-lg bg-surface text-ink text-sm disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-brand-500"
+            >
+              <option value="">Month?</option>
+              {MONTH_NAMES.map((name, i) => (
+                <option key={name} value={String(i + 1).padStart(2, '0')}>
+                  {name}
+                </option>
+              ))}
+            </select>
+            <select
+              aria-label="Day (optional)"
+              value={editDay}
+              disabled={!editMonth}
+              onChange={(e) => setEditDay(e.target.value)}
+              className="min-h-10 px-2 border border-line rounded-lg bg-surface text-ink text-sm disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-brand-500"
+            >
+              <option value="">Day?</option>
+              {Array.from({ length: 31 }, (_, i) => (
+                <option key={i + 1} value={String(i + 1).padStart(2, '0')}>
+                  {i + 1}
+                </option>
+              ))}
+            </select>
+            <label className="flex items-center gap-1.5 ml-2 cursor-pointer text-sm text-ink">
+              <input
+                type="checkbox"
+                checked={editRoundTrip}
+                onChange={(e) => setEditRoundTrip(e.target.checked)}
+                className="w-4 h-4 text-brand-text rounded focus:ring-brand-500"
+              />
+              Round trip
+            </label>
+          </div>
+          <input
+            type="text"
+            placeholder="Notes"
+            aria-label="Notes"
+            value={editNotes}
+            onChange={(e) => setEditNotes(e.target.value)}
+            className="w-full min-h-10 px-3 border border-line rounded-lg bg-surface text-ink text-sm placeholder:text-ink-subtle focus:outline-none focus:ring-2 focus:ring-brand-500"
+          />
+          <div className="flex gap-2">
+            <button
+              onClick={saveEdit}
+              disabled={isSaving}
+              className="min-h-10 px-4 rounded-lg bg-brand-600 text-white text-sm font-medium hover:bg-brand-700 disabled:opacity-50"
+            >
+              {isSaving ? 'Saving…' : 'Save'}
+            </button>
+            <button
+              onClick={() => setIsEditing(false)}
+              disabled={isSaving}
+              className="min-h-10 px-4 rounded-lg text-sm font-medium text-ink-muted hover:bg-surface-sunken"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Leg details (collapsed by default, expandable in future) */}
       <div className="mt-3 pt-3 border-t border-line">

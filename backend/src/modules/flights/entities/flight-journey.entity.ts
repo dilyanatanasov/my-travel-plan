@@ -31,6 +31,14 @@ export class FlightJourney {
   @Column({ name: 'journey_date', type: 'date', nullable: true })
   journeyDate: Date;
 
+  /**
+   * How much of journeyDate the user actually asserted. The date itself is
+   * stored as the first day of the period ("2019" → 2019-01-01), so ordering
+   * works unchanged; precision only drives display and the form.
+   */
+  @Column({ name: 'date_precision', type: 'varchar', length: 5, default: 'day' })
+  datePrecision: 'day' | 'month' | 'year';
+
   @Column({ name: 'is_round_trip', type: 'boolean', default: false })
   isRoundTrip: boolean;
 

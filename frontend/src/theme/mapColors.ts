@@ -40,6 +40,12 @@ export interface MapPalette {
   wishlist: string;
   route: string;
   routeHighlight: string;
+  /**
+   * Outline around the replay aircraft. Was the ocean colour, which on the
+   * light map is cream-on-cream — invisible exactly where the dark glyph
+   * crosses a dark route and needs separating.
+   */
+  planeOutline: string;
   selected: string;
   selectedGlow: string;
   airportFill: string;
@@ -70,6 +76,7 @@ const DARK: MapPalette = {
   wishlist: '#5a7ba6',
   route: '#f6a06b',
   routeHighlight: '#ffe1d0',
+  planeOutline: '#1a1817',
   selected: '#e8836a',
   selectedGlow: '#c8543a',
   airportFill: '#f9f4ed',
@@ -109,6 +116,7 @@ const LIGHT: MapPalette = {
   wishlist: '#7d9bc4',
   route: '#8c491a',
   routeHighlight: '#402310',
+  planeOutline: '#f6a06b',
   selected: '#a82d26',
   selectedGlow: '#d67f48',
   // Inverted from dark: a dark dot with a white ring reads on pale land the

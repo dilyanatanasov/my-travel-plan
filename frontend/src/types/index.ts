@@ -90,6 +90,8 @@ export interface FlightLeg {
 export interface FlightJourney {
   id: number;
   journeyDate: string | null;
+  /** How much of journeyDate the user asserted; date is period start. */
+  datePrecision: 'day' | 'month' | 'year';
   isRoundTrip: boolean;
   notes: string | null;
   legs: FlightLeg[];
@@ -101,6 +103,7 @@ export interface FlightJourney {
 
 export interface CreateFlightDto {
   journeyDate?: string;
+  datePrecision?: 'day' | 'month' | 'year';
   isRoundTrip?: boolean;
   notes?: string;
   airportIds: number[]; // Chain of airport IDs: [VAR_id, IST_id, LIS_id]
@@ -108,8 +111,11 @@ export interface CreateFlightDto {
 
 export interface UpdateFlightDto {
   journeyDate?: string;
+  datePrecision?: 'day' | 'month' | 'year';
   isRoundTrip?: boolean;
   notes?: string;
+  /** Full replacement airport chain; legs are rebuilt server-side. */
+  airportIds?: number[];
 }
 
 // Statistics types

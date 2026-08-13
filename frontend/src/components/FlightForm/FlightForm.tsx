@@ -11,6 +11,7 @@ function FlightForm() {
   const handleSubmit = async (data: {
     airportIds: number[];
     journeyDate?: string;
+    datePrecision?: 'day' | 'month' | 'year';
     isRoundTrip: boolean;
     notes?: string;
   }) => {

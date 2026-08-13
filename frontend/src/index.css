@@ -290,3 +290,52 @@ select option {
 .country-blink {
   animation: country-blink 0.55s ease-in-out 3;
 }
+
+/* Replay delight: the arrival chip pops in beside the airport… */
+.arrival-chip {
+  transform-box: fill-box;
+  transform-origin: center bottom;
+  animation: chip-pop 320ms cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+@keyframes chip-pop {
+  from {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* …and year chapters announce themselves between journeys. */
+.year-chip {
+  animation: year-pop 1800ms ease-in-out both;
+}
+@keyframes year-pop {
+  0% {
+    transform: translateX(-50%) scale(0.8);
+    opacity: 0;
+  }
+  12%,
+  78% {
+    transform: translateX(-50%) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(-50%) scale(1.02);
+    opacity: 0;
+  }
+}
+
+/* Replay: an airport's own marker pops as the plane reaches it. */
+.airport-pop {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: chip-pop 480ms cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+
+/* Search ping: same three blinks the country landing uses. */
+.map-ping {
+  animation: country-blink 0.55s ease-in-out 3;
+}

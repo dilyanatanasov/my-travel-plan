@@ -2,14 +2,39 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { FlightJourney } from '../../types';
 import { track } from '../../lib/analytics';
 
+/** Pause after landing before the next journey — camera settle + a breath. */
+const SETTLE_MS = 1700;
+
+/** Ground stop at each intermediate airport within a journey. */
+export const STOP_PAUSE_SECONDS = 0.9;
+
+/** One leg's flight time from its distance — same sqrt reasoning as below. */
+export function legFlightSeconds(km: number): number {
+  return Math.min(6, Math.max(1.6, 0.07 * Math.sqrt(Math.max(km, 0))));
+}
+
 /**
- * How long each journey holds the screen.
+ * Flight time scaled by the journey's real distance, clamped to taste.
  *
- * Long enough for the camera to settle, the plane to fly and the arrival to
- * register — roughly the plane's own flight time. Shorter felt like channel
- * hopping. Next and Skip exist for anyone who does not want to wait.
+ * A flat duration meant Sofia→Vienna crawled while Sofia→Tokyo teleported —
+ * the plane's apparent speed swung wildly between steps. Scaling by
+ * kilometres keeps the speed *believable* while the clamp keeps a long-haul
+ * from stalling the show and a hop from strobing past.
  */
-const STEP_MS = 5200;
+/*
+  sqrt per leg, not linear: true constant speed would flash a 400 km hop past
+  in a fraction of a second or stall a 12,000 km haul for ages. Per LEG, so an
+  out-and-back gives each direction its own honest time, with a ground stop at
+  every intermediate airport — the plane lands in London before flying home.
+*/
+export function journeyFlightSeconds(journey: FlightJourney): number {
+  const legs = journey.legs ?? [];
+  const flying = legs.reduce(
+    (sum, leg) => sum + legFlightSeconds(Number(leg.distanceKm) || 0),
+    0,
+  );
+  return flying + STOP_PAUSE_SECONDS * Math.max(legs.length - 1, 0);
+}
 
 export interface ReplayState {
   /** True from the moment replay starts until it is stopped or finishes. */
@@ -95,18 +120,28 @@ export function useJourneyReplay(journeys: FlightJourney[]): ReplayState {
     });
   }, [ordered.length, clearTimer]);
 
-  const runTimer = useCallback(() => {
-    clearTimer();
-    timerRef.current = window.setInterval(advance, STEP_MS);
-  }, [advance, clearTimer]);
+  /*
+    Per-journey scheduling, as an effect rather than an interval: each step's
+    length now depends on the journey being flown, so the clock is re-armed
+    on every index change (which also gives a hand-stepped journey its full
+    window). The effect shape sidesteps the StrictMode double-invoke problem
+    the old interval start/stop-in-updater had.
+  */
+  useEffect(() => {
+    if (index < 0 || isPaused) return;
+    const journey = ordered[index];
+    if (!journey) return;
+    const stepMs = journeyFlightSeconds(journey) * 1000 + SETTLE_MS;
+    timerRef.current = window.setTimeout(advance, stepMs);
+    return clearTimer;
+  }, [index, isPaused, ordered, advance, clearTimer]);
 
   const start = useCallback(() => {
     if (ordered.length === 0) return;
     track('replay_start', { journeys: ordered.length });
     setIndex(0);
     setIsPaused(false);
-    runTimer();
-  }, [ordered.length, runTimer]);
+  }, [ordered.length]);
 
   const stop = useCallback(() => {
     clearTimer();
@@ -121,24 +156,15 @@ export function useJourneyReplay(journeys: FlightJourney[]): ReplayState {
     React invokes updaters twice under StrictMode in development, so the timer
     was cleared and immediately restarted — pause appeared to do nothing.
   */
+  // The scheduling effect above reacts to isPaused and index, so pause and
+  // manual stepping need no timer bookkeeping of their own.
   const togglePause = useCallback(() => {
-    if (isPaused) {
-      setIsPaused(false);
-      runTimer();
-    } else {
-      setIsPaused(true);
-      clearTimer();
-    }
-  }, [isPaused, runTimer, clearTimer]);
+    setIsPaused((paused) => !paused);
+  }, []);
 
-  /*
-    Stepping by hand restarts the clock, so you get a full interval to look at
-    the journey you just asked for rather than a fragment of one.
-  */
   const next = useCallback(() => {
     advance();
-    if (!isPaused) runTimer();
-  }, [advance, isPaused, runTimer]);
+  }, [advance]);
 
   const stopReplay = useCallback(() => {
     clearTimer();

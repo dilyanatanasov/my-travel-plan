@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import type { FlightJourney } from '../../types';
 import type { ReplayState } from './useJourneyReplay';
 import { useToast } from '../Toast/ToastProvider';
@@ -15,6 +16,9 @@ function monthLabel(journey: FlightJourney): string {
   if (!journey.journeyDate) return '';
   const date = new Date(journey.journeyDate);
   if (Number.isNaN(date.getTime())) return '';
+  // Year-precision journeys narrate as just the year — "Mar 2016" would
+  // assert a month the user never gave.
+  if (journey.datePrecision === 'year') return String(date.getFullYear());
   return date.toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
 }
 
@@ -69,6 +73,26 @@ const buttonClass =
  */
 function ReplayControl({ replay, compact = false }: ReplayControlProps) {
   const { showToast } = useToast();
+
+  /*
+    The story gets a score: kilometres and countries accumulate as the
+    replay progresses. Derived from what has actually been played so far,
+    so pausing or stepping keeps the numbers honest.
+  */
+  const totals = useMemo(() => {
+    let km = 0;
+    const countries = new Set<string>();
+    for (const journey of replay.played) {
+      for (const leg of journey.legs ?? []) {
+        km += Number(leg.distanceKm) || 0;
+        if (leg.departureAirport?.countryIso)
+          countries.add(leg.departureAirport.countryIso);
+        if (leg.arrivalAirport?.countryIso)
+          countries.add(leg.arrivalAirport.countryIso);
+      }
+    }
+    return { km: Math.round(km), countries: countries.size };
+  }, [replay.played]);
 
   /*
     Present but disabled below two journeys, rather than absent.
@@ -196,6 +220,11 @@ function ReplayControl({ replay, compact = false }: ReplayControlProps) {
         {/* tabular-nums so the counter does not jitter as it climbs. */}
         <span className="text-sm font-medium tabular-nums flex-shrink-0">
           {replay.index} / {replay.total}
+        </span>
+        <span className="text-[11px] map-glass-muted tabular-nums truncate ml-1.5">
+          {totals.km.toLocaleString()} km ·{' '}
+          {totals.countries}{' '}
+          {totals.countries === 1 ? 'country' : 'countries'}
         </span>
 
         <div className="flex-1" />
