@@ -4,12 +4,13 @@ import { User } from '../users/entities/user.entity';
 import { Visit } from '../visits/entities/visit.entity';
 import { FlightJourney } from '../flights/entities/flight-journey.entity';
 import { Country } from '../countries/entities/country.entity';
+import { ShareCard } from './entities/share-card.entity';
 import { ShareService } from './share.service';
 import { ShareController } from './share.controller';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User, Visit, FlightJourney, Country]),
+    TypeOrmModule.forFeature([User, Visit, FlightJourney, Country, ShareCard]),
   ],
   controllers: [ShareController],
   providers: [ShareService],
