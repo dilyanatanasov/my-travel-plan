@@ -622,6 +622,10 @@ function TravelMap() {
         maxRouteCount={replay.isActive ? replayMaxRouteCount : maxRouteCount}
         airports={replay.isActive ? replayAirports : airports}
         airportVisitCounts={airportVisitCounts}
+        countries={countries}
+        countryCentroids={countryCentroids}
+        countryBounds={countryBounds}
+        onCentroids={handleCentroids}
         replay={replayForUi}
         landedIsoCode={landedIsoCode}
         popAirport={popAirport}

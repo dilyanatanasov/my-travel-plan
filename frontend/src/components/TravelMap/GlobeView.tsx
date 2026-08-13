@@ -17,17 +17,20 @@ import {
   useMapContext,
   type ProjectionFunction,
 } from 'react-simple-maps';
-import { geoOrthographic } from 'd3-geo';
+import { geoDistance, geoOrthographic } from 'd3-geo';
 import type { LineString } from 'geojson';
-import type { Airport } from '../../types';
+import type { Airport, Country } from '../../types';
 import { track } from '../../lib/analytics';
 import { useMapColors } from '../../theme/mapColors';
 import { useTheme } from '../../features/theme/ThemeContext';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
 import { getStrokeWidth, type AggregatedRoute } from '../FlightMap/routeUtils';
 import AirportMarkers from '../FlightMap/AirportMarkers';
+import ArrivalChip from '../FlightMap/ArrivalChip';
 import type { FlightFilters } from '../FlightMap/filterTypes';
 import CountriesLayer from './CountriesLayer';
+import MapSearch, { type SearchTarget } from './MapSearch';
+import { useSearchLanding } from './useSearchLanding';
 import CountryTooltip from './CountryTooltip';
 import GlobeJourney from './GlobeJourney';
 import MapControlPanel, { type TravelMapSettings } from './MapControlPanel';
@@ -47,6 +50,7 @@ import {
   clampLat,
   isOnVisibleSide,
   samplePlaneFrame,
+  searchFraming,
   type GlobeCamera,
   type PlaneFrame,
 } from './globeUtils';
@@ -86,6 +90,17 @@ const ROTATE_SENSITIVITY = 75;
 
 /** The globe's diameter as a fraction of the container's short side. */
 const GLOBE_FILL = 0.9;
+
+/**
+ * Chase rate for a search flight. Brisker than the replay's 3.2 cameraman
+ * trail: exponential decay from a worst-case antipodal start (180° down to
+ * the 0.11° arrival threshold) takes ln(180/0.11)/4.6 ≈ 1.6s, safely inside
+ * the airport ping's 2.6s on-screen life.
+ */
+const SEARCH_CHASE_RATE = 4.6;
+
+/** Arrived: within ~0.11° of the target, in radians (geoDistance's unit). */
+const ARRIVAL_RADIANS = 0.002;
 
 /** Deep-space backdrop behind the sphere, per theme. */
 const SPACE_BACKDROP = { dark: '#0d0c0b', light: '#e9dbc2' };
@@ -165,6 +180,19 @@ interface GlobeViewProps {
   maxRouteCount: number;
   airports: Airport[];
   airportVisitCounts: Map<string, number>;
+  /* Search: the box and the geography it needs, owned by TravelMap. */
+  countries: Country[];
+  countryCentroids: Map<string, LonLat>;
+  countryBounds: Map<string, [LonLat, LonLat]>;
+  /*
+    Globe mode persists across loads, so a globe-first session must still
+    learn centroids and bounds from its own geography layer — otherwise
+    search has nothing to offer until the user visits flat mode once.
+  */
+  onCentroids: (
+    centroids: Map<string, LonLat>,
+    bounds?: Map<string, [LonLat, LonLat]>,
+  ) => void;
   replay: ReplayState;
   landedIsoCode: string | null;
   popAirport: { iata: string; key: number } | null;
@@ -212,6 +240,10 @@ function GlobeView({
   maxRouteCount,
   airports,
   airportVisitCounts,
+  countries,
+  countryCentroids,
+  countryBounds,
+  onCentroids,
   replay,
   landedIsoCode,
   popAirport,
@@ -336,6 +368,21 @@ function GlobeView({
     [],
   );
 
+  /*
+    The search flight's own rAF loop, separate from the pointer batching
+    above: a landing animates over ~a second with nothing driving it but
+    time. Anything with a stronger claim to the camera — a press on the
+    globe, a wheel tick, the replay — cancels it.
+  */
+  const flightRef = useRef<number | null>(null);
+  const cancelFlight = useCallback(() => {
+    if (flightRef.current !== null) {
+      cancelAnimationFrame(flightRef.current);
+      flightRef.current = null;
+    }
+  }, []);
+  useEffect(() => cancelFlight, [cancelFlight]);
+
   const anchorGesture = useCallback(() => {
     const points = [...pointersRef.current.values()];
     if (points.length === 0) {
@@ -376,6 +423,8 @@ function GlobeView({
       // Only a press that lands on the map's own SVG starts a rotation.
       if (!(event.target as Element).closest('svg')) return;
       if (event.pointerType === 'mouse' && event.button !== 0) return;
+      // A press on the map takes the camera back from a search flight.
+      cancelFlight();
       event.currentTarget.setPointerCapture(event.pointerId);
       pointersRef.current.set(event.pointerId, {
         x: event.clientX,
@@ -384,7 +433,7 @@ function GlobeView({
       anchorGesture();
       setIsDragging(true);
     },
-    [replay.isActive, anchorGesture],
+    [replay.isActive, anchorGesture, cancelFlight],
   );
 
   const handlePointerMove = useCallback(
@@ -456,6 +505,7 @@ function GlobeView({
       if (replayActiveRef.current) return;
       if (!(event.target as Element).closest('svg')) return;
       event.preventDefault();
+      cancelFlight();
       hasMovedRef.current = true;
       setHasMoved(true);
       setCamera((current) => ({
@@ -465,7 +515,65 @@ function GlobeView({
     };
     element.addEventListener('wheel', onWheel, { passive: false });
     return () => element.removeEventListener('wheel', onWheel);
-  }, [container, setCamera]);
+  }, [container, setCamera, cancelFlight]);
+
+  /*
+    Search landings. The one-shot flight drives the same chaseCamera the
+    replay flies on, then snaps exact on arrival so the framing never hangs
+    a hair off target. Each tick re-checks who owns the camera: a drag that
+    started after the click, or the replay taking off, ends the flight
+    mid-arc rather than fighting for the wheel.
+  */
+  const flyTo = useCallback(
+    (target: LonLat, zoomTarget: number) => {
+      cancelFlight();
+      // A landing is a deliberate move: the data framing stops overriding.
+      markMoved();
+      let last = performance.now();
+      const tick = (now: number) => {
+        flightRef.current = null;
+        if (replayActiveRef.current || dragRef.current) return;
+        const dt = Math.min((now - last) / 1000, 0.1);
+        last = now;
+        const next = chaseCamera(
+          cameraRef.current,
+          target,
+          zoomTarget,
+          dt,
+          SEARCH_CHASE_RATE,
+        );
+        const arrived =
+          geoDistance(cameraCenter(next.rotation), target) < ARRIVAL_RADIANS &&
+          Math.abs(next.zoom - zoomTarget) < 0.01;
+        if (arrived) {
+          setCamera({
+            rotation: [-target[0], clampLat(-target[1])],
+            zoom: zoomTarget,
+          });
+          return;
+        }
+        setCamera(next);
+        flightRef.current = requestAnimationFrame(tick);
+      };
+      flightRef.current = requestAnimationFrame(tick);
+    },
+    [cancelFlight, markMoved, setCamera],
+  );
+
+  const frameSearchTarget = useCallback(
+    (target: SearchTarget, box: [LonLat, LonLat] | undefined) =>
+      searchFraming(box, target.center),
+    [],
+  );
+  // No detail card on the globe (D7/G1): the card would be the globe's first
+  // interactive object, and that interaction is designed with taps, not here.
+  const openCountryNoop = useCallback(() => {}, []);
+  const { searchBlinkIso, searchPing, handleSearchGo } = useSearchLanding({
+    countryBounds,
+    frameTarget: frameSearchTarget,
+    onFrame: flyTo,
+    onOpenCountry: openCountryNoop,
+  });
 
   /*
     "Rotate the globe to follow the planes" — the continuous version.
@@ -642,7 +750,9 @@ function GlobeView({
               interaction that is not there.
             */
             onCountryHover={canHover ? handleCountryHover : undefined}
+            onCentroids={onCentroids}
             landedIsoCode={landedIsoCode}
+            blinkIsoCode={searchBlinkIso}
           />
 
           {settings.showFlights && (
@@ -679,6 +789,25 @@ function GlobeView({
               cityNamesFromZoom={2.8}
             />
           )}
+
+          {/*
+            Search ping, same chip as the flat map — gated by hemisphere:
+            the raw projection happily maps the far side onto the same disk,
+            so an unguarded chip would render mirrored while the flight is
+            still bringing its airport around the limb.
+          */}
+          {searchPing &&
+            isOnVisibleSide([searchPing.lon, searchPing.lat], center) && (
+              <g className="map-ping" pointerEvents="none">
+                <ArrivalChip
+                  key={searchPing.key}
+                  label={searchPing.label}
+                  lon={searchPing.lon}
+                  lat={searchPing.lat}
+                  showDot
+                />
+              </g>
+            )}
         </ZoomPanProvider>
       </ComposableMap>
 
@@ -695,11 +824,17 @@ function GlobeView({
       )}
 
       {/*
-        Same berth as the flat map's control column. Search is absent by
-        design: fit-to-country framing is deferred to flat mode for v1.
+        Same berth and order as the flat map's control column: search on
+        top, filters beneath. Both are withheld during replay, which owns
+        the camera outright.
       */}
       {!replay.isActive && (
         <div className="absolute top-3 left-3 right-3 md:right-auto md:w-[30rem] z-30 flex flex-col gap-2">
+          <MapSearch
+            countries={countries}
+            countryCentroids={countryCentroids}
+            onGo={handleSearchGo}
+          />
           <MapControlPanel
             settings={settings}
             onSettingsChange={onSettingsChange}

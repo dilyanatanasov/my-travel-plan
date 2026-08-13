@@ -8,6 +8,7 @@ import {
   clampLat,
   clampGlobeZoom,
   isOnVisibleSide,
+  searchFraming,
   MIN_GLOBE_ZOOM,
   MAX_GLOBE_ZOOM,
   type GlobeCamera,
@@ -205,6 +206,75 @@ describe('chaseCamera', () => {
     );
     expect(next.rotation[1]).toBeGreaterThanOrEqual(-90);
     expect(next.rotation[1]).toBeLessThanOrEqual(90);
+  });
+
+  it('a higher rate closes faster; the default rate is unchanged', () => {
+    const target: [number, number] = [40, 10];
+    const stock = chaseCamera(camera, target, 2, 1 / 60);
+    const explicit = chaseCamera(camera, target, 2, 1 / 60, 3.2);
+    const brisk = chaseCamera(camera, target, 2, 1 / 60, 4.6);
+    expect(explicit.rotation[0]).toBeCloseTo(stock.rotation[0], 10);
+    expect(explicit.zoom).toBeCloseTo(stock.zoom, 10);
+    expect(geoDistance(cameraCenter(brisk.rotation), target)).toBeLessThan(
+      geoDistance(cameraCenter(stock.rotation), target),
+    );
+  });
+});
+
+describe('searchFraming', () => {
+  // geoBounds-shaped boxes: [[minLon, minLat], [maxLon, maxLat]].
+  const malta: [[number, number], [number, number]] = [
+    [14.18, 35.8],
+    [14.58, 36.08],
+  ];
+  const france: [[number, number], [number, number]] = [
+    [-5.1, 42.3],
+    [8.2, 51.1],
+  ];
+  const russia: [[number, number], [number, number]] = [
+    [19.6, 41.2],
+    [-169, 81.9],
+  ];
+
+  it('gets close for a Malta, capped at the flat search ceiling', () => {
+    expect(searchFraming(malta, [14.4, 35.9]).zoom).toBe(7);
+  });
+
+  it('lands between the clamps for a mid-size country', () => {
+    const { zoom } = searchFraming(france, [2.2, 46.6]);
+    expect(zoom).toBeGreaterThan(1.15);
+    expect(zoom).toBeLessThan(7);
+  });
+
+  it('never zooms out past the globe for a continental country', () => {
+    // Brazil's box diagonal (~52°) already hits the wide floor, like Russia.
+    const brazil: [[number, number], [number, number]] = [
+      [-74, -33.8],
+      [-34.8, 5.3],
+    ];
+    expect(searchFraming(russia, [100, 60]).zoom).toBeCloseTo(1.15, 10);
+    expect(searchFraming(brazil, [-53, -11]).zoom).toBeCloseTo(1.15, 10);
+  });
+
+  it('centers on the box middle, staying finite across the antimeridian', () => {
+    // Fiji-style box: geoBounds wraps, minLon > maxLon.
+    const fiji: [[number, number], [number, number]] = [
+      [177, -21],
+      [-178, -12],
+    ];
+    const { center, zoom } = searchFraming(fiji, [178, -17]);
+    expect(Number.isFinite(center[0])).toBe(true);
+    expect(Number.isFinite(center[1])).toBe(true);
+    // The midpoint sits near the dateline, not in the far hemisphere.
+    expect(Math.abs(Math.abs(center[0]) - 180)).toBeLessThan(10);
+    expect(zoom).toBeGreaterThanOrEqual(MIN_GLOBE_ZOOM);
+    expect(zoom).toBeLessThanOrEqual(MAX_GLOBE_ZOOM);
+  });
+
+  it('lands a point target (airport) at its own spot, fixed zoom', () => {
+    const framing = searchFraming(undefined, [16.6, 48.1]);
+    expect(framing.center).toEqual([16.6, 48.1]);
+    expect(framing.zoom).toBe(5);
   });
 });
 

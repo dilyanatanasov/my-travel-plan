@@ -20,6 +20,15 @@ export interface SearchPing {
 
 export function useSearchLanding(options: {
   countryBounds: Map<string, [LonLat, LonLat]>;
+  /**
+   * How a landing becomes a camera frame — the one place flat and globe
+   * genuinely differ (planar fit vs spherical). Absent, the flat map's
+   * fitToPoints behaviour runs; the globe injects `searchFraming`.
+   */
+  frameTarget?: (
+    target: SearchTarget,
+    box: [LonLat, LonLat] | undefined,
+  ) => { center: LonLat; zoom: number };
   /** Point the camera: every search landing counts as a deliberate move. */
   onFrame: (center: LonLat, zoom: number) => void;
   onOpenCountry: (isoCode: string | null) => void;
@@ -30,7 +39,7 @@ export function useSearchLanding(options: {
   searchPing: SearchPing | null;
   handleSearchGo: (target: SearchTarget) => void;
 } {
-  const { countryBounds, onFrame, onOpenCountry } = options;
+  const { countryBounds, frameTarget, onFrame, onOpenCountry } = options;
 
   const [searchBlinkIso, setSearchBlinkIso] = useState<string | null>(null);
   const blinkTimerRef = useRef<number | null>(null);
@@ -47,9 +56,11 @@ export function useSearchLanding(options: {
         maxZoom 7 keeps tiny islands from slamming into max magnification.
       */
       const box = target.isoCode ? countryBounds.get(target.isoCode) : undefined;
-      const framing = box
-        ? fitToPoints([box[0], box[1]], { maxZoom: 7, minZoom: 2, fill: 0.55 })
-        : null;
+      const framing = frameTarget
+        ? frameTarget(target, box)
+        : box
+          ? fitToPoints([box[0], box[1]], { maxZoom: 7, minZoom: 2, fill: 0.55 })
+          : null;
       onFrame(framing?.center ?? target.center, framing?.zoom ?? target.zoom);
       // Landing on a country you have been to opens its card, which is the
       // question someone searching for it is usually asking.
@@ -83,7 +94,7 @@ export function useSearchLanding(options: {
         );
       }
     },
-    [countryBounds, onFrame, onOpenCountry],
+    [countryBounds, frameTarget, onFrame, onOpenCountry],
   );
 
   return { searchBlinkIso, searchPing, handleSearchGo };

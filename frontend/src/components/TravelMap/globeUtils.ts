@@ -211,8 +211,14 @@ export function chaseCamera(
   target: [number, number],
   zoomTarget: number,
   dtSeconds: number,
+  /*
+    3.2 is the replay's cameraman-trail. The search flight passes a brisker
+    rate so a worst-case antipodal landing still finishes inside the airport
+    ping's on-screen lifetime.
+  */
+  rate = 3.2,
 ): GlobeCamera {
-  const alpha = 1 - Math.exp(-dtSeconds * 3.2);
+  const alpha = 1 - Math.exp(-dtSeconds * rate);
   const current = cameraCenter(camera.rotation);
   let next = geoInterpolate(current, target)(alpha);
   // Antipodal points have no unique great circle; snap rather than NaN.
@@ -220,5 +226,42 @@ export function chaseCamera(
   return {
     rotation: [-next[0], clampLat(-next[1])],
     zoom: camera.zoom + (zoomTarget - camera.zoom) * alpha,
+  };
+}
+
+export interface GlobeFraming {
+  center: [number, number];
+  zoom: number;
+}
+
+/**
+ * Frame a search landing: the globe's answer to the flat map's
+ * `fitToPoints` on a country's bounding box.
+ *
+ * Zoom comes from the box diagonal's angular extent — the same
+ * ~60°-of-hemisphere framing the replay uses for a journey's longest leg —
+ * clamped so Malta never slams into the ground (7, matching flat's maxZoom)
+ * and a continental country never zooms out past the whole globe (1.15).
+ * The center is the great-circle midpoint of the diagonal, which mirrors
+ * flat's box-midpoint behaviour and survives antimeridian boxes because the
+ * math never leaves the sphere.
+ *
+ * No box means a point target (an airport): land close at a fixed zoom —
+ * a point has nothing a tighter frame could crop.
+ */
+export function searchFraming(
+  box: [[number, number], [number, number]] | undefined,
+  fallbackCenter: [number, number],
+): GlobeFraming {
+  if (!box) return { center: fallbackCenter, zoom: 5 };
+  const extentDeg = Math.max(geoDistance(box[0], box[1]) * DEG, 1);
+  let center = geoInterpolate(box[0], box[1])(0.5);
+  // Antipodal corners have no unique midpoint; the search centroid is fine.
+  if (!Number.isFinite(center[0]) || !Number.isFinite(center[1])) {
+    center = fallbackCenter;
+  }
+  return {
+    center,
+    zoom: clampGlobeZoom(Math.max(1.15, Math.min(7, 60 / extentDeg))),
   };
 }
