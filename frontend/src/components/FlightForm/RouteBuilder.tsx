@@ -165,7 +165,9 @@ function RouteBuilder({ onSubmit, isLoading }: RouteBuilderProps) {
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
+        {/* Full row: three date fields never fit half a desktop grid cell —
+            they either collapsed (min-w-0) or wrapped (min-widths). */}
+        <div className="md:col-span-2">
           {/* htmlFor/id, not proximity: a label that only sits above an input
               is a visual convention, not an association, and this one left
               the date field with no accessible name at all. */}
