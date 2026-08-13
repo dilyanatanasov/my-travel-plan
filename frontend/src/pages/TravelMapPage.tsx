@@ -37,8 +37,12 @@ const FLIGHT_NUDGE_KEY = 'mycontrail-flight-nudge-shown';
 function overviewStatsCountForMilestones(
   visits: { visitType?: string | null }[]
 ): number {
-  return visits.filter((visit) => (visit.visitType || 'trip') !== 'transit')
-    .length;
+  return visits.filter((visit) => {
+    const type = visit.visitType || 'trip';
+    // Trips and homes only: transit never counted, and a wishlist entry is
+    // a dream, not a milestone.
+    return type === 'trip' || type === 'home';
+  }).length;
 }
 
 function TravelMapPage() {
@@ -81,8 +85,37 @@ function TravelMapPage() {
       const existingVisit = visitByCountryId.get(countryId);
       // kind only — never which country (analytics privacy rule).
       track('map_interact', { kind: 'country_open' });
+      /*
+        Tap cycles the state (user's design, 2026-08-13):
+        none → visited → transit → want to go → removed.
+
+        Home is deliberately NOT in the cycle: it is set only via the picker,
+        and tapping it keeps the old remove-with-undo — a stray tap must
+        never silently demote someone's home country. The picker remains the
+        direct path to any state.
+      */
       if (existingVisit) {
-        await removeVisitWithUndo(existingVisit);
+        const type = existingVisit.visitType || 'trip';
+        if (type === 'trip') {
+          await updateVisit({
+            id: existingVisit.id,
+            data: { visitType: 'transit' },
+          }).unwrap();
+          showToast('Marked as transit — tap again for "want to go"', {
+            durationMs: 3000,
+          });
+        } else if (type === 'transit') {
+          await updateVisit({
+            id: existingVisit.id,
+            data: { visitType: 'wishlist' },
+          }).unwrap();
+          showToast('On your "want to go" list — tap again to clear', {
+            durationMs: 3000,
+          });
+        } else {
+          // wishlist completes the cycle; home skips it entirely.
+          await removeVisitWithUndo(existingVisit);
+        }
         return;
       }
       await addVisitForCountry(countryId);
@@ -103,7 +136,7 @@ function TravelMapPage() {
         });
       }
     },
-    [visitByCountryId, addVisitForCountry, removeVisitWithUndo, showToast]
+    [visitByCountryId, addVisitForCountry, removeVisitWithUndo, updateVisit, showToast]
   );
 
   const handleRemoveVisit = useCallback(

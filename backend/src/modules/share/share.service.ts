@@ -103,12 +103,17 @@ export class ShareService {
     ]);
 
     const countries = visits
-      .filter((visit) => visit.country)
+      // Wishlist stays private by decision: the public map shows where
+      // someone has BEEN, never what they are planning. Server-side, so no
+      // client can ever see another person's dreams.
+      .filter((visit) => visit.country && visit.visitType !== 'wishlist')
       .map((visit) => ({
         isoCode: visit.country.isoCode,
         isoCode2: visit.country.isoCode2,
         name: visit.country.name,
-        visitType: visit.visitType || 'trip',
+        // Safe: the filter above just removed 'wishlist', which is the only
+        // VisitType the public DTO deliberately refuses to carry.
+        visitType: (visit.visitType || 'trip') as 'trip' | 'transit' | 'home',
       }));
 
     // Aggregate legs into undirected routes so an out-and-back counts as one

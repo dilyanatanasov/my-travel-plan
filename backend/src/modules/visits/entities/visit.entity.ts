@@ -11,7 +11,7 @@ import { Country } from '../../countries/entities/country.entity';
 import { FlightJourney } from '../../flights/entities/flight-journey.entity';
 import { User } from '../../users/entities/user.entity';
 
-export type VisitType = 'trip' | 'transit' | 'home';
+export type VisitType = 'trip' | 'transit' | 'home' | 'wishlist';
 export type VisitSource = 'manual' | 'flight';
 
 @Entity('visits')

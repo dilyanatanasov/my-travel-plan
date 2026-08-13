@@ -24,6 +24,7 @@ interface CountryDetailCardProps {
 const TYPE_LABELS: Record<VisitType, string> = {
   trip: 'Visited',
   transit: 'Transit',
+  wishlist: 'Want to go',
   home: 'Home',
 };
 

@@ -31,7 +31,7 @@ export interface Country {
   createdAt: string;
 }
 
-export type VisitType = 'trip' | 'transit' | 'home';
+export type VisitType = 'trip' | 'transit' | 'home' | 'wishlist';
 export type VisitSource = 'manual' | 'flight';
 
 export interface Visit {

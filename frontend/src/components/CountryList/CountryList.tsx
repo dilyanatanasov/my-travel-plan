@@ -14,12 +14,14 @@ const VISIT_TYPE_COLORS: Record<VisitType, { bg: string; text: string }> = {
   home: { bg: 'bg-map-home/10', text: 'text-map-home' },
   trip: { bg: 'bg-map-visited/10', text: 'text-map-visited' },
   transit: { bg: 'bg-map-transit/20', text: 'text-amber-700' },
+  wishlist: { bg: 'bg-map-wishlist/15', text: 'text-map-wishlist' },
 };
 
 const VISIT_TYPE_LABELS: Record<VisitType, string> = {
   home: 'Home',
   trip: 'Visited',
   transit: 'Transit',
+  wishlist: 'Want to go',
 };
 
 function CountryList({
@@ -43,9 +45,14 @@ function CountryList({
     );
   }
 
-  // Sort visits: home first, then trips, then transit
+  // Sort visits: home first, then trips, then transit, dreams last
   const sortedVisits = [...visits].sort((a, b) => {
-    const order: Record<VisitType, number> = { home: 0, trip: 1, transit: 2 };
+    const order: Record<VisitType, number> = {
+      home: 0,
+      trip: 1,
+      transit: 2,
+      wishlist: 3,
+    };
     const aType = a.visitType || 'trip';
     const bType = b.visitType || 'trip';
     return order[aType] - order[bType];
@@ -104,6 +111,7 @@ function CountryList({
                         >
                           <option value="trip">Visited</option>
                           <option value="transit">Transit</option>
+                          <option value="wishlist">Want to go</option>
                           <option value="home">Home</option>
                         </select>
                       ) : (

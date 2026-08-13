@@ -32,6 +32,12 @@ export interface MapPalette {
   home: string;
   visited: string;
   transit: string;
+  /**
+   * "Want to go". The one cool hue in a warm palette — deliberately an
+   * outlier, because it is the one state that is not history. Desaturated so
+   * it stays quieter than any visited color.
+   */
+  wishlist: string;
   route: string;
   routeHighlight: string;
   selected: string;
@@ -46,6 +52,8 @@ export interface MapStatePalette {
   home: string;
   visited: string;
   transit: string;
+  /** "Want to go" — a dream, not a visit. */
+  wishlist: string;
   land: string;
 }
 
@@ -59,6 +67,7 @@ const DARK: MapPalette = {
   home: '#ffe1d0',
   visited: '#b2622d',
   transit: '#aebf92',
+  wishlist: '#5a7ba6',
   route: '#f6a06b',
   routeHighlight: '#ffe1d0',
   selected: '#e8836a',
@@ -72,6 +81,7 @@ const DARK_HOVER: MapStatePalette = {
   home: '#fff2eb',
   visited: '#d67f48',
   transit: '#ccdbb2',
+  wishlist: '#6f90bd',
   land: '#474238',
 };
 
@@ -79,6 +89,7 @@ const DARK_PRESSED: MapStatePalette = {
   home: '#ffffff',
   visited: '#f6a06b',
   transit: '#e1eecc',
+  wishlist: '#87a8d4',
   land: '#544d42',
 };
 
@@ -95,6 +106,7 @@ const LIGHT: MapPalette = {
   home: '#402310',
   visited: '#f6a06b',
   transit: '#8fa073',
+  wishlist: '#7d9bc4',
   route: '#8c491a',
   routeHighlight: '#402310',
   selected: '#a82d26',
@@ -110,6 +122,7 @@ const LIGHT_HOVER: MapStatePalette = {
   home: '#643312',
   visited: '#d67f48',
   transit: '#728157',
+  wishlist: '#5f7da8',
   land: '#dcd3c4',
 };
 
@@ -117,6 +130,7 @@ const LIGHT_PRESSED: MapStatePalette = {
   home: '#2a1508',
   visited: '#b2622d',
   transit: '#56633f',
+  wishlist: '#46618c',
   land: '#c0b6a5',
 };
 
@@ -137,6 +151,7 @@ export function getMapColors(theme: ResolvedTheme): MapColors {
       { label: 'Home', color: map.home },
       { label: 'Visited', color: map.visited },
       { label: 'Transit', color: map.transit },
+      { label: 'Want to go', color: map.wishlist },
     ],
   };
 }
