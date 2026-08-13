@@ -16,6 +16,15 @@ function FlightForm() {
   }) => {
     try {
       const journey = await addFlight(data).unwrap();
+      // A hop between same-city airports (NRT→HND) is a train, not a
+      // flight — the server split the chain there. Say so, or the list
+      // showing two journeys for one submission looks like a bug.
+      if (journey.splitInto && journey.splitInto > 1) {
+        showToast(
+          `Saved as ${journey.splitInto} journeys — nearby airports mean a ground transfer, not a flight`,
+          { durationMs: 6000 },
+        );
+      }
       // Hand the map the new journey: the shell closes this panel and the
       // route flies itself. Submitting into a panel and seeing nothing
       // happen — with the map off screen on mobile — was a flat moment.

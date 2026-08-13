@@ -93,50 +93,95 @@ export class FlightsService {
       throw new BadRequestException('One or more airports not found');
     }
 
-    // Create the journey
-    const journey = this.journeyRepository.create({
-      userId,
-      journeyDate: createFlightDto.journeyDate
-        ? new Date(createFlightDto.journeyDate)
-        : null,
-      isRoundTrip: createFlightDto.isRoundTrip || false,
-      notes: createFlightDto.notes || null,
-    });
+    /*
+      Split the chain at ground transfers (user decision, 2026-08-13).
 
-    const savedJourney = await this.journeyRepository.save(journey);
-
-    // Create legs with calculated distances
-    const legs: FlightLeg[] = [];
-    for (let i = 0; i < legData.length; i++) {
-      const departureAirport = airportMap.get(legData[i].departureAirportId)!;
-      const arrivalAirport = airportMap.get(legData[i].arrivalAirportId)!;
-
-      const distance = calculateAirportDistance(departureAirport, arrivalAirport);
-
-      const leg = this.legRepository.create({
-        journeyId: savedJourney.id,
-        legOrder: i + 1,
-        departureAirportId: legData[i].departureAirportId,
-        arrivalAirportId: legData[i].arrivalAirportId,
-        distanceKm: distance,
-      });
-
-      legs.push(leg);
+      A chain like SOF→AMS→NRT · HND→CDG→AMS→SOF encodes one real trip, but
+      NRT→HND is a train across Tokyo — no commercial flight is this short.
+      Distance, not city names, is the detector: Narita's city field says
+      "Narita" while Haneda's says "Tokyo", so string matching would miss
+      exactly the case that prompted this. Each run of genuine flights
+      becomes its own journey.
+    */
+    const GROUND_TRANSFER_KM = 100;
+    const segments: (typeof legData)[] = [];
+    let currentSegment: typeof legData = [];
+    for (const leg of legData) {
+      const from = airportMap.get(leg.departureAirportId)!;
+      const to = airportMap.get(leg.arrivalAirportId)!;
+      const isGroundTransfer =
+        leg.departureAirportId !== leg.arrivalAirportId &&
+        calculateAirportDistance(from, to) < GROUND_TRANSFER_KM;
+      if (isGroundTransfer) {
+        if (currentSegment.length > 0) segments.push(currentSegment);
+        currentSegment = [];
+      } else {
+        currentSegment.push(leg);
+      }
+    }
+    if (currentSegment.length > 0) segments.push(currentSegment);
+    if (segments.length === 0) {
+      throw new BadRequestException(
+        'Every hop in this chain is a ground transfer — nothing to record as a flight',
+      );
     }
 
-    await this.legRepository.save(legs);
+    // A split round trip is not a round trip: each segment is one-way.
+    const isRoundTrip =
+      segments.length === 1 && (createFlightDto.isRoundTrip || false);
 
-    // Auto-create visits for countries in this flight
-    await this.createVisitsFromLegs(
-      userId,
-      legs,
-      airportMap,
-      savedJourney.id,
-      createFlightDto.journeyDate,
-    );
+    let firstJourneyId: number | null = null;
+    for (const segment of segments) {
+      const journey = this.journeyRepository.create({
+        userId,
+        journeyDate: createFlightDto.journeyDate
+          ? new Date(createFlightDto.journeyDate)
+          : null,
+        isRoundTrip,
+        notes: createFlightDto.notes || null,
+      });
+      const savedJourney = await this.journeyRepository.save(journey);
+      firstJourneyId ??= savedJourney.id;
 
-    // Return the complete journey with relations
-    return this.findOne(userId, savedJourney.id);
+      const legs: FlightLeg[] = [];
+      for (let i = 0; i < segment.length; i++) {
+        const departureAirport = airportMap.get(segment[i].departureAirportId)!;
+        const arrivalAirport = airportMap.get(segment[i].arrivalAirportId)!;
+
+        const distance = calculateAirportDistance(
+          departureAirport,
+          arrivalAirport,
+        );
+
+        legs.push(
+          this.legRepository.create({
+            journeyId: savedJourney.id,
+            legOrder: i + 1,
+            departureAirportId: segment[i].departureAirportId,
+            arrivalAirportId: segment[i].arrivalAirportId,
+            distanceKm: distance,
+          }),
+        );
+      }
+
+      await this.legRepository.save(legs);
+
+      // Auto-create visits for countries in this segment
+      await this.createVisitsFromLegs(
+        userId,
+        legs,
+        airportMap,
+        savedJourney.id,
+        createFlightDto.journeyDate,
+      );
+    }
+
+    // Return the first journey; splitInto is additive so clients that don't
+    // know about it see a plain journey, and the form can explain the split.
+    const first = await this.findOne(userId, firstJourneyId!);
+    return Object.assign(first, {
+      splitInto: segments.length > 1 ? segments.length : undefined,
+    });
   }
 
   /**

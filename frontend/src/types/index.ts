@@ -93,6 +93,8 @@ export interface FlightJourney {
   isRoundTrip: boolean;
   notes: string | null;
   legs: FlightLeg[];
+  /** Present on create when a ground transfer split the chain (e.g. NRT→HND). */
+  splitInto?: number;
   createdAt: string;
   updatedAt: string;
 }
