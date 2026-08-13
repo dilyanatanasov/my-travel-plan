@@ -45,7 +45,9 @@ export interface MapStatePalette {
 const DARK: MapPalette = {
   ocean: '#1a1817',
   land: '#3a352d',
-  countryBorder: '#4a443a',
+  // Clearly lighter than land: the first value (#4a443a) was one shade off
+  // and adjacent countries merged into a single landmass at a glance.
+  countryBorder: '#6e6656',
   home: '#ffe1d0',
   visited: '#b2622d',
   transit: '#aebf92',
@@ -75,7 +77,10 @@ const DARK_PRESSED: MapStatePalette = {
 const LIGHT: MapPalette = {
   ocean: '#f5ead8',
   land: '#e3d5bd',
-  countryBorder: '#f5ead8',
+  // A mid-tone line, not the ocean cream: cream-on-land read as a gap
+  // between countries rather than a border, and disappeared entirely
+  // between visited neighbours.
+  countryBorder: '#b8a88c',
   // Darker than the dark theme's equivalents: these sit on pale land, so they
   // must descend in lightness rather than climb.
   home: '#402310',
