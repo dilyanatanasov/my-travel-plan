@@ -27,12 +27,6 @@ export interface ReplayState {
   /** 1-based, for "3 of 41". */
   index: number;
   total: number;
-  /**
-   * Journeys excluded from the replay for lack of a date. Surfaced so the
-   * disabled Play button can say "add dates" instead of "log flights" to
-   * someone who has flights — the two need different remedies.
-   */
-  undatedCount: number;
   start: () => void;
   stop: () => void;
   togglePause: () => void;
@@ -51,21 +45,25 @@ export interface ReplayState {
  * Merely dimming the routes that have not happened yet still shows the
  * finished picture from the first frame.
  *
- * Undated journeys are skipped rather than guessed at. Placing them at an
- * arbitrary point would assert a history the user never entered.
+ * Undated journeys play too (user decision, 2026-08-13, revising the earlier
+ * skip): they follow the dated ones, ordered by when they were entered. Entry
+ * order is not a guess — it is a sequence the user personally produced — and
+ * skipping meant anyone who logs flights without dates simply had no replay.
  */
 export function useJourneyReplay(journeys: FlightJourney[]): ReplayState {
   const [index, setIndex] = useState(-1);
   const [isPaused, setIsPaused] = useState(false);
   const timerRef = useRef<number | null>(null);
 
-  const ordered = useMemo(
-    () =>
-      journeys
-        .filter((journey) => journey.journeyDate)
-        .sort((a, b) => (a.journeyDate ?? '').localeCompare(b.journeyDate ?? '')),
-    [journeys],
-  );
+  const ordered = useMemo(() => {
+    const dated = journeys
+      .filter((journey) => journey.journeyDate)
+      .sort((a, b) => (a.journeyDate ?? '').localeCompare(b.journeyDate ?? ''));
+    const undated = journeys
+      .filter((journey) => !journey.journeyDate)
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+    return [...dated, ...undated];
+  }, [journeys]);
 
   const clearTimer = useCallback(() => {
     if (timerRef.current !== null) {
@@ -173,7 +171,6 @@ export function useJourneyReplay(journeys: FlightJourney[]): ReplayState {
     played,
     index: index + 1,
     total: ordered.length,
-    undatedCount: journeys.length - ordered.length,
     start,
     stop,
     togglePause,

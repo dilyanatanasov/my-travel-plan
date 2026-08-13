@@ -122,6 +122,25 @@ function TravelMap() {
   // Zoom is controlled so the +/- buttons and d3's own gestures stay in sync.
   const [zoom, setZoom] = useState(MIN_ZOOM);
   const lastZoomRef = useRef(MIN_ZOOM);
+  // Country centroids + bounding boxes, reported by the geography layer once
+  // it loads. Bounds power search fit-zoom; centroids power data framing.
+  const [countryCentroids, setCountryCentroids] = useState<
+    Map<string, LonLat>
+  >(new Map());
+  const [countryBounds, setCountryBounds] = useState<
+    Map<string, [LonLat, LonLat]>
+  >(new Map());
+
+  const handleCentroids = useCallback(
+    (
+      centroids: Map<string, LonLat>,
+      bounds?: Map<string, [LonLat, LonLat]>,
+    ) => {
+      setCountryCentroids(centroids);
+      if (bounds) setCountryBounds(bounds);
+    },
+    [],
+  );
   const [center, setCenter] = useState<[number, number]>(DESKTOP_CENTER);
   // Track whether the user has moved the map; until then, follow the
   // breakpoint's default centre rather than stranding a phone off-centre.
@@ -727,23 +746,10 @@ function TravelMap() {
     around Europe opened the app to a globe with their entire life in one
     corner. Centroids arrive with the geography, so this settles a moment
     after first paint rather than blocking it.
-  */
-  const [countryCentroids, setCountryCentroids] = useState<
-    Map<string, LonLat>
-  >(new Map());
-  // Per-country bounding boxes from the same geography pass — what lets a
-  // search landing zoom to fit the country instead of a fixed distance.
-  const [countryBounds, setCountryBounds] = useState<
-    Map<string, [LonLat, LonLat]>
-  >(new Map());
 
-  const handleCentroids = useCallback(
-    (centroids: Map<string, LonLat>, bounds?: Map<string, [LonLat, LonLat]>) => {
-      setCountryCentroids(centroids);
-      if (bounds) setCountryBounds(bounds);
-    },
-    [],
-  );
+    (The state itself is declared near the top of the component because the
+    search handler needs the bounds before this framing code runs.)
+  */
 
   const dataFraming = useMemo(() => {
     const points: LonLat[] = [];

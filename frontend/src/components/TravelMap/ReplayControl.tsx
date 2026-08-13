@@ -79,19 +79,12 @@ function ReplayControl({ replay, compact = false }: ReplayControlProps) {
     one is a dead end.
   */
   if (replay.total < 2) {
-    /*
-      "Add dates" and "log flights" are different remedies: user testing had
-      someone with three (undated) flights reading this button as broken,
-      because the message assumed the flights themselves were missing.
-    */
+    // Dates no longer gate the replay — undated journeys play in entry
+    // order — so the only thing left to ask for is flights themselves.
     const reason =
-      replay.undatedCount > 0
-        ? replay.total === 1
-          ? 'Add a date to one more flight to replay your travels'
-          : `Add dates to your flights to replay them in order`
-        : replay.total === 1
-          ? 'Log one more dated flight to replay your travels'
-          : 'Log two flights with dates to replay your travels';
+      replay.total === 1
+        ? 'Log one more flight to replay your travels'
+        : 'Log two flights to replay your travels';
 
     /*
       aria-disabled + toast, not the disabled attribute: a disabled button
