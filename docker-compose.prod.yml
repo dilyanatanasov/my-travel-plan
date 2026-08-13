@@ -1,0 +1,86 @@
+# Production stack for CI deploys. Images are built in GitHub Actions and
+# pulled from GHCR — the droplet never compiles anything (a Vite build can
+# exhaust a 2 GB box mid-deploy). docker-compose.yml (build:) remains usable
+# for a manual bootstrap; run from the same directory both files resolve to
+# the same project name, so they share containers and the pgdata volume.
+#
+# IMAGE_TAG selects the image (a commit sha pushed by deploy.yml); it
+# defaults to latest so a plain `docker compose -f docker-compose.prod.yml up`
+# still works.
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: travel_tracker_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - travel_network
+
+  backend:
+    image: ghcr.io/dilyanatanasov/contrail-backend:${IMAGE_TAG:-latest}
+    container_name: travel_tracker_backend
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_DATABASE: ${DB_DATABASE}
+      API_PORT: 3000
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
+      # Same-origin in this topology, since nginx proxies /api. Kept explicit
+      # so a split-origin deployment has one obvious place to change.
+      CORS_ORIGIN: ${CORS_ORIGIN:-https://${DOMAIN}}
+    # Reachable only from nginx on the compose network.
+    expose:
+      - '3000'
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - travel_network
+
+  frontend:
+    image: ghcr.io/dilyanatanasov/contrail-frontend:${IMAGE_TAG:-latest}
+    container_name: travel_tracker_frontend
+    restart: unless-stopped
+    environment:
+      DOMAIN: ${DOMAIN}
+      # Optional second domain that 301s to DOMAIN (e.g. mycontrail.app).
+      # Leave empty until its certificate has been issued — see setup-ssl.sh.
+      ALT_DOMAIN: ${ALT_DOMAIN:-}
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      # Certificates issued on the host by setup-ssl.sh. Read-only: nginx has
+      # no business writing to them.
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+      - certbot_webroot:/var/www/certbot
+    depends_on:
+      - backend
+    networks:
+      - travel_network
+
+volumes:
+  pgdata:
+  certbot_webroot:
+
+networks:
+  travel_network:
+    driver: bridge

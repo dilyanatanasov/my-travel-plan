@@ -1,0 +1,257 @@
+name: Deploy to Production
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+on:
+  workflow_dispatch:
+    inputs:
+      service:
+        description: "Which service to deploy"
+        required: true
+        default: "all"
+        type: choice
+        options:
+          - all
+          - frontend
+          - backend
+      run_migrations:
+        description: "Run TypeORM migrations after deploy (backend only)"
+        required: true
+        default: "true"
+        type: choice
+        options:
+          - "true"
+          - "false"
+
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+jobs:
+  lint-frontend:
+    name: Lint Frontend
+    if: inputs.service == 'all' || inputs.service == 'frontend'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # Matches the node:20-alpine base of the Docker images.
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - run: npm ci
+        working-directory: frontend
+
+      - run: npm run lint
+        working-directory: frontend
+
+      - name: Security audit
+        run: npm audit --audit-level=high || echo "::warning::Frontend has npm audit findings"
+        working-directory: frontend
+
+  lint-backend:
+    name: Lint Backend
+    if: inputs.service == 'all' || inputs.service == 'backend'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - run: npm ci
+        working-directory: backend
+
+      - run: npm run lint
+        working-directory: backend
+
+      - name: Security audit
+        run: npm audit --audit-level=high || echo "::warning::Backend has npm audit findings"
+        working-directory: backend
+
+  build-backend:
+    name: Build & Push Backend
+    needs: [lint-backend]
+    if: always() && (inputs.service == 'all' || inputs.service == 'backend') && !failure() && !cancelled()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/dilyanatanasov/contrail-backend:${{ github.sha }}
+            ghcr.io/dilyanatanasov/contrail-backend:latest
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,mode=max,scope=backend
+
+  build-frontend:
+    name: Build & Push Frontend
+    needs: [lint-frontend]
+    if: always() && (inputs.service == 'all' || inputs.service == 'frontend') && !failure() && !cancelled()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # No build-args: VITE_API_URL defaults to the nginx-proxied /api inside
+      # the Dockerfile, and VITE_PUBLIC_URL (Open Graph URLs) comes from the
+      # checked-in frontend/.env.production, which Vite reads during build.
+      - uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/dilyanatanasov/contrail-frontend:${{ github.sha }}
+            ghcr.io/dilyanatanasov/contrail-frontend:latest
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,mode=max,scope=frontend
+
+  deploy:
+    name: Deploy to Droplet
+    needs: [lint-frontend, lint-backend, build-backend, build-frontend]
+    # Run even when one build job was skipped (single-service deploy),
+    # but NOT when a build job failed or was cancelled.
+    if: always() && !failure() && !cancelled()
+    runs-on: ubuntu-latest
+    steps:
+      - name: SSH deploy
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          command_timeout: 20m
+          script: |
+            set -euo pipefail
+            cd ~/my-travel-plan
+
+            echo "==> Pulling latest main"
+            git fetch origin main
+            git reset --hard origin/main
+
+            COMPOSE="docker compose -f docker-compose.prod.yml --env-file .env"
+            SERVICE="${{ github.event.inputs.service }}"
+            RUN_MIGRATIONS="${{ github.event.inputs.run_migrations }}"
+            IMAGE_TAG="${{ github.sha }}"
+
+            # Authenticate with GHCR so the droplet can pull private images
+            echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u "${{ secrets.GHCR_USERNAME }}" --password-stdin
+
+            # Backup the database before any change touching backend.
+            # Credentials come from the db container's own environment rather
+            # than being hardcoded here.
+            if [ "$SERVICE" = "all" ] || [ "$SERVICE" = "backend" ]; then
+              echo "==> Backing up database"
+              mkdir -p ~/db-backups
+              BACKUP_FILE=~/db-backups/travel_tracker_$(date +%Y%m%d_%H%M%S).sql.gz
+              $COMPOSE exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB"' | gzip > "$BACKUP_FILE" || {
+                echo "::warning::DB backup failed; continuing anyway"
+              }
+              # Keep only the 10 most recent backups
+              ls -1t ~/db-backups/*.sql.gz 2>/dev/null | tail -n +11 | xargs -r rm -f
+            fi
+
+            echo "==> Pulling images for: $SERVICE"
+            REPO="ghcr.io/dilyanatanasov"
+            if [ "$SERVICE" = "all" ]; then
+              IMAGE_TAG="$IMAGE_TAG" $COMPOSE pull backend frontend
+            else
+              # Single-service deploy: pull only that image, tag as latest locally
+              # so docker compose doesn't try to resolve the other service's SHA tag
+              docker pull "$REPO/contrail-$SERVICE:$IMAGE_TAG"
+              docker tag  "$REPO/contrail-$SERVICE:$IMAGE_TAG" "$REPO/contrail-$SERVICE:latest"
+            fi
+
+            echo "==> Starting service: $SERVICE"
+            if [ "$SERVICE" = "all" ]; then
+              IMAGE_TAG="$IMAGE_TAG" $COMPOSE up -d --no-build backend frontend db
+            else
+              # Use default :latest tag so the other service keeps its current image
+              $COMPOSE up -d --no-build "$SERVICE"
+            fi
+
+            # Wait for backend to be reachable
+            if [ "$SERVICE" = "all" ] || [ "$SERVICE" = "backend" ]; then
+              echo "==> Waiting for backend to come up"
+              for i in $(seq 1 30); do
+                if $COMPOSE exec -T backend node -e "process.exit(0)" >/dev/null 2>&1; then
+                  echo "Backend container is responsive."
+                  break
+                fi
+                sleep 2
+              done
+            fi
+
+            # Run migrations if requested
+            if [ "$RUN_MIGRATIONS" = "true" ] && { [ "$SERVICE" = "all" ] || [ "$SERVICE" = "backend" ]; }; then
+              echo "==> Running TypeORM migrations"
+              # Use sh -c inside container so 2>&1 captures stderr from TypeORM
+              if $COMPOSE exec -T backend sh -c 'npm run migration:run:prod 2>&1' | tee /tmp/migration.log; then
+                if grep -q "missing script" /tmp/migration.log; then
+                  echo "::warning::No 'migration:run:prod' script defined — skipping."
+                fi
+                echo "==> Migrations completed successfully"
+              else
+                echo "::error::Migration step failed. Full output above."
+                echo "==> Migration log contents:"
+                cat /tmp/migration.log || true
+                exit 1
+              fi
+            fi
+
+            # Reclaim disk space from old/dangling images
+            docker image prune -f
+
+            echo "==> Container status"
+            $COMPOSE ps
+
+            echo "==> Recent backend logs"
+            $COMPOSE logs backend --tail=40 || true
+
+            echo "==> Recent frontend logs"
+            $COMPOSE logs frontend --tail=20 || true
+
+      - uses: actions/checkout@v4
+
+      - name: Smoke tests
+        env:
+          BASE_URL: https://mycontrail.com
+        run: |
+          echo "Waiting 8s for services to settle..."
+          sleep 8
+          chmod +x .github/scripts/smoke-test.sh
+          .github/scripts/smoke-test.sh

@@ -116,6 +116,12 @@ docker compose up -d --force-recreate frontend
 6. **No observability container, no uploads volume** — Contrail has neither feature; blocks omitted rather than carried dead.
 7. **Migrations**: ref runs `migration:run:prod` inside the container during CI deploy; Contrail now has that script, run manually after a deploy that includes new migrations (`docker compose exec backend npm run migration:run:prod`). First boot needs none — the restored dump carries the schema and migrations table.
 
+> **2026-08-13 update:** CI now exists (`.github/workflows/deploy.yml` /
+> `rollback.yml` + `docker-compose.prod.yml`). Step 3's `docker compose up -d
+> --build` is superseded: the droplet no longer builds images — trigger the
+> Deploy workflow with `run_migrations=false` instead. Full revised first-boot
+> order: `context/implement/2026-08-13_deploy-ci_implement.md`.
+
 ## Handoffs to the frontend session (not deployment-blocking, not touched by me)
 
 - `og:image` in `index.html` is relative (`/og-image.png`); most crawlers require an absolute URL. There's also no `og:url` tag — the comment mentions `VITE_PUBLIC_URL` but nothing implements it. Suggest: absolute URLs via `https://mycontrail.com` at build time.

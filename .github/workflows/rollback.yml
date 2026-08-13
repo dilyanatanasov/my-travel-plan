@@ -1,0 +1,157 @@
+name: Rollback Production
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: >
+          Commit SHA to roll back to (full or short), or "previous" for HEAD~1.
+          Must have been built and pushed by a prior Deploy workflow run —
+          pre-GHCR commits will not have images.
+        required: true
+        default: "previous"
+        type: string
+      service:
+        description: "Which service to roll back"
+        required: true
+        default: "all"
+        type: choice
+        options:
+          - all
+          - frontend
+          - backend
+      confirm:
+        description: "Type ROLLBACK to confirm. This will reset prod to the target SHA."
+        required: true
+        type: string
+
+# Share the same lock as deploy so the two can never race
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+jobs:
+  rollback:
+    name: Rollback Droplet
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate confirmation
+        run: |
+          if [ "${{ github.event.inputs.confirm }}" != "ROLLBACK" ]; then
+            echo "::error::Confirmation string did not match. Type ROLLBACK exactly to proceed."
+            exit 1
+          fi
+
+      - name: SSH rollback
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          command_timeout: 20m
+          script: |
+            set -euo pipefail
+            cd ~/my-travel-plan
+
+            COMPOSE="docker compose -f docker-compose.prod.yml --env-file .env"
+            TARGET="${{ github.event.inputs.target }}"
+            SERVICE="${{ github.event.inputs.service }}"
+
+            echo "==> Fetching latest refs"
+            git fetch origin main --tags
+
+            # Resolve "previous" → HEAD~1, otherwise treat as a SHA
+            if [ "$TARGET" = "previous" ]; then
+              RESOLVED=$(git rev-parse origin/main~1)
+            else
+              RESOLVED=$(git rev-parse "$TARGET" 2>/dev/null || true)
+              if [ -z "$RESOLVED" ]; then
+                echo "::error::Could not resolve target '$TARGET' to a commit."
+                exit 1
+              fi
+            fi
+
+            CURRENT=$(git rev-parse HEAD)
+            echo "==> Current HEAD : $CURRENT"
+            echo "==> Rollback to  : $RESOLVED"
+
+            if [ "$CURRENT" = "$RESOLVED" ]; then
+              echo "::warning::Target commit equals current HEAD — nothing to do."
+              exit 0
+            fi
+
+            echo "==> Backing up database (rollback safety net)"
+            mkdir -p ~/db-backups
+            BACKUP_FILE=~/db-backups/travel_tracker_rollback_$(date +%Y%m%d_%H%M%S).sql.gz
+            $COMPOSE exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB"' | gzip > "$BACKUP_FILE" || {
+              echo "::warning::DB backup failed; continuing anyway"
+            }
+            ls -1t ~/db-backups/*.sql.gz 2>/dev/null | tail -n +11 | xargs -r rm -f
+            echo "Backup written to $BACKUP_FILE"
+
+            echo "==> Resetting working tree to $RESOLVED"
+            git reset --hard "$RESOLVED"
+
+            # Authenticate with GHCR
+            echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u "${{ secrets.GHCR_USERNAME }}" --password-stdin
+
+            echo "==> Pulling images at tag $RESOLVED"
+            if [ "$SERVICE" = "all" ]; then
+              IMAGE_TAG="$RESOLVED" $COMPOSE pull backend frontend || {
+                echo "::error::Could not pull images for SHA $RESOLVED. Was this SHA built by a prior Deploy workflow?"
+                exit 1
+              }
+            else
+              IMAGE_TAG="$RESOLVED" $COMPOSE pull "$SERVICE" || {
+                echo "::error::Could not pull $SERVICE image for SHA $RESOLVED."
+                exit 1
+              }
+            fi
+
+            echo "==> Starting rolled-back service: $SERVICE"
+            if [ "$SERVICE" = "all" ]; then
+              IMAGE_TAG="$RESOLVED" $COMPOSE up -d --no-build
+            else
+              IMAGE_TAG="$RESOLVED" $COMPOSE up -d --no-build "$SERVICE"
+            fi
+
+            # Wait for backend to come back up
+            if [ "$SERVICE" = "all" ] || [ "$SERVICE" = "backend" ]; then
+              echo "==> Waiting for backend to come up"
+              for i in $(seq 1 30); do
+                if $COMPOSE exec -T backend node -e "process.exit(0)" >/dev/null 2>&1; then
+                  echo "Backend container is responsive."
+                  break
+                fi
+                sleep 2
+              done
+            fi
+
+            # Reclaim disk space
+            docker image prune -f
+
+            echo "==> Container status"
+            $COMPOSE ps
+
+            echo "==> Recent backend logs"
+            $COMPOSE logs backend --tail=40 || true
+
+            echo "==> WARNING: schema was not rolled back."
+            echo "    If the target commit predates a migration that has already"
+            echo "    been applied to the DB, you may need to revert it manually:"
+            echo "    docker compose ... exec backend npm run migration:revert:prod"
+
+      - uses: actions/checkout@v4
+
+      - name: Smoke tests
+        env:
+          BASE_URL: https://mycontrail.com
+        run: |
+          echo "Waiting 8s for services to settle..."
+          sleep 8
+          chmod +x .github/scripts/smoke-test.sh
+          .github/scripts/smoke-test.sh
