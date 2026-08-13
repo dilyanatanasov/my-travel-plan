@@ -14,6 +14,7 @@ import { Visit } from '../visits/entities/visit.entity';
 import { FlightJourney } from '../flights/entities/flight-journey.entity';
 import { Country } from '../countries/entities/country.entity';
 import { ShareCard } from './entities/share-card.entity';
+import { SavedDuel } from './entities/saved-duel.entity';
 import {
   PublicMapDto,
   PublicAirportDto,
@@ -39,6 +40,8 @@ export class ShareService {
     private readonly countryRepository: Repository<Country>,
     @InjectRepository(ShareCard)
     private readonly shareCardRepository: Repository<ShareCard>,
+    @InjectRepository(SavedDuel)
+    private readonly savedDuelRepository: Repository<SavedDuel>,
     private readonly configService: ConfigService,
   ) {}
 
@@ -304,6 +307,121 @@ export class ShareService {
       pageUrl,
       redirectUrl: pageUrl,
     });
+  }
+
+  /**
+   * A duel: two public maps side by side. Pure composition of getPublicMap,
+   * so every privacy rule (no notes, no dates, no wishlist) is inherited
+   * rather than re-implemented. Either token failing fails the duel.
+   */
+  async getDuel(
+    tokenA: string,
+    tokenB: string,
+  ): Promise<{
+    a: PublicMapDto & { token: string };
+    b: PublicMapDto & { token: string };
+  }> {
+    if (tokenA === tokenB) {
+      throw new BadRequestException('A duel needs two different maps');
+    }
+    const [a, b] = await Promise.all([
+      this.getPublicMap(tokenA),
+      this.getPublicMap(tokenB),
+    ]);
+    return {
+      a: { ...a, token: tokenA },
+      b: { ...b, token: tokenB },
+    };
+  }
+
+  /** Crawler HTML for /duel links: the scoreline is the whole preview. */
+  async getDuelUnfurlHtml(tokenA: string, tokenB: string): Promise<string> {
+    const app = this.appUrl();
+    const [userA, userB] = await Promise.all([
+      this.userRepository.findOne({ where: { shareToken: tokenA } }),
+      this.userRepository.findOne({ where: { shareToken: tokenB } }),
+    ]);
+
+    if (!userA || !userB || tokenA === tokenB) {
+      // Same fallback philosophy as single-map unfurls: dead links unfurl
+      // as the app, never as an error.
+      return this.getUnfurlHtml(userA ? tokenA : tokenB);
+    }
+
+    const countFor = (userId: number) =>
+      this.visitRepository.count({
+        where: { userId, visitType: In(['trip', 'home']) },
+      });
+    const [countA, countB] = await Promise.all([
+      countFor(userA.id),
+      countFor(userB.id),
+    ]);
+
+    const nameA = userA.displayName || 'Traveller A';
+    const nameB = userB.displayName || 'Traveller B';
+    const pageUrl = `${app}/duel/${encodeURIComponent(tokenA)}/${encodeURIComponent(tokenB)}`;
+
+    return this.unfurlHtml({
+      title: `${nameA} ${countA} – ${countB} ${nameB}`,
+      description: 'A travel map duel. Who has seen more of the world? Made with myContrail.',
+      imageUrl: `${app}/og-image.png`,
+      imageWidth: 1200,
+      imageHeight: 630,
+      pageUrl,
+      redirectUrl: pageUrl,
+    });
+  }
+
+  /**
+   * Saved duels are bookmarks over tokens. Dead tokens (sharing revoked)
+   * are filtered out here rather than surfaced as errors — the bookmark
+   * silently stops resolving, exactly like the share link it points at.
+   */
+  async listSavedDuels(
+    userId: number,
+  ): Promise<{ token: string; displayName: string; countries: number }[]> {
+    const rows = await this.savedDuelRepository.find({
+      where: { userId },
+      order: { createdAt: 'DESC' },
+    });
+    const results: { token: string; displayName: string; countries: number }[] =
+      [];
+    for (const row of rows) {
+      const opponent = await this.userRepository.findOne({
+        where: { shareToken: row.opponentToken },
+      });
+      if (!opponent) continue;
+      const countries = await this.visitRepository.count({
+        where: { userId: opponent.id, visitType: In(['trip', 'home']) },
+      });
+      results.push({
+        token: row.opponentToken,
+        displayName: opponent.displayName || 'A traveller',
+        countries,
+      });
+    }
+    return results;
+  }
+
+  async saveDuel(userId: number, opponentToken: string): Promise<{ ok: true }> {
+    const opponent = await this.userRepository.findOne({
+      where: { shareToken: opponentToken },
+    });
+    if (!opponent) {
+      throw new NotFoundException('That map is not available');
+    }
+    if (opponent.id === userId) {
+      throw new BadRequestException('You cannot duel yourself');
+    }
+    await this.savedDuelRepository.save(
+      this.savedDuelRepository.create({ userId, opponentToken }),
+    );
+    return { ok: true };
+  }
+
+  async removeDuel(userId: number, opponentToken: string): Promise<{ ok: true }> {
+    await this.savedDuelRepository.delete({ userId, opponentToken });
+    return { ok: true };
   }
 
   /** Base URL for absolute OG URLs — same DOMAIN-derived pattern as MailService. */

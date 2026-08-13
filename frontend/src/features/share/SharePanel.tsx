@@ -21,6 +21,7 @@ import MapExportCanvas, {
 import { useGetCountriesQuery, useGetVisitsQuery } from '../visits/visitsApi';
 import { useGetFlightStatsQuery } from '../flights/flightsApi';
 import { useAuth, useResendVerificationMutation } from '../auth/authApi';
+import DuelSection from './DuelSection';
 import { track } from '../../lib/analytics';
 
 const STYLES: { id: ShareStyle; label: string; hint: string }[] = [
@@ -541,6 +542,11 @@ function SharePanel() {
           </>
         )}
       </div>
+
+      {/* Duels ride the same token as the public link: no link, no duels. */}
+      {!isGuest && user?.emailVerified && token && (
+        <DuelSection myToken={token} />
+      )}
 
       {user?.displayName && (
         <p className="text-xs text-ink-subtle text-center">

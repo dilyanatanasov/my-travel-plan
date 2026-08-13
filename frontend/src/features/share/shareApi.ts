@@ -73,6 +73,43 @@ export const shareApi = apiSlice.injectEndpoints({
     getPublicMap: builder.query<PublicMap, string>({
       query: (token) => `/share/${token}`,
     }),
+
+    /* Two public maps in one payload — the duel. Public like the maps it
+       composes; the page gates the juicy details, not the data. */
+    getDuel: builder.query<
+      {
+        a: PublicMap & { token: string };
+        b: PublicMap & { token: string };
+      },
+      { a: string; b: string }
+    >({
+      query: ({ a, b }) => `/share/duel/${a}/${b}`,
+    }),
+
+    getSavedDuels: builder.query<
+      { token: string; displayName: string; countries: number }[],
+      void
+    >({
+      query: () => '/share/duels',
+      providesTags: ['Duels'],
+    }),
+
+    saveDuel: builder.mutation<{ ok: true }, string>({
+      query: (token) => ({
+        url: '/share/duels',
+        method: 'POST',
+        body: { token },
+      }),
+      invalidatesTags: ['Duels'],
+    }),
+
+    removeDuel: builder.mutation<{ ok: true }, string>({
+      query: (token) => ({
+        url: `/share/duels/${token}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['Duels'],
+    }),
   }),
 });
 
@@ -82,4 +119,8 @@ export const {
   useDisableShareMutation,
   useUploadShareCardMutation,
   useGetPublicMapQuery,
+  useGetDuelQuery,
+  useGetSavedDuelsQuery,
+  useSaveDuelMutation,
+  useRemoveDuelMutation,
 } = shareApi;

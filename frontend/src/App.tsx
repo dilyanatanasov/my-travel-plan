@@ -16,6 +16,7 @@ const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'));
 const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'));
 const VerifyEmailPage = lazy(() => import('./pages/VerifyEmailPage'));
 const SharedMapPage = lazy(() => import('./pages/SharedMapPage'));
+const DuelPage = lazy(() => import('./pages/DuelPage'));
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
 
 function App() {
@@ -37,6 +38,9 @@ function App() {
         <Route path="/verify-email" element={<VerifyEmailPage />} />
         {/* Public shared map — deliberately outside RequireAuth */}
         <Route path="/s/:token" element={<SharedMapPage />} />
+        {/* Duels: public like the maps they compose; depth gated in-page */}
+        <Route path="/duel/:tokenA" element={<DuelPage />} />
+        <Route path="/duel/:tokenA/:tokenB" element={<DuelPage />} />
 
         {/* Everything below renders user data and requires a session */}
         <Route element={<RequireAuth />}>

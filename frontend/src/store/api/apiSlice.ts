@@ -111,6 +111,7 @@ export const apiSlice = createApi({
     'Visit',
     'Airport',
     'Flight',
+    'Duels',
     'FlightStats',
     'Auth',
     'Share',
