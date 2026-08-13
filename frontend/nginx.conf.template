@@ -155,6 +155,18 @@ server {
         try_files $uri $uri/ /index.html;
     }
 
+    # Duel links: crawlers get the scoreline ("31 – 24") as the preview; a
+    # single-token challenge link unfurls as that person's map.
+    location /duel/ {
+        if ($is_crawler) {
+            rewrite ^/duel/([^/]+)/([^/]+)$ /api/share/unfurl-duel/$1/$2 last;
+        }
+        if ($is_crawler) {
+            rewrite ^/duel/([^/]+)$ /api/share/unfurl/$1 last;
+        }
+        try_files $uri $uri/ /index.html;
+    }
+
     # Umami tracker ONLY — script + collect endpoint ride the main origin, so
     # there is no extra DNS/cert and no cross-site request for ad-blockers to
     # flag. The dashboard is deliberately not proxied: it binds to the

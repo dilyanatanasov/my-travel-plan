@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Delete,
+  Body,
   Header,
   Param,
   Req,
@@ -12,6 +13,7 @@ import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import { ShareService } from './share.service';
 import { PublicMapDto } from './dto/public-map.dto';
+import { SaveDuelDto } from './dto/save-duel.dto';
 import { Public } from '../../common/decorators/public.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 
@@ -95,6 +97,50 @@ export class ShareController {
   @Header('Cache-Control', 'public, max-age=300')
   async unfurl(@Param('token') token: string): Promise<string> {
     return this.shareService.getUnfurlHtml(token);
+  }
+
+  /** Saved duels: bookmarked opponents for the signed-in account. */
+  @Get('duels')
+  async savedDuels(@CurrentUser('id') userId: number) {
+    return this.shareService.listSavedDuels(userId);
+  }
+
+  @Post('duels')
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
+  async saveDuel(
+    @CurrentUser('id') userId: number,
+    @Body() dto: SaveDuelDto,
+  ) {
+    return this.shareService.saveDuel(userId, dto.token);
+  }
+
+  @Delete('duels/:token')
+  async removeDuel(
+    @CurrentUser('id') userId: number,
+    @Param('token') token: string,
+  ) {
+    return this.shareService.removeDuel(userId, token);
+  }
+
+  /** Two public maps, one payload — the duel view. */
+  @Public()
+  @Throttle({ default: { limit: 60, ttl: 60_000 } })
+  @Get('duel/:a/:b')
+  async duel(@Param('a') a: string, @Param('b') b: string) {
+    return this.shareService.getDuel(a, b);
+  }
+
+  /** Crawler HTML for duel links — the scoreline is the preview. */
+  @Public()
+  @Throttle({ default: { limit: 60, ttl: 60_000 } })
+  @Get('unfurl-duel/:a/:b')
+  async unfurlDuel(
+    @Param('a') a: string,
+    @Param('b') b: string,
+    @Res() res: Response,
+  ): Promise<void> {
+    const html = await this.shareService.getDuelUnfurlHtml(a, b);
+    res.status(200).type('html').send(html);
   }
 
   /**
