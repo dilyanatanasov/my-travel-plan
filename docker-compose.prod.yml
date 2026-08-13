@@ -87,7 +87,10 @@ services:
     container_name: travel_tracker_umami
     restart: unless-stopped
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/umami
+      # Dedicated role, not the app's superuser: umami cannot touch the
+      # travel database, and its password is hex — the app's random base64
+      # password contains characters that are invalid inside a URL.
+      DATABASE_URL: postgresql://umami:${UMAMI_DB_PASSWORD}@db:5432/umami
       DATABASE_TYPE: postgresql
       APP_SECRET: ${UMAMI_APP_SECRET}
     ports:
