@@ -95,7 +95,9 @@ function MapSearch({ countries, countryCentroids, onGo }: MapSearchProps) {
         // Same string-from-Postgres problem as fitBounds; see the note there.
         target: {
           center: [Number(airport.longitude), Number(airport.latitude)],
-          zoom: 4.5,
+          // Closer than the old 4.5: an airport is a point, so there is
+          // nothing a tighter camera can crop.
+          zoom: 6,
         },
       });
     }

@@ -31,7 +31,10 @@ const buttonClass =
   'w-11 h-11 flex items-center justify-center map-glass map-glass-hover ' +
   'first:rounded-t-lg last:rounded-b-lg ' +
   'focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-400 ' +
-  'disabled:opacity-35';
+  // 60%, not 35: at 35 the glass button vanished entirely and the control
+  // looked broken. The button stays visibly present; the dimming plus the
+  // cursor say "exists, just not right now".
+  'disabled:opacity-60 disabled:cursor-not-allowed';
 
 /**
  * Explicit zoom controls.

@@ -223,8 +223,19 @@ function TravelMap() {
   );
 
   const handleSearchGo = useCallback((target: SearchTarget) => {
-    setCenter(target.center);
-    setZoom(target.zoom);
+    /*
+      Fit the country, don't just approach it: the fixed zoom the search box
+      suggests (2.5) kept every landing at continental distance. With the
+      country's bounding box the camera gets close for a Malta and stays
+      wide for a Brazil — fill 0.55 guarantees the whole country is visible,
+      maxZoom 7 keeps tiny islands from slamming into max magnification.
+    */
+    const box = target.isoCode ? countryBounds.get(target.isoCode) : undefined;
+    const framing = box
+      ? fitToPoints([box[0], box[1]], { maxZoom: 7, minZoom: 2, fill: 0.55 })
+      : null;
+    setCenter(framing?.center ?? target.center);
+    setZoom(framing?.zoom ?? target.zoom);
     // Counts as a deliberate move, so the data framing stops overriding it.
     setHasMovedMap(true);
     // Landing on a country you have been to opens its card, which is the
@@ -243,7 +254,7 @@ function TravelMap() {
         2000,
       );
     }
-  }, []);
+  }, [countryBounds]);
 
   const handleResetView = useCallback(() => {
     // Back to the view the map opened with, not [0,0] — otherwise "reset"
@@ -539,8 +550,10 @@ function TravelMap() {
       points.push([leg.departureAirport.longitude, leg.departureAirport.latitude]);
       points.push([leg.arrivalAirport.longitude, leg.arrivalAirport.latitude]);
     }
-    // fill 0.5 leaves generous margin, so the arc's bow is not cropped.
-    const framing = fitToPoints(points, { maxZoom: 4, fill: 0.5 });
+    // fill 0.58 tightens the camera for immersion while still leaving margin
+    // for the arc's bow; maxZoom 6 gets close on short hops without ever
+    // cropping the endpoints (fitToPoints guarantees both stay in frame).
+    const framing = fitToPoints(points, { maxZoom: 6, fill: 0.58 });
     if (!framing) return;
     setCenter(framing.center);
     setZoom(framing.zoom);
@@ -718,6 +731,19 @@ function TravelMap() {
   const [countryCentroids, setCountryCentroids] = useState<
     Map<string, LonLat>
   >(new Map());
+  // Per-country bounding boxes from the same geography pass — what lets a
+  // search landing zoom to fit the country instead of a fixed distance.
+  const [countryBounds, setCountryBounds] = useState<
+    Map<string, [LonLat, LonLat]>
+  >(new Map());
+
+  const handleCentroids = useCallback(
+    (centroids: Map<string, LonLat>, bounds?: Map<string, [LonLat, LonLat]>) => {
+      setCountryCentroids(centroids);
+      if (bounds) setCountryBounds(bounds);
+    },
+    [],
+  );
 
   const dataFraming = useMemo(() => {
     const points: LonLat[] = [];
@@ -807,7 +833,7 @@ function TravelMap() {
             */
             onCountryClick={replay.isActive ? undefined : handleCountryClick}
             onCountryHover={canHover ? handleCountryHover : undefined}
-            onCentroids={setCountryCentroids}
+            onCentroids={handleCentroids}
             onCountryLongPress={replay.isActive ? undefined : handleCountryLongPress}
             landedIsoCode={landedIsoCode}
             blinkIsoCode={searchBlinkIso}

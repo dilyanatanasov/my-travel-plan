@@ -1,6 +1,6 @@
 import { memo, useEffect, useRef, useState } from 'react';
 import { Geographies, Geography } from 'react-simple-maps';
-import { geoCentroid } from 'd3-geo';
+import { geoBounds, geoCentroid } from 'd3-geo';
 import { numericToAlpha3 } from './isoCodes';
 import {
   getCountryColor,
@@ -59,7 +59,12 @@ interface CountriesLayerProps {
    * where they are — so anything that needs to frame a view around visited
    * countries has to learn it from here.
    */
-  onCentroids?: (centroids: Map<string, [number, number]>) => void;
+  onCentroids?: (
+    centroids: Map<string, [number, number]>,
+    /** [minLon,minLat],[maxLon,maxLat] per country — lets search fit-zoom
+        a whole country instead of landing at a fixed continental distance. */
+    bounds?: Map<string, [[number, number], [number, number]]>,
+  ) => void;
   /**
    * Press and hold a country.
    *
@@ -158,6 +163,10 @@ function CountriesLayer({
         if (onCentroids && !reportedRef.current && geographies.length > 0) {
           reportedRef.current = true;
           const centroids = new Map<string, [number, number]>();
+          const bounds = new Map<
+            string,
+            [[number, number], [number, number]]
+          >();
           for (const geo of geographies) {
             const iso = numericToAlpha3[String(parseInt(geo.id, 10))];
             if (!iso) continue;
@@ -165,10 +174,17 @@ function CountriesLayer({
             if (Number.isFinite(centre[0]) && Number.isFinite(centre[1])) {
               centroids.set(iso, [centre[0], centre[1]]);
             }
+            const box = geoBounds(geo as never);
+            if (box.every((corner) => corner.every(Number.isFinite))) {
+              bounds.set(iso, [
+                [box[0][0], box[0][1]],
+                [box[1][0], box[1][1]],
+              ]);
+            }
           }
           // Deferred: this runs inside Geographies' render callback, and
           // setting parent state during render warns and can loop.
-          queueMicrotask(() => onCentroids(centroids));
+          queueMicrotask(() => onCentroids(centroids, bounds));
         }
 
         return geographies.map((geo) => {
