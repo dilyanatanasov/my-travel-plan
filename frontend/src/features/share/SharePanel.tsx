@@ -4,6 +4,7 @@ import {
   useGetShareStatusQuery,
   useEnableShareMutation,
   useDisableShareMutation,
+  useUploadShareCardMutation,
 } from './shareApi';
 import { useToast } from '../../components/Toast/ToastProvider';
 import { downloadBlob } from '../../utils/exportMapImage';
@@ -58,6 +59,11 @@ function SharePanel() {
   });
   const [enableShare, { isLoading: isEnabling }] = useEnableShareMutation();
   const [disableShare, { isLoading: isDisabling }] = useDisableShareMutation();
+  const [uploadShareCard] = useUploadShareCardMutation();
+  // Latest token for the render effect, which must not re-render the card
+  // when sharing is toggled — only when the card itself would change.
+  const shareTokenRef = useRef<string | null>(null);
+  shareTokenRef.current = shareStatus?.shareToken ?? null;
   const [resendVerification, { isLoading: isResending }] =
     useResendVerificationMutation();
   // One send per panel visit — the server throttles too, but the button
@@ -156,6 +162,12 @@ function SharePanel() {
         const blob = await renderShareCard(svg, content, style);
         if (cancelled) return;
         blobRef.current = blob;
+        // Keep the stored card in step with what just rendered, so the link
+        // preview shows the map people will actually see. Fire-and-forget:
+        // a failed upload only means the preview stays one render behind.
+        if (shareTokenRef.current) {
+          void uploadShareCard(blob);
+        }
         objectUrl = URL.createObjectURL(blob);
         setPreviewUrl(objectUrl);
       } catch (error) {
@@ -174,7 +186,14 @@ function SharePanel() {
       cancelled = true;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [content, style, retryToken, isLoadingData, hasSomethingToShow]);
+  }, [
+    content,
+    style,
+    retryToken,
+    isLoadingData,
+    hasSomethingToShow,
+    uploadShareCard,
+  ]);
 
   const filename = `contrail-${style}.png`;
 
@@ -227,6 +246,11 @@ function SharePanel() {
         });
       } else {
         const result = await enableShare().unwrap();
+        // The link is live from this moment, so give its preview the card
+        // that is already on screen rather than waiting for a re-render.
+        if (blobRef.current) {
+          void uploadShareCard(blobRef.current);
+        }
         await navigator.clipboard
           ?.writeText(`${window.location.origin}/s/${result.shareToken}`)
           .catch(() => undefined);
@@ -404,22 +428,58 @@ function SharePanel() {
             </p>
 
             {shareUrl && (
-              <div className="mt-3 flex items-center gap-1">
-                <input
-                  readOnly
-                  value={shareUrl}
-                  onFocus={(e) => e.currentTarget.select()}
-                  className="flex-1 min-w-0 min-h-10 px-2 text-xs border border-line rounded-lg bg-surface-sunken text-ink-muted"
-                  aria-label="Public share link"
-                />
-                <button
-                  type="button"
-                  onClick={handleCopy}
-                  className="flex-shrink-0 min-h-10 px-3 text-xs font-medium text-brand-700 hover:bg-brand-50 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
-                >
-                  Copy
-                </button>
-              </div>
+              <>
+                <div className="mt-3 flex items-center gap-1">
+                  <input
+                    readOnly
+                    value={shareUrl}
+                    onFocus={(e) => e.currentTarget.select()}
+                    className="flex-1 min-w-0 min-h-10 px-2 text-xs border border-line rounded-lg bg-surface-sunken text-ink-muted"
+                    aria-label="Public share link"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleCopy}
+                    className="flex-shrink-0 min-h-10 px-3 text-xs font-medium text-brand-700 hover:bg-brand-50 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+                  >
+                    Copy
+                  </button>
+                </div>
+
+                {/*
+                  Web share intents. Instagram is deliberately absent: it has
+                  no web intent, and the native sheet behind the Share button
+                  above already reaches it with the image itself.
+                */}
+                <div className="mt-2 flex gap-2">
+                  {[
+                    {
+                      label: 'X',
+                      href: `https://twitter.com/intent/tweet?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(content.headline)}`,
+                    },
+                    {
+                      label: 'Facebook',
+                      href: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`,
+                    },
+                    {
+                      label: 'WhatsApp',
+                      href: `https://wa.me/?text=${encodeURIComponent(`${content.headline} ${shareUrl}`)}`,
+                    },
+                  ].map((intent) => (
+                    <button
+                      key={intent.label}
+                      type="button"
+                      onClick={() =>
+                        window.open(intent.href, '_blank', 'noopener,noreferrer')
+                      }
+                      className="flex-1 min-h-10 px-2 rounded-xl border border-line bg-surface text-xs font-medium text-ink hover:bg-surface-sunken
+                        focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+                    >
+                      {intent.label}
+                    </button>
+                  ))}
+                </div>
+              </>
             )}
 
             <button
