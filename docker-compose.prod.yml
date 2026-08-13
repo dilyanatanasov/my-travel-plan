@@ -4,9 +4,12 @@
 # for a manual bootstrap; run from the same directory both files resolve to
 # the same project name, so they share containers and the pgdata volume.
 #
-# IMAGE_TAG selects the image (a commit sha pushed by deploy.yml); it
-# defaults to latest so a plain `docker compose -f docker-compose.prod.yml up`
-# still works.
+# BACKEND_TAG / FRONTEND_TAG select the images (commit shas pushed by
+# deploy.yml); they default to latest so a plain
+# `docker compose -f docker-compose.prod.yml up` still works. Per-service on
+# purpose: a shared tag meant a single-service deploy could silently move the
+# OTHER service onto whatever :latest happened to be locally — that trap
+# nearly fired twice on 2026-08-13.
 
 services:
   db:
@@ -28,7 +31,7 @@ services:
       - travel_network
 
   backend:
-    image: ghcr.io/dilyanatanasov/contrail-backend:${IMAGE_TAG:-latest}
+    image: ghcr.io/dilyanatanasov/contrail-backend:${BACKEND_TAG:-latest}
     container_name: travel_tracker_backend
     restart: unless-stopped
     env_file:
@@ -56,7 +59,7 @@ services:
       - travel_network
 
   frontend:
-    image: ghcr.io/dilyanatanasov/contrail-frontend:${IMAGE_TAG:-latest}
+    image: ghcr.io/dilyanatanasov/contrail-frontend:${FRONTEND_TAG:-latest}
     container_name: travel_tracker_frontend
     restart: unless-stopped
     environment:

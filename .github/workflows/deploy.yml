@@ -188,24 +188,44 @@ jobs:
               ls -1t ~/db-backups/*.sql.gz 2>/dev/null | tail -n +11 | xargs -r rm -f
             fi
 
-            echo "==> Pulling images for: $SERVICE"
-            REPO="ghcr.io/dilyanatanasov"
+            # Per-service tags: the deployed service gets this run's SHA, the
+            # other keeps the exact image its container is running right now.
+            # A shared tag meant a single-service deploy could recreate the
+            # other service onto a stale local :latest.
+            running_tag() {
+              CID=$($COMPOSE ps -q "$1" | head -n1)
+              if [ -n "$CID" ]; then
+                docker inspect --format '{{.Config.Image}}' "$CID" | awk -F: '{print $NF}'
+              else
+                echo "latest"
+              fi
+            }
             if [ "$SERVICE" = "all" ]; then
-              IMAGE_TAG="$IMAGE_TAG" $COMPOSE pull backend frontend
+              BACKEND_TAG="$IMAGE_TAG"
+              FRONTEND_TAG="$IMAGE_TAG"
+            elif [ "$SERVICE" = "backend" ]; then
+              BACKEND_TAG="$IMAGE_TAG"
+              FRONTEND_TAG=$(running_tag frontend)
             else
-              # Single-service deploy: pull only that image, tag as latest locally
-              # so docker compose doesn't try to resolve the other service's SHA tag
-              docker pull "$REPO/contrail-$SERVICE:$IMAGE_TAG"
-              docker tag  "$REPO/contrail-$SERVICE:$IMAGE_TAG" "$REPO/contrail-$SERVICE:latest"
+              BACKEND_TAG=$(running_tag backend)
+              FRONTEND_TAG="$IMAGE_TAG"
+            fi
+            export BACKEND_TAG FRONTEND_TAG
+            echo "==> Tags: backend=$BACKEND_TAG frontend=$FRONTEND_TAG"
+
+            echo "==> Pulling images for: $SERVICE"
+            if [ "$SERVICE" = "all" ]; then
+              $COMPOSE pull backend frontend
+            else
+              $COMPOSE pull "$SERVICE"
             fi
 
             echo "==> Starting service: $SERVICE"
             if [ "$SERVICE" = "all" ]; then
               # No service list: everything in the compose file, so additions
               # like the umami container deploy without editing this workflow.
-              IMAGE_TAG="$IMAGE_TAG" $COMPOSE up -d --no-build
+              $COMPOSE up -d --no-build
             else
-              # Use default :latest tag so the other service keeps its current image
               $COMPOSE up -d --no-build "$SERVICE"
             fi
 

@@ -99,14 +99,37 @@ jobs:
             # Authenticate with GHCR
             echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u "${{ secrets.GHCR_USERNAME }}" --password-stdin
 
+            # Per-service tags, mirroring deploy.yml: the rolled-back service
+            # gets the target SHA, the other keeps its currently running image.
+            running_tag() {
+              CID=$($COMPOSE ps -q "$1" | head -n1)
+              if [ -n "$CID" ]; then
+                docker inspect --format '{{.Config.Image}}' "$CID" | awk -F: '{print $NF}'
+              else
+                echo "latest"
+              fi
+            }
+            if [ "$SERVICE" = "all" ]; then
+              BACKEND_TAG="$RESOLVED"
+              FRONTEND_TAG="$RESOLVED"
+            elif [ "$SERVICE" = "backend" ]; then
+              BACKEND_TAG="$RESOLVED"
+              FRONTEND_TAG=$(running_tag frontend)
+            else
+              BACKEND_TAG=$(running_tag backend)
+              FRONTEND_TAG="$RESOLVED"
+            fi
+            export BACKEND_TAG FRONTEND_TAG
+            echo "==> Tags: backend=$BACKEND_TAG frontend=$FRONTEND_TAG"
+
             echo "==> Pulling images at tag $RESOLVED"
             if [ "$SERVICE" = "all" ]; then
-              IMAGE_TAG="$RESOLVED" $COMPOSE pull backend frontend || {
+              $COMPOSE pull backend frontend || {
                 echo "::error::Could not pull images for SHA $RESOLVED. Was this SHA built by a prior Deploy workflow?"
                 exit 1
               }
             else
-              IMAGE_TAG="$RESOLVED" $COMPOSE pull "$SERVICE" || {
+              $COMPOSE pull "$SERVICE" || {
                 echo "::error::Could not pull $SERVICE image for SHA $RESOLVED."
                 exit 1
               }
@@ -114,9 +137,9 @@ jobs:
 
             echo "==> Starting rolled-back service: $SERVICE"
             if [ "$SERVICE" = "all" ]; then
-              IMAGE_TAG="$RESOLVED" $COMPOSE up -d --no-build
+              $COMPOSE up -d --no-build
             else
-              IMAGE_TAG="$RESOLVED" $COMPOSE up -d --no-build "$SERVICE"
+              $COMPOSE up -d --no-build "$SERVICE"
             fi
 
             # Wait for backend to come back up
