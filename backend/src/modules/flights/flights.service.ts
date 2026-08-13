@@ -131,12 +131,17 @@ export class FlightsService {
       segments.length === 1 && (createFlightDto.isRoundTrip || false);
 
     let firstJourneyId: number | null = null;
-    for (const segment of segments) {
+    for (const [segmentIndex, segment] of segments.entries()) {
       const journey = this.journeyRepository.create({
         userId,
-        journeyDate: createFlightDto.journeyDate
-          ? new Date(createFlightDto.journeyDate)
-          : null,
+        // The entered date belongs to the first segment; the ones after a
+        // ground transfer happened later, on a date we do not know. Copying
+        // it would assert a history the user never entered (same rule the
+        // replay follows for undated journeys).
+        journeyDate:
+          segmentIndex === 0 && createFlightDto.journeyDate
+            ? new Date(createFlightDto.journeyDate)
+            : null,
         isRoundTrip,
         notes: createFlightDto.notes || null,
       });
