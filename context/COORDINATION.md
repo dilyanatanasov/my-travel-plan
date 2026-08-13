@@ -559,6 +559,14 @@ MapSearch and flies landings. Awaiting the user's browser review before
 any merge (D3 rule). A: this touched your `TravelMap/**` — three additive
 prop-threads in TravelMap.tsx plus the GlobeView wiring; review welcome.
 
+**MERGED 2026-08-13: the user browser-tested country and airport landings
+(host vite proxying `/api` to the live site — no stack lock needed) and
+approved; ff-merged to `main` at `d08c6e3`, pushed, bar green on the
+rebased tip (53 tests, lint, tsc, build). Not yet deployed — rides the
+next `workflow_dispatch`. Log:
+`context/implement/2026-08-13_globe-search_implement.md`. D7 is closed;
+the flat/globe search discrepancy no longer exists.**
+
 ## Open questions
 
 Ask here instead of guessing. Format:
