@@ -15,7 +15,8 @@ set -euo pipefail
 
 DOMAIN="${1:-}"
 EMAIL="${2:-}"
-COMPOSE="docker compose"
+# The prod compose file: pulls GHCR images, never builds on the droplet.
+COMPOSE="docker compose -f docker-compose.prod.yml --env-file .env"
 
 if [ -z "$DOMAIN" ] || [ -z "$EMAIL" ]; then
   echo "Usage: sudo ./setup-ssl.sh <domain> <email>"
