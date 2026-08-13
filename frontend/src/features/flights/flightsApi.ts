@@ -37,13 +37,16 @@ export const flightsApi = apiSlice.injectEndpoints({
       providesTags: ['Flight'],
     }),
 
+    // 'Visit' too: the backend auto-creates visits for the flight's
+    // countries, so without it the map only colors them after a reload —
+    // which read as "auto-visit doesn't exist" in user testing.
     addFlight: builder.mutation<FlightJourney, CreateFlightDto>({
       query: (body) => ({
         url: '/flights',
         method: 'POST',
         body,
       }),
-      invalidatesTags: ['Flight', 'FlightStats'],
+      invalidatesTags: ['Flight', 'FlightStats', 'Visit'],
     }),
 
     updateFlight: builder.mutation<FlightJourney, { id: number; data: UpdateFlightDto }>({
@@ -52,7 +55,7 @@ export const flightsApi = apiSlice.injectEndpoints({
         method: 'PATCH',
         body: data,
       }),
-      invalidatesTags: ['Flight', 'FlightStats'],
+      invalidatesTags: ['Flight', 'FlightStats', 'Visit'],
     }),
 
     importFlights: builder.mutation<

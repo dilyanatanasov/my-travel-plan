@@ -26,6 +26,12 @@ export interface ReplayState {
   /** 1-based, for "3 of 41". */
   index: number;
   total: number;
+  /**
+   * Journeys excluded from the replay for lack of a date. Surfaced so the
+   * disabled Play button can say "add dates" instead of "log flights" to
+   * someone who has flights — the two need different remedies.
+   */
+  undatedCount: number;
   start: () => void;
   stop: () => void;
   togglePause: () => void;
@@ -163,6 +169,7 @@ export function useJourneyReplay(journeys: FlightJourney[]): ReplayState {
     played,
     index: index + 1,
     total: ordered.length,
+    undatedCount: journeys.length - ordered.length,
     start,
     stop,
     togglePause,

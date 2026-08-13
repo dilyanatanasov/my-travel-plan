@@ -1,5 +1,6 @@
 import type { FlightJourney } from '../../types';
 import type { ReplayState } from './useJourneyReplay';
+import { useToast } from '../Toast/ToastProvider';
 
 /** SOF → AMS → KEF, from the leg chain. */
 function routeLabel(journey: FlightJourney): string {
@@ -67,6 +68,8 @@ const buttonClass =
  * Hidden below two journeys — replaying one flight is just drawing it.
  */
 function ReplayControl({ replay, compact = false }: ReplayControlProps) {
+  const { showToast } = useToast();
+
   /*
     Present but disabled below two journeys, rather than absent.
 
@@ -76,16 +79,33 @@ function ReplayControl({ replay, compact = false }: ReplayControlProps) {
     one is a dead end.
   */
   if (replay.total < 2) {
+    /*
+      "Add dates" and "log flights" are different remedies: user testing had
+      someone with three (undated) flights reading this button as broken,
+      because the message assumed the flights themselves were missing.
+    */
     const reason =
-      replay.total === 0
-        ? 'Log two flights with dates to replay your travels'
-        : 'Log one more dated flight to replay your travels';
+      replay.undatedCount > 0
+        ? replay.total === 1
+          ? 'Add a date to one more flight to replay your travels'
+          : `Add dates to your flights to replay them in order`
+        : replay.total === 1
+          ? 'Log one more dated flight to replay your travels'
+          : 'Log two flights with dates to replay your travels';
+
+    /*
+      aria-disabled + toast, not the disabled attribute: a disabled button
+      swallows taps, which on a phone (no hover, no title tooltip) leaves no
+      way to learn why it is off. Tapping now answers.
+    */
+    const explain = () => showToast(reason, { durationMs: 5000 });
 
     if (compact) {
       return (
         <button
           type="button"
-          disabled
+          aria-disabled
+          onClick={explain}
           aria-label={reason}
           title={reason}
           className="w-11 h-11 flex items-center justify-center map-glass
@@ -99,7 +119,8 @@ function ReplayControl({ replay, compact = false }: ReplayControlProps) {
     return (
       <button
         type="button"
-        disabled
+        aria-disabled
+        onClick={explain}
         aria-label={reason}
         title={reason}
         className="map-glass flex items-center gap-2 min-h-11 px-3 rounded-xl border
