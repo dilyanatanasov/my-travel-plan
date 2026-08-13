@@ -94,7 +94,7 @@ export class DateSamplingService {
     const endDate = new Date(dto.dateRangeEnd);
 
     // Find all Fridays in the range
-    let current = new Date(startDate);
+    const current = new Date(startDate);
     // Move to next Friday
     while (current.getDay() !== 5) {
       current.setDate(current.getDate() + 1);
@@ -151,8 +151,7 @@ export class DateSamplingService {
     // Get duration options within min/max range
     const durations = this.getDurationsInRange(minNights, maxNights);
 
-    let currentDate = new Date(startDate);
-    let sampleIndex = 0;
+    const currentDate = new Date(startDate);
 
     while (currentDate <= endDate && samples.length < targetSampleCount * durations.length) {
       for (const nights of durations) {
@@ -175,7 +174,6 @@ export class DateSamplingService {
 
       // Move to next sample date
       currentDate.setDate(currentDate.getDate() + step);
-      sampleIndex++;
     }
 
     return this.limitSamples(samples, targetSampleCount * 2);

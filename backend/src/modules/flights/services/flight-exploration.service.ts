@@ -10,7 +10,7 @@ import {
   PriceTrendDto,
   FlightLegDto,
 } from '../dto/flight-exploration-result.dto';
-import { FlightResultDto, FlightSearchResultDto, CarrierDto } from '../dto/flight-result.dto';
+import { CarrierDto } from '../dto/flight-result.dto';
 import { DateSamplingService, DateSample } from './date-sampling.service';
 import { HubService } from './hub.service';
 import { SafetyService } from './safety.service';
@@ -18,7 +18,6 @@ import { ApiKeyManagerService } from './api-key-manager.service';
 import { Hub } from '../data/hubs';
 import {
   KiwiSearchResponse,
-  KiwiItinerary,
   KiwiSector,
   KiwiSectorSegment,
 } from '../interfaces/kiwi.interface';
@@ -36,17 +35,6 @@ interface OneWayFlight {
   carriers: CarrierDto[];
   bookingUrl: string;
   leg: FlightLegDto;
-}
-
-interface CombinedRoute {
-  outboundToHub: OneWayFlight;
-  hubToDestination: OneWayFlight;
-  returnFromDestination: OneWayFlight;
-  returnFromHub: OneWayFlight;
-  hub: string;
-  totalPrice: number;
-  totalDurationOutbound: number;
-  totalDurationReturn: number;
 }
 
 @Injectable()
@@ -296,7 +284,7 @@ export class FlightExplorationService {
     response: KiwiSearchResponse,
     origin: string,
     destination: string,
-    date: string,
+    _date: string,
   ): OneWayFlight[] {
     if (!response.itineraries) return [];
 
@@ -851,7 +839,7 @@ export class FlightExplorationService {
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   }
 
-  private getDateRange(dto: FlexibleSearchDto, samples: DateSample[]): { from: string; to: string } {
+  private getDateRange(dto: FlexibleSearchDto, _samples: DateSample[]): { from: string; to: string } {
     if (dto.dateType === DateType.SPECIFIC) {
       return { from: dto.departureDate || '', to: dto.returnDate || dto.departureDate || '' };
     }

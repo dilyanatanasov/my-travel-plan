@@ -113,7 +113,7 @@ export function parseDate(value: string): string | undefined {
 
   const slashed = trimmed.match(/^(\d{1,2})[/.](\d{1,2})[/.](\d{2,4})/);
   if (slashed) {
-    let [, a, b, y] = slashed;
+    const [, a, b, y] = slashed;
     let day = Number(a);
     let month = Number(b);
     if (day > 12 && month <= 12) {

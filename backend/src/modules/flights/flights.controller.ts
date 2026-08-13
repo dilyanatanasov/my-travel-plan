@@ -21,7 +21,6 @@ import { CreateFlightDto } from './dto/create-flight.dto';
 import { UpdateFlightDto } from './dto/update-flight.dto';
 import { SearchFlightsDto } from './dto/search-flights.dto';
 import { FlexibleSearchDto } from './dto/flexible-search.dto';
-import { FilterOptionsDto } from './dto/filter-options.dto';
 import { FlightSearchResultDto } from './dto/flight-result.dto';
 import { FlightExplorationResultDto } from './dto/flight-exploration-result.dto';
 import { ImportFlightsDto, type ImportResultDto } from './dto/import-flights.dto';
