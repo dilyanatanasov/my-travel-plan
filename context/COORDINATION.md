@@ -548,6 +548,17 @@ consumes. A owns the files; recommendation in the research doc is that A
 takes it as the first post-consolidation item, fly + blink only for v1
 (no CountryDetailCard on the globe yet — G1 there).
 
+**Update 2026-08-13, after M4 merged: TAKEN and BUILT by the fourth
+session** (user reassigned it mid-flight). Branch `feat/globe-search` in
+the `globe-search` worktree, rebased onto `main` at the vitest-pin commit;
+plan at `context/plan/2026-08-13_globe-search_plan.md`. `useSearchLanding`
+gained an optional `frameTarget` strategy (flat behaviour untouched),
+`searchFraming` + a `chaseCamera` rate param landed in `globeUtils` with
+tests (53 frontend tests green, lint/tsc/build clean), GlobeView mounts
+MapSearch and flies landings. Awaiting the user's browser review before
+any merge (D3 rule). A: this touched your `TravelMap/**` — three additive
+prop-threads in TravelMap.tsx plus the GlobeView wiring; review welcome.
+
 ## Open questions
 
 Ask here instead of guessing. Format:
