@@ -37,3 +37,11 @@ precision ("2024" / "Mar 2024" / "5 Mar 2024"). Pairs naturally with the
 split-journey flow, where a return's exact date is often the thing nobody
 remembers — a year is better than nothing and now nothing is also fine
 (entry-order replay shipped 2026-08-13).
+
+## Part 2 amendment (2026-08-13, user request): push, not (only) email
+
+Anniversaries should arrive as **web push notifications** — copy the proven
+ia-fitness pattern (VAPID keypair in env, push-subscription table, service
+worker `push` handler, settings toggle). The PWA + sw.js already exist here.
+Email stays as the fallback channel for users who never granted notification
+permission. The daily sweep stays identical; only the delivery changes.
