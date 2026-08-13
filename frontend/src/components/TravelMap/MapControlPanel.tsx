@@ -22,6 +22,13 @@ interface MapControlPanelProps {
    *  on small screens, where an expanded panel would otherwise cover them. */
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
+  /**
+   * Globe mode: the same map as an orthographic globe. Optional pair — the
+   * public read-only map renders this panel without the toggle by omitting
+   * the handler.
+   */
+  globeMode?: boolean;
+  onGlobeModeChange?: (on: boolean) => void;
 }
 
 // 44px minimum touch target; text-base stops iOS zooming the page on focus.
@@ -118,6 +125,8 @@ function MapControlPanel({
   years,
   isOpen,
   onOpenChange,
+  globeMode = false,
+  onGlobeModeChange,
 }: MapControlPanelProps) {
   const activeCount = countActiveFilters(filters);
 
@@ -213,6 +222,37 @@ function MapControlPanel({
               <span className={fieldLabelClass}>Show on map</span>
               <MapViewSwitch settings={settings} onChange={onSettingsChange} />
             </div>
+
+            {/*
+              Globe mode. A view change like everything else in this panel:
+              it redraws the same data as an orthographic globe and touches
+              nothing. The whole row is the control, so the target is 44px
+              even though the visual switch is small.
+            */}
+            {onGlobeModeChange && (
+              <button
+                type="button"
+                role="switch"
+                aria-checked={globeMode}
+                onClick={() => onGlobeModeChange(!globeMode)}
+                className="w-full min-h-11 flex items-center justify-between gap-2 px-1 rounded-lg
+                  map-glass-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-400"
+              >
+                <span className="text-sm font-medium">Globe</span>
+                <span
+                  aria-hidden="true"
+                  className={`relative inline-block w-11 h-6 flex-shrink-0 rounded-full transition-colors ${
+                    globeMode ? 'bg-brand-600' : 'bg-current/25'
+                  }`}
+                >
+                  <span
+                    className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${
+                      globeMode ? 'translate-x-5' : ''
+                    }`}
+                  />
+                </span>
+              </button>
+            )}
 
             {/*
               Home country moved to Settings. Everything left in this panel
