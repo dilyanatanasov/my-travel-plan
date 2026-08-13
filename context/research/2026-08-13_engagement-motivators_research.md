@@ -37,3 +37,12 @@ All motivator output should flow into the three existing surfaces: stats panel, 
 - D1: Continent dataset — add `continent` to the countries table (small migration + seed) vs frontend constant map. (Table recommended: share unfurl and future SQL stats want it server-side.)
 - D2: Which lever ships first — "want to go" state (recommended: smallest, feeds most) vs milestones extension.
 - D3: External baseline constants — which claims, and sources for them.
+
+## Dream-tier (queued 2026-08-13): globe mode
+
+A toggle rendering the same map as a d3 orthographic globe. Feasible in the
+existing stack (react-simple-maps accepts any d3 projection; countries/
+markers reproject free). Real work: drag-rotation instead of panning,
+great-circle routes via geoPath (horizon clipping free), camera = rotate
+globe to face target, horizon checks for plane/pops. Search-v1-sized;
+prototype the rotation feel first. The replay is its killer feature.
