@@ -360,8 +360,20 @@ function GlobeView({
     (event: React.PointerEvent<HTMLDivElement>) => {
       // The replay owns the camera; fighting it mid-flight snaps the view.
       if (replay.isActive) return;
-      // Overlay cards and buttons live inside this container — only a press
-      // that lands on the map's own SVG starts a rotation.
+      /*
+        Buttons first, then the map test: every control's ICON is itself an
+        SVG, so "did the press land on an svg" was true for the zoom stack
+        and the mode toggle too — a press on a button glyph started a drag,
+        pointer capture ate the click, and the toggle only "worked" when the
+        finger landed on the button's padding.
+      */
+      if (
+        (event.target as Element).closest(
+          'button, [role="switch"], input, select, a',
+        )
+      )
+        return;
+      // Only a press that lands on the map's own SVG starts a rotation.
       if (!(event.target as Element).closest('svg')) return;
       if (event.pointerType === 'mouse' && event.button !== 0) return;
       event.currentTarget.setPointerCapture(event.pointerId);
@@ -707,6 +719,30 @@ function GlobeView({
 
       <MapZoomControls
         extraTool={!replay.isActive ? <ReplayControl replay={replay} compact /> : null}
+        bottomTool={
+          /* Back to flat, mirrored from the flat map's globe button. */
+          <button
+            type="button"
+            onClick={() => onGlobeModeChange(false)}
+            aria-label="View as flat map"
+            title="View as flat map"
+            className="w-11 h-11 flex items-center justify-center map-glass map-glass-hover
+              last:rounded-b-lg focus:outline-none focus-visible:ring-2
+              focus-visible:ring-inset focus-visible:ring-brand-400"
+          >
+            <svg
+              className="w-5 h-5"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              aria-hidden="true"
+            >
+              <path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2z" />
+              <path d="M9 4v14M15 6v14" />
+            </svg>
+          </button>
+        }
         zoom={camera.zoom}
         minZoom={MIN_GLOBE_ZOOM}
         maxZoom={MAX_GLOBE_ZOOM}

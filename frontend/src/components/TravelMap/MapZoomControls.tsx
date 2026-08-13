@@ -10,6 +10,8 @@ interface MapZoomControlsProps {
    * attention than it deserves.
    */
   extraTool?: React.ReactNode;
+  /** Renders below the minus — the bottom-anchored, never-moving slot. */
+  bottomTool?: React.ReactNode;
   zoom: number;
   minZoom: number;
   maxZoom: number;
@@ -45,6 +47,7 @@ const buttonClass =
  */
 function MapZoomControls({
   extraTool,
+  bottomTool,
   canReset,
   zoom,
   minZoom,
@@ -140,6 +143,9 @@ function MapZoomControls({
         </svg>
       </button>
 
+      {/* Bottom-anchored stack: this slot never moves, whatever appears
+          above — the home for the globe/flat mode toggle. */}
+      {bottomTool}
     </div>
   );
 }
