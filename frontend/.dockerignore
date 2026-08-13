@@ -5,3 +5,8 @@ dist
 *.md
 .env
 .env.*
+# …except the committed production env: it holds only public build-time
+# values (VITE_PUBLIC_URL, the Umami path + website id — all of which ship
+# in the page anyway). Excluding it silently broke every VITE_* variable in
+# CI builds: og:url served the literal string "%VITE_PUBLIC_URL%/".
+!.env.production
