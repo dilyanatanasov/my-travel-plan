@@ -7,7 +7,7 @@ import {
 import { useVisitActions } from '../../features/visits/useVisitActions';
 import { useToast } from '../Toast/ToastProvider';
 import { track } from '../../lib/analytics';
-import type { Alpha3, Visit, FlightJourney } from '../../types';
+import type { Visit, FlightJourney } from '../../types';
 import { useGetFlightsQuery } from '../../features/flights/flightsApi';
 import { useUpdateVisitMutation } from '../../features/visits/visitsApi';
 import { aggregateRoutes, extractUniqueAirports, countAirportVisits } from '../FlightMap/routeUtils';
@@ -27,16 +27,14 @@ import { useMapFocus } from '../../features/map/MapFocusContext';
 import { useMapColors } from '../../theme/mapColors';
 import CountryTooltip from './CountryTooltip';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
-import { buildCountryDisplayMap, type CountryDisplayInfo } from './countryColors';
+import { buildCountryDisplayMap } from './countryColors';
 import CountriesLayer from './CountriesLayer';
 import CountryDetailCard from './CountryDetailCard';
-import MapSearch, { type SearchTarget } from './MapSearch';
-import {
-  useJourneyReplay,
-  journeyFlightSeconds,
-  legFlightSeconds,
-  STOP_PAUSE_SECONDS,
-} from './useJourneyReplay';
+import MapSearch from './MapSearch';
+import { useJourneyReplay, journeyFlightSeconds } from './useJourneyReplay';
+import { useReplayOrchestration } from './useReplayOrchestration';
+import { useSearchLanding } from './useSearchLanding';
+import { useCountryInteraction } from './useCountryInteraction';
 import ReplayControl from './ReplayControl';
 import GlobeView from './GlobeView';
 import type { AggregatedRoute } from '../FlightMap/routeUtils';
@@ -288,54 +286,19 @@ function TravelMap() {
     []
   );
 
-  const handleSearchGo = useCallback((target: SearchTarget) => {
-    /*
-      Fit the country, don't just approach it: the fixed zoom the search box
-      suggests (2.5) kept every landing at continental distance. With the
-      country's bounding box the camera gets close for a Malta and stays
-      wide for a Brazil — fill 0.55 guarantees the whole country is visible,
-      maxZoom 7 keeps tiny islands from slamming into max magnification.
-    */
-    const box = target.isoCode ? countryBounds.get(target.isoCode) : undefined;
-    const framing = box
-      ? fitToPoints([box[0], box[1]], { maxZoom: 7, minZoom: 2, fill: 0.55 })
-      : null;
-    setCenter(framing?.center ?? target.center);
-    setZoom(framing?.zoom ?? target.zoom);
-    // Counts as a deliberate move, so the data framing stops overriding it.
+  /* Search landings (camera fit, country blink, airport ping) live in
+     useSearchLanding; framing a result counts as a deliberate move, so the
+     data framing stops overriding it. */
+  const handleSearchFrame = useCallback((frameCenter: LonLat, frameZoom: number) => {
+    setCenter(frameCenter);
+    setZoom(frameZoom);
     setHasMovedMap(true);
-    // Landing on a country you have been to opens its card, which is the
-    // question someone searching for it is usually asking.
-    setOpenCountryIso(target.isoCode ?? null);
-    /*
-      Blink the found country three times. Panning there is not enough:
-      nothing on a map of unlabeled shapes says which one is Japan. This is
-      for the searcher who does not already know the answer.
-    */
-    if (target.isoCode) {
-      setSearchBlinkIso(target.isoCode);
-      if (blinkTimerRef.current) window.clearTimeout(blinkTimerRef.current);
-      blinkTimerRef.current = window.setTimeout(
-        () => setSearchBlinkIso(null),
-        2000,
-      );
-    }
-    // Airports get a ping at the exact coordinates: many searched airports
-    // have no marker (markers exist only for airports actually flown).
-    if (target.airportLabel) {
-      setSearchPing({
-        label: target.airportLabel,
-        lon: target.center[0],
-        lat: target.center[1],
-        key: Date.now(),
-      });
-      if (pingTimerRef.current) window.clearTimeout(pingTimerRef.current);
-      pingTimerRef.current = window.setTimeout(
-        () => setSearchPing(null),
-        2600,
-      );
-    }
-  }, [countryBounds]);
+  }, []);
+  const { searchBlinkIso, searchPing, handleSearchGo } = useSearchLanding({
+    countryBounds,
+    onFrame: handleSearchFrame,
+    onOpenCountry: setOpenCountryIso,
+  });
 
   const handleResetView = useCallback(() => {
     // Back to the view the map opened with, not [0,0] — otherwise "reset"
@@ -471,154 +434,36 @@ function TravelMap() {
     return `${parts.join('. ')}. Use the Countries section to add, change or remove a country.`;
   }, [stats]);
 
-  // Handlers
-  const handleCountryClick = useCallback(
-    async (isoCode: string) => {
-      // A pan ends with a click on whatever is under the finger. Without this
-      // guard, dragging the map to look around silently toggled a country.
-      if (wasDragRef.current) return;
-
-      // While a journey is highlighted the map is in "reading" mode: a tap
-      // dismisses the highlight rather than editing your countries, so
-      // missing a thin route cannot silently add one. The container handler
-      // does the clearing; this just declines to toggle.
-      if (selectedJourney) return;
-
-      /*
-        The replay owns the map while it runs. Editing during it would both
-        corrupt the illusion — countries appearing that you did not fly to —
-        and quietly change real data from a tap the user meant as "pause".
-      */
-      if (replay.isActive) return;
-
-      const countryId = countryByIsoCode.get(isoCode);
-      if (!countryId) return;
-
-      clickConsumedRef.current = true;
-      const existingVisit = visitByCountryId.get(countryId);
-      /*
-        Tap cycles the state (user's design, 2026-08-13):
-        none → visited → transit → want to go → removed (undo toast).
-
-        The detail card moved to long-press — it was the tap-on-visited
-        action before, which is why the cycle "didn't register" in testing:
-        the card swallowed every tap after the first. Home stays out of the
-        cycle entirely; tapping it opens its card, and only the card can
-        change or remove a home. Removal at the end of the cycle is
-        acceptable where tap-to-remove once was not: it takes three
-        deliberate taps to reach, each announced, and undo remains.
-      */
-      if (!existingVisit) {
-        await addVisitForCountry(countryId);
-        return;
-      }
-      const type = existingVisit.visitType || 'trip';
-      if (type === 'home') {
-        setOpenCountryIso(isoCode);
-      } else if (type === 'trip') {
-        await updateVisit({
-          id: existingVisit.id,
-          data: { visitType: 'transit' },
-        }).unwrap();
-        showToast('Transit — tap again for "want to go", hold for details', {
-          durationMs: 3000,
-        });
-      } else if (type === 'transit') {
-        await updateVisit({
-          id: existingVisit.id,
-          data: { visitType: 'wishlist' },
-        }).unwrap();
-        showToast('On your "want to go" list — tap again to clear', {
-          durationMs: 3000,
-        });
-      } else {
-        await removeVisitWithUndo(existingVisit);
-      }
-    },
-    [
-      countryByIsoCode,
-      visitByCountryId,
-      addVisitForCountry,
-      updateVisit,
-      removeVisitWithUndo,
-      showToast,
-      selectedJourney,
-      replay.isActive,
-    ]
-  );
-
-  /*
-    Resolve the open country from its ISO code on every render, rather than
-    storing the visit itself. Changing the visit type replaces the visit
-    object, and a card holding the old one would show a stale badge. Returning
-    null once the country is no longer visited also closes the card after a
-    removal, with no extra bookkeeping.
-  */
-  /*
-    Hold a country to open its card, adding it first if it is not yet
-    visited. That gives trip / transit / home a route that does not involve
-    opening a panel — which matters most on a phone, where the panel covers
-    the map you are pointing at.
-  */
-  const handleCountryLongPress = useCallback(
-    async (isoCode: string) => {
-      if (selectedJourney || replay.isActive) return;
-      const countryId = countryByIsoCode.get(isoCode);
-      if (!countryId) return;
-
-      clickConsumedRef.current = true;
-      if (!visitByCountryId.get(countryId)) {
-        await addVisitForCountry(countryId);
-      }
-      setOpenCountryIso(isoCode);
-    },
-    [countryByIsoCode, visitByCountryId, addVisitForCountry, selectedJourney]
-  );
+  /* Tap-cycle and long-press editing live in useCountryInteraction; the
+     drag/consumed refs stay here because the whole container shares them. */
+  const { handleCountryClick, handleCountryLongPress } = useCountryInteraction({
+    countryByIsoCode,
+    visitByCountryId,
+    addVisitForCountry,
+    updateVisit,
+    removeVisitWithUndo,
+    showToast,
+    hasSelectedJourney: Boolean(selectedJourney),
+    replayActive: replay.isActive,
+    wasDragRef,
+    clickConsumedRef,
+    onOpenCountry: setOpenCountryIso,
+  });
 
 
   /*
-    During replay the map draws only what has been flown so far, so the trail
-    accumulates instead of being fully present and merely dimmed. Recomputed
-    per step, which is cheap: aggregateRoutes runs over a growing slice, not
-    the whole history each time.
+    The replay's narration state — revealed countries, landing flash, airport
+    pop, year chip, played-so-far routes — lives in useReplayOrchestration.
   */
-  /*
-    Countries revealed so far in this replay.
-
-    The map starts blank: no visited fills at all, so the colour spreading is
-    the story. A departure country appears as its journey begins — you were
-    already there — and an arrival appears the moment the plane lands, which
-    is when the flash fires. Flashing a country that was already orange was
-    invisible, which is why this had to change rather than just get brighter.
-  */
-  const [revealedIsos, setRevealedIsos] = useState<Set<string>>(new Set());
-
-  const replayCountryDisplayMap = useMemo(() => {
-    const map = new Map<string, CountryDisplayInfo>();
-    for (const iso of revealedIsos) {
-      map.set(iso, {
-        isoCode: iso as Alpha3,
-        visitType: 'trip',
-        isHome: false,
-        hasFlights: true,
-        visit: null,
-      });
-    }
-    return map;
-  }, [revealedIsos]);
-
-  const replayRoutes = useMemo(
-    () => (replay.isActive ? aggregateRoutes(replay.played) : []),
-    [replay.isActive, replay.played]
-  );
-  const replayMaxRouteCount = Math.max(
-    ...replayRoutes.map((route) => route.count),
-    1
-  );
-  const replayAirports = useMemo(
-    () => (replay.isActive ? extractUniqueAirports(replay.played) : []),
-    [replay.isActive, replay.played]
-  );
+  const {
+    landedIsoCode,
+    popAirport,
+    yearChip,
+    replayCountryDisplayMap,
+    replayRoutes,
+    replayMaxRouteCount,
+    replayAirports,
+  } = useReplayOrchestration(replay, countries);
 
   /*
     Fly the camera to each journey as it plays.
@@ -644,152 +489,6 @@ function TravelMap() {
     setZoom(framing.zoom);
     setHasMovedMap(true);
   }, [replay.isActive, replay.current]);
-
-  /*
-    Light up the destination as the plane arrives.
-
-    Timed off the flight duration rather than an animation event: SMIL's
-    endEvent is awkward to hang React state off, and the duration is already
-    known exactly. The country's alpha-3 comes from the countries list, since
-    airports store alpha-2 and the map keys on alpha-3.
-  */
-  const [landedIsoCode, setLandedIsoCode] = useState<string | null>(null);
-  /** Airport whose own marker pops as the replay plane reaches it. */
-  const [popAirport, setPopAirport] = useState<{
-    iata: string;
-    key: number;
-  } | null>(null);
-  /** Year chapter: flashes when the replay crosses into a new year. */
-  const [yearChip, setYearChip] = useState<string | null>(null);
-  const lastYearRef = useRef<string | null>(null);
-  /** Search landing: the found country blinks so it can be told apart. */
-  const [searchBlinkIso, setSearchBlinkIso] = useState<string | null>(null);
-  const blinkTimerRef = useRef<number | null>(null);
-  /** Search landing for an airport: a blinking name-ping at the exact spot. */
-  const [searchPing, setSearchPing] = useState<{
-    label: string;
-    lon: number;
-    lat: number;
-    key: number;
-  } | null>(null);
-  const pingTimerRef = useRef<number | null>(null);
-  /*
-    Countries already lit during this replay.
-
-    The glow marks a discovery — the first time a flight puts you somewhere.
-    Firing it on every landing means a home airport flashes on most steps,
-    which turns a moment into a tic.
-  */
-  const landedBeforeRef = useRef<Set<string>>(new Set());
-
-
-  useEffect(() => {
-    if (!replay.isActive) {
-      landedBeforeRef.current.clear();
-      lastYearRef.current = null;
-      setRevealedIsos(new Set());
-      setPopAirport(null);
-      setYearChip(null);
-    }
-  }, [replay.isActive]);
-
-  const alpha2ToAlpha3 = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const country of countries) map.set(country.isoCode2, country.isoCode);
-    return map;
-  }, [countries]);
-
-  useEffect(() => {
-    setLandedIsoCode(null);
-    setPopAirport(null);
-    if (!replay.isActive || !replay.current) return;
-
-    const legs = [...replay.current.legs].sort((a, b) => a.legOrder - b.legOrder);
-    if (legs.length === 0) return;
-
-    /*
-      Same clock the plane flies on: each leg's own sqrt-distance seconds
-      plus the ground stop before it — so every flash and pop fires at the
-      moment of touchdown, not at an equal-split guess.
-    */
-    const legSecs = legs.map((leg) =>
-      legFlightSeconds(Number(leg.distanceKm) || 0),
-    );
-    const arrivalMsAt = (index: number) =>
-      (legSecs.slice(0, index + 1).reduce((a, b) => a + b, 0) +
-        STOP_PAUSE_SECONDS * index) *
-      1000;
-
-    const timers: number[] = [];
-
-    // Year chapter beat, at the step's start — only when the year changes,
-    // so a busy year reads as one chapter, not a strobe. Undated journeys
-    // (sequenced last) simply have no chapter.
-    const year = replay.current.journeyDate?.slice(0, 4) ?? null;
-    if (year && year !== lastYearRef.current) {
-      lastYearRef.current = year;
-      setYearChip(year);
-      timers.push(window.setTimeout(() => setYearChip(null), 1900));
-    }
-
-    /*
-      Each stop's own marker pops as the plane reaches it — sequentially,
-      matching the country reveals' timing, so a three-leg journey greets
-      you at every connection, not just the destination.
-    */
-    legs.forEach((leg, index) => {
-      const airport = leg.arrivalAirport;
-      if (!airport) return;
-      const at = arrivalMsAt(index);
-      timers.push(
-        window.setTimeout(() => {
-          setPopAirport({ iata: airport.iataCode, key: Date.now() });
-        }, at),
-      );
-    });
-
-    /**
-     * Put a country on the map, flashing it the first time it is touched.
-     *
-     * "First time" is per replay, not per journey, so a home airport does not
-     * strobe on every step — but every country still lights up once, whether
-     * it is an origin, a connection or a destination.
-     */
-    const reveal = (iso3: string) => {
-      setRevealedIsos((current) =>
-        current.has(iso3) ? current : new Set(current).add(iso3)
-      );
-      if (landedBeforeRef.current.has(iso3)) return;
-      landedBeforeRef.current.add(iso3);
-      setLandedIsoCode(iso3);
-      // Release it so the fill transitions back and reads as a flash rather
-      // than a permanent state change.
-      timers.push(
-        window.setTimeout(() => setLandedIsoCode(null), 1400)
-      );
-    };
-
-    const isoOf = (code: string | null) =>
-      code ? alpha2ToAlpha3.get(code) : undefined;
-
-    // You are already standing in the origin when the journey begins.
-    const origin = isoOf(legs[0].departureAirport.countryIso);
-    if (origin) reveal(origin);
-
-    /*
-      Every stop, in order, spread across the flight window — a connection is
-      somewhere you were, and skipping it meant a two-leg journey lit up its
-      origin and destination while the country in the middle stayed dark.
-    */
-    legs.forEach((leg, index) => {
-      const iso3 = isoOf(leg.arrivalAirport.countryIso);
-      if (!iso3) return;
-      const at = arrivalMsAt(index);
-      timers.push(window.setTimeout(() => reveal(iso3), at));
-    });
-
-    return () => timers.forEach((timer) => window.clearTimeout(timer));
-  }, [replay.isActive, replay.current, alpha2ToAlpha3]);
 
   const openCountry = useMemo(() => {
     if (!openCountryIso) return null;
