@@ -37,6 +37,16 @@ Where-next price search, CSV import, airport-specific stats. These are features 
 
 "Flights" section likely becomes "Journeys" (nav copy, empty states, FlightForm gains a mode picker whose endpoint autocomplete switches dataset, list badges per mode). Route styling per mode (e.g. solid air / dashed land / dotted sea) — a genuinely attractive map upgrade. Replay unchanged conceptually.
 
+## Concrete requirement from real data (2026-08-13)
+
+The owner's own trip SOF→AMS→NRT ‖ HND→CDG→AMS→SOF: the NRT→HND segment is a
+train across Tokyo, but the leg-chain model records it as a flight (false leg,
+false distance). Today's answer is "enter two journeys"; the multimodal answer
+is a **surface-transfer leg** — a leg carrying a mode (or `isSurfaceTransfer`)
+that keeps the chain intact but is drawn dashed and excluded from flight
+count/air distance. Same-city airport pairs (NRT/HND, JFK/EWR, CDG/ORY) could
+even suggest it automatically at entry time.
+
 ## Open decisions for the plan phase
 
 - **D1 Endpoint granularity**: city (GeoNames seed) vs country-only vs geocode API. (City recommended — parity with the airports pattern.)
