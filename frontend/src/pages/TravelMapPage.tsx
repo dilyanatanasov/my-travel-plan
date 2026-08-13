@@ -28,6 +28,9 @@ import { MapFocusProvider } from '../features/map/MapFocusContext';
 import type { VisitType, Visit } from '../types';
 
 
+/** One-time "add the flight?" toast after the first country is marked. */
+const FLIGHT_NUDGE_KEY = 'mycontrail-flight-nudge-shown';
+
 /** Visited countries, excluding transit — the same rule the Overview uses. */
 function overviewStatsCountForMilestones(
   visits: { visitType?: string | null }[]
@@ -41,6 +44,9 @@ function TravelMapPage() {
   // default on desktop because it is the primary action; mobile starts closed
   // so the first thing you see is your map.
   const [activeSection, setActiveSection] = useState<SectionId | null>(null);
+  // Session-scoped on purpose: an empty map on a later visit earns the hint
+  // again; a dismissal mid-session is respected until then.
+  const [hintDismissed, setHintDismissed] = useState(false);
   const isDesktop = useIsDesktop();
 
   const { data: countries = [] } = useGetCountriesQuery();
@@ -68,10 +74,29 @@ function TravelMapPage() {
   const handleToggleCountry = useCallback(
     async (countryId: number) => {
       const existingVisit = visitByCountryId.get(countryId);
-      if (existingVisit) await removeVisitWithUndo(existingVisit);
-      else await addVisitForCountry(countryId);
+      if (existingVisit) {
+        await removeVisitWithUndo(existingVisit);
+        return;
+      }
+      await addVisitForCountry(countryId);
+      /*
+        One-time flights nudge, at the moment of highest intent: they just
+        marked somewhere they've been. Phrased as a question because flights
+        are optional — bus, train and ship travellers have already done
+        everything they need by tapping (user decision, 2026-08-13).
+      */
+      if (!localStorage.getItem(FLIGHT_NUDGE_KEY)) {
+        localStorage.setItem(FLIGHT_NUDGE_KEY, '1');
+        showToast('Marked as visited ✓ — got there by plane?', {
+          durationMs: 8000,
+          action: {
+            label: 'Add the flight',
+            onAction: () => setActiveSection('flights'),
+          },
+        });
+      }
     },
-    [visitByCountryId, addVisitForCountry, removeVisitWithUndo]
+    [visitByCountryId, addVisitForCountry, removeVisitWithUndo, showToast]
   );
 
   const handleRemoveVisit = useCallback(
@@ -238,11 +263,16 @@ function TravelMapPage() {
                   Only while there is genuinely nothing: one country or one
                   flight and it is gone for good.
                 */}
-                {visits.length === 0 && (flightSummary?.totalFlights ?? 0) === 0 && (
-                  <div className="absolute z-20 left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 lg:top-auto lg:bottom-24">
-                    <MapFirstRunHint onAddFlights={() => setActiveSection('flights')} />
-                  </div>
-                )}
+                {!hintDismissed &&
+                  visits.length === 0 &&
+                  (flightSummary?.totalFlights ?? 0) === 0 && (
+                    <div className="absolute z-20 left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 lg:top-auto lg:bottom-24">
+                      <MapFirstRunHint
+                        onAddFlights={() => setActiveSection('flights')}
+                        onDismiss={() => setHintDismissed(true)}
+                      />
+                    </div>
+                  )}
 
                 <MapPeekBar
                   countriesVisited={overviewStats.tripCount}
