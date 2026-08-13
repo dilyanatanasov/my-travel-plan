@@ -297,8 +297,14 @@ export class FlightsService {
   }
 
   /**
-   * Create visit records for countries visited in this flight
-   * Detects transit countries (consecutive legs in same country)
+   * Create visit records for countries visited in this flight — every one
+   * as a full visit ('trip'), never auto-transit.
+   *
+   * The old heuristic marked any arrive-then-depart country as transit,
+   * which mislabelled every round trip's DESTINATION (VAR→BCN→VAR reads as
+   * "passed through Spain"). Flying somewhere means you were there (user
+   * decision, 2026-08-13); anyone who genuinely only changed planes demotes
+   * the country to transit with one tap.
    */
   private async createVisitsFromLegs(
     userId: number,
@@ -307,61 +313,18 @@ export class FlightsService {
     journeyId: number,
     journeyDate?: string,
   ): Promise<void> {
-    // Detect transit countries: if we arrive and depart from same country in consecutive legs
-    const transitCountries = new Set<string>();
-    for (let i = 0; i < legs.length - 1; i++) {
-      const arrivalAirport = airportMap.get(legs[i].arrivalAirportId);
-      const nextDepartureAirport = airportMap.get(legs[i + 1].departureAirportId);
-
-      if (
-        arrivalAirport?.countryIso &&
-        nextDepartureAirport?.countryIso &&
-        arrivalAirport.countryIso === nextDepartureAirport.countryIso
-      ) {
-        transitCountries.add(arrivalAirport.countryIso);
-      }
-    }
-
     // Collect all countries from legs
     const countriesInFlight = new Map<string, VisitType>();
 
     for (const leg of legs) {
       const departureAirport = airportMap.get(leg.departureAirportId);
       const arrivalAirport = airportMap.get(leg.arrivalAirportId);
-
-      // Add departure country
       if (departureAirport?.countryIso) {
-        const iso = departureAirport.countryIso;
-        // If not already marked as trip, determine type
-        if (!countriesInFlight.has(iso) || countriesInFlight.get(iso) === 'transit') {
-          countriesInFlight.set(
-            iso,
-            transitCountries.has(iso) ? 'transit' : 'trip',
-          );
-        }
+        countriesInFlight.set(departureAirport.countryIso, 'trip');
       }
-
-      // Add arrival country
       if (arrivalAirport?.countryIso) {
-        const iso = arrivalAirport.countryIso;
-        if (!countriesInFlight.has(iso) || countriesInFlight.get(iso) === 'transit') {
-          countriesInFlight.set(
-            iso,
-            transitCountries.has(iso) ? 'transit' : 'trip',
-          );
-        }
+        countriesInFlight.set(arrivalAirport.countryIso, 'trip');
       }
-    }
-
-    // First and last airports are definitely trips, not transit
-    const firstAirport = airportMap.get(legs[0].departureAirportId);
-    const lastAirport = airportMap.get(legs[legs.length - 1].arrivalAirportId);
-
-    if (firstAirport?.countryIso) {
-      countriesInFlight.set(firstAirport.countryIso, 'trip');
-    }
-    if (lastAirport?.countryIso) {
-      countriesInFlight.set(lastAirport.countryIso, 'trip');
     }
 
     // Create visits for each country

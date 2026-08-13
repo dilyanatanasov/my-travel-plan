@@ -204,6 +204,24 @@ function TravelMap() {
   */
   const replay = useJourneyReplay(flights);
 
+  /*
+    The replay narrates EVERYTHING, so pressing Play clears whatever filters
+    or hidden layers are active (user decision, 2026-08-13): replaying with
+    routes filtered out animated a plane along paths that were not there.
+    Only the UI's start is wrapped — effects keep the raw replay object.
+  */
+  const replayForUi = useMemo(
+    () => ({
+      ...replay,
+      start: () => {
+        setFilters(DEFAULT_FILTERS);
+        setSettings(DEFAULT_SETTINGS);
+        replay.start();
+      },
+    }),
+    [replay],
+  );
+
   // The journey highlighted by clicking one of its routes.
   const [selectedJourney, setSelectedJourney] = useState<FlightJourney | null>(
     null
@@ -905,7 +923,7 @@ function TravelMap() {
         maxRouteCount={replay.isActive ? replayMaxRouteCount : maxRouteCount}
         airports={replay.isActive ? replayAirports : airports}
         airportVisitCounts={airportVisitCounts}
-        replay={replay}
+        replay={replayForUi}
         landedIsoCode={landedIsoCode}
         popAirport={popAirport}
         yearChip={yearChip}
@@ -1105,8 +1123,6 @@ function TravelMap() {
           years={filterOptions.years}
           isOpen={isControlPanelOpen}
           onOpenChange={setIsControlPanelOpen}
-          globeMode={globeMode}
-          onGlobeModeChange={handleGlobeModeChange}
         />
       </div>
       )}
@@ -1128,12 +1144,12 @@ function TravelMap() {
       */}
       {replay.isActive && (
         <div className="absolute z-30 top-3 left-3 right-3 md:right-auto md:w-[30rem]">
-          <ReplayControl replay={replay} />
+          <ReplayControl replay={replayForUi} />
         </div>
       )}
 
       <MapZoomControls
-        extraTool={!replay.isActive ? <ReplayControl replay={replay} compact /> : null}
+        extraTool={!replay.isActive ? <ReplayControl replay={replayForUi} compact /> : null}
         bottomTool={
           /* The mode toggle lives with the map tools, not the filters (the
              settings-gear lesson), in the bottom-anchored slot that never

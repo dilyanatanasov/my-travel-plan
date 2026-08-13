@@ -1,0 +1,12 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="630" fill="#B06B2F"/>
+  <!-- The route arc: ring at departure, dot at arrival -->
+  <path d="M 512 288 Q 540 170 680 138" fill="none" stroke="#ffffff" stroke-width="30" stroke-linecap="round"/>
+  <circle cx="686" cy="136" r="36" fill="#ffffff"/>
+  <circle cx="510" cy="292" r="26" fill="#B06B2F" stroke="#ffffff" stroke-width="16"/>
+  <!-- Two-tone wordmark: my (warm pale, smaller) + Contrail (white serif) -->
+  <text x="600" y="430" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif">
+    <tspan font-size="58" fill="#FFD9BC">my</tspan><tspan font-size="92" fill="#ffffff">Contrail</tspan>
+  </text>
+  <text x="600" y="520" text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif" font-size="40" fill="#ffffff" fill-opacity="0.92">You leave a trail. See it.</text>
+</svg>

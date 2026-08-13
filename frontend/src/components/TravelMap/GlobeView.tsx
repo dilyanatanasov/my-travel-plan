@@ -709,8 +709,7 @@ function GlobeView({
             years={filterYears}
             isOpen={isControlPanelOpen}
             onOpenChange={onControlPanelOpenChange}
-            globeMode
-            onGlobeModeChange={onGlobeModeChange}
+
           />
         </div>
       )}
