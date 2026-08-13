@@ -40,7 +40,12 @@ function WhereNextCard() {
   return (
     <div className="bg-surface border border-line rounded-2xl p-4 shadow-sm">
       <div className="flex items-baseline justify-between gap-2 mb-1">
-        <h3 className="text-sm font-semibold text-ink">Where to next?</h3>
+        <h3 className="text-sm font-semibold text-ink flex items-center gap-1.5">
+          Where to next?
+          <span className="px-1.5 py-0.5 rounded-full bg-brand-50 text-brand-700 text-[10px] font-semibold uppercase tracking-wide">
+            Beta
+          </span>
+        </h3>
         <span className="text-[11px] text-ink-subtle">
           {monthLabel}, from {HOME_ORIGIN.iata}
         </span>

@@ -76,8 +76,8 @@ function DiscoveryPanel({ onShowOnMap }: DiscoveryPanelProps) {
           fares would be lying with numbers.
         */}
         <p className="text-xs text-ink-subtle mt-1">
-          Prices are the cheapest fares other travellers found recently —
-          indicative, not live quotes.
+          This feature is in beta: prices are the cheapest fares other
+          travellers found recently — indicative, not live quotes.
         </p>
       </div>
 

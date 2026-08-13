@@ -64,7 +64,7 @@ function Layout() {
             */}
             <Link
               to="/search"
-              aria-label="Where to next?"
+              aria-label="Where to next? (beta)"
               className="flex items-center gap-1.5 min-h-11 px-3 rounded-lg border border-line
                 text-sm font-medium text-ink hover:bg-canvas"
             >
@@ -82,6 +82,12 @@ function Layout() {
                 <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" />
               </svg>
               <span className="hidden sm:block">Where to next?</span>
+              {/* Flight search is beta: fares are cached observations, not
+                  live quotes — label it so nobody mistakes it for a booking
+                  engine. Hidden below sm with the label it qualifies. */}
+              <span className="hidden sm:inline-block px-1.5 py-0.5 rounded-full bg-brand-50 text-brand-700 text-[10px] font-semibold uppercase tracking-wide">
+                Beta
+              </span>
             </Link>
             {/* Settings stays inside the account menu: a header gear was
                 tried (2026-08-13) and crowded the mobile header out. */}
