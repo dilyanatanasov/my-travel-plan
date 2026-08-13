@@ -274,3 +274,19 @@ select option {
     background-clip: content-box;
   }
 }
+
+/* Search landing: the found country blinks three times. One wash was
+   invisible to anyone who didn't already know the shape they were
+   looking for. */
+@keyframes country-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.2;
+  }
+}
+.country-blink {
+  animation: country-blink 0.55s ease-in-out 3;
+}

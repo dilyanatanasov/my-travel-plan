@@ -228,6 +228,19 @@ function TravelMap() {
     // Landing on a country you have been to opens its card, which is the
     // question someone searching for it is usually asking.
     setOpenCountryIso(target.isoCode ?? null);
+    /*
+      Blink the found country three times. Panning there is not enough:
+      nothing on a map of unlabeled shapes says which one is Japan. This is
+      for the searcher who does not already know the answer.
+    */
+    if (target.isoCode) {
+      setSearchBlinkIso(target.isoCode);
+      if (blinkTimerRef.current) window.clearTimeout(blinkTimerRef.current);
+      blinkTimerRef.current = window.setTimeout(
+        () => setSearchBlinkIso(null),
+        2000,
+      );
+    }
   }, []);
 
   const handleResetView = useCallback(() => {
@@ -511,6 +524,9 @@ function TravelMap() {
     airports store alpha-2 and the map keys on alpha-3.
   */
   const [landedIsoCode, setLandedIsoCode] = useState<string | null>(null);
+  /** Search landing: the found country blinks so it can be told apart. */
+  const [searchBlinkIso, setSearchBlinkIso] = useState<string | null>(null);
+  const blinkTimerRef = useRef<number | null>(null);
   /*
     Countries already lit during this replay.
 
@@ -762,6 +778,7 @@ function TravelMap() {
             onCentroids={setCountryCentroids}
             onCountryLongPress={replay.isActive ? undefined : handleCountryLongPress}
             landedIsoCode={landedIsoCode}
+            blinkIsoCode={searchBlinkIso}
           />
 
           {/* Flight Routes */}

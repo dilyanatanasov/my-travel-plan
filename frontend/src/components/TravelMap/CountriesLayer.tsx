@@ -70,6 +70,8 @@ interface CountriesLayerProps {
   onCountryLongPress?: (isoCode: string) => void;
   /** Alpha-3 of a country the replay has just landed in; pulses once. */
   landedIsoCode?: string | null;
+  /** Search landing: this country blinks three times so it can be found. */
+  blinkIsoCode?: string | null;
   /**
    * Hold borders at a constant on-screen width regardless of zoom.
    *
@@ -93,6 +95,7 @@ function CountriesLayer({
   onCentroids,
   onCountryLongPress,
   landedIsoCode,
+  blinkIsoCode,
   constantBorderWidth = true,
 }: CountriesLayerProps) {
   const isInteractive = Boolean(onCountryClick);
@@ -204,11 +207,16 @@ function CountriesLayer({
             distinguishable from an already-terracotta country.
           */
           const isLanded = Boolean(isoCode && isoCode === landedIsoCode);
+          // Opacity animation, not fill: fill is inline-styled per state
+          // above, and opacity blinks read against both land and visited
+          // colors without fighting it.
+          const isBlinking = Boolean(isoCode && isoCode === blinkIsoCode);
 
           return (
             <Geography
               key={geo.rsmKey}
               geography={geo}
+              className={isBlinking ? 'country-blink' : undefined}
               /*
                 Out of the tab order.
 
