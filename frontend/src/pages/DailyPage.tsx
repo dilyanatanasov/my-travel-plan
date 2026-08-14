@@ -229,13 +229,19 @@ function DailyPage() {
         </div>
 
         {/* The shape. currentColor keeps it honest in both themes. */}
-        <div className="bg-surface border border-line rounded-2xl shadow-sm p-2 text-brand-600">
+        {/* Capped height so shape + guesses + input fit a phone without
+            scrolling (density budget applies off the map too). */}
+        <div className="bg-surface border border-line rounded-2xl shadow-sm p-2 text-brand-600 flex justify-center">
           {silhouettePath ? (
-            <svg viewBox="0 0 400 300" className="w-full" aria-label="Mystery country silhouette">
+            <svg
+              viewBox="0 0 400 300"
+              className="w-full max-h-[32vh]"
+              aria-label="Mystery country silhouette"
+            >
               <path d={silhouettePath} fill="currentColor" />
             </svg>
           ) : (
-            <div className="aspect-[4/3] flex items-center justify-center text-sm text-ink-muted">
+            <div className="h-[32vh] flex items-center justify-center text-sm text-ink-muted">
               {candidates?.length === 0
                 ? 'Could not load the world — try a reload.'
                 : 'Drawing today’s mystery…'}
@@ -268,7 +274,7 @@ function DailyPage() {
               (_, i) => (
                 <li
                   key={`empty-${i}`}
-                  className="border border-dashed border-line rounded-lg min-h-10"
+                  className="border border-dashed border-line rounded-lg min-h-6"
                 />
               ),
             )}
@@ -285,7 +291,9 @@ function DailyPage() {
               disabled={!answer}
             />
             {suggestions.length > 0 && (
-              <ul className="absolute z-10 left-0 right-0 top-full mt-1 bg-surface border border-line rounded-lg shadow-lg overflow-hidden">
+              /* Opens UPWARD: the input sits low on the page, so a downward
+                 list fell off-screen behind the scroll (user report). */
+              <ul className="absolute z-10 left-0 right-0 bottom-full mb-1 bg-surface border border-line rounded-lg shadow-lg overflow-hidden">
                 {suggestions.map((candidate) => (
                   <li key={candidate.iso3}>
                     <button

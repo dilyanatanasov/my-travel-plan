@@ -229,7 +229,10 @@ function ReplayControl({
         <span className="text-sm font-medium tabular-nums flex-shrink-0">
           {replay.index} / {replay.total}
         </span>
-        <span className="text-[11px] map-glass-muted tabular-nums truncate ml-1.5">
+        {/* Hidden on phones: as a flex item it refuses to shrink below its
+            content, which shoved the buttons (mute included) off the card's
+            edge — "there is no mute button". The step counter stays. */}
+        <span className="hidden sm:inline min-w-0 text-[11px] map-glass-muted tabular-nums truncate ml-1.5">
           {totals.km.toLocaleString()} km ·{' '}
           {totals.countries}{' '}
           {totals.countries === 1 ? 'country' : 'countries'}
