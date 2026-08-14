@@ -289,7 +289,19 @@ function TravelMap() {
   /* Search landings (camera fit, country blink, airport ping) live in
      useSearchLanding; framing a result counts as a deliberate move, so the
      data framing stops overriding it. */
+  /*
+    The landing glides instead of cutting (2026-08-14, user request after
+    feeling the globe's animated fly-to): the replay's transform transition
+    is borrowed for just over one transition's length, then dropped so
+    ordinary panning stays immediate. State, not a ref — the className has
+    to re-render on and off.
+  */
+  const [searchGlide, setSearchGlide] = useState(false);
+  const glideTimerRef = useRef<number | null>(null);
   const handleSearchFrame = useCallback((frameCenter: LonLat, frameZoom: number) => {
+    setSearchGlide(true);
+    if (glideTimerRef.current) window.clearTimeout(glideTimerRef.current);
+    glideTimerRef.current = window.setTimeout(() => setSearchGlide(false), 750);
     setCenter(frameCenter);
     setZoom(frameZoom);
     setHasMovedMap(true);
@@ -665,7 +677,7 @@ function TravelMap() {
         }}
         role="img"
         aria-label={mapSummary}
-        className={`w-full h-full ${replay.isActive ? 'replay-camera' : ''}`}
+        className={`w-full h-full ${replay.isActive || searchGlide ? 'replay-camera' : ''}`}
       >
         <ZoomableGroup
           zoom={effectiveZoom}

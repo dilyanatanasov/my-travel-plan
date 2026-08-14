@@ -121,6 +121,17 @@ function MapControlPanel({
 }: MapControlPanelProps) {
   const activeCount = countActiveFilters(filters);
 
+  /*
+    No flights, no panel (2026-08-14): every control here is flight-scoped —
+    the filters filter routes, and with nothing flying, the view switch's
+    three options draw identical maps. A "Layers & filters" card whose every
+    option is a no-op teaches a new user that controls on this app do
+    nothing. The options lists come from ALL flights, not the filtered set,
+    so an active filter can never hide the panel that would clear it; the
+    card appears with the first recorded flight.
+  */
+  if (airports.length === 0 && years.length === 0) return null;
+
   const handleContinentToggle = (continent: Continent) => {
     onFiltersChange({
       ...filters,
