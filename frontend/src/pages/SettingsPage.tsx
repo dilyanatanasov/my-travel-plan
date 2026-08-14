@@ -16,6 +16,8 @@ import {
   useSetHomeCountryMutation,
 } from '../features/visits/visitsApi';
 import { useToast } from '../components/Toast/ToastProvider';
+import Button from '../components/ui/Button';
+import TextInput from '../components/ui/TextInput';
 
 const OPTIONS: { value: ThemePreference; label: string; hint: string }[] = [
   { value: 'light', label: 'Light', hint: 'Always light' },
@@ -284,56 +286,55 @@ function SettingsPage() {
                 </div>
               </dl>
               {!showPasswordForm ? (
-                <button
-                  type="button"
+                <Button
+                  variant="neutral"
+                  fullWidth
+                  className="mt-4"
                   onClick={() => setShowPasswordForm(true)}
-                  className="mt-4 w-full min-h-11 rounded-lg border border-line text-sm font-medium text-ink hover:bg-surface-sunken"
                 >
                   Change password…
-                </button>
+                </Button>
               ) : (
                 <div className="mt-4 space-y-2">
-                  <input
+                  <TextInput
                     type="password"
                     autoComplete="current-password"
                     value={currentPassword}
                     onChange={(e) => setCurrentPassword(e.target.value)}
                     placeholder="Current password"
                     aria-label="Current password"
-                    className="w-full min-h-10 px-3 border border-line rounded-lg bg-surface text-ink text-sm placeholder:text-ink-subtle focus:outline-none focus:ring-2 focus:ring-brand-500"
                   />
-                  <input
+                  <TextInput
                     type="password"
                     autoComplete="new-password"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     placeholder="New password (at least 8 characters)"
                     aria-label="New password"
-                    className="w-full min-h-10 px-3 border border-line rounded-lg bg-surface text-ink text-sm placeholder:text-ink-subtle focus:outline-none focus:ring-2 focus:ring-brand-500"
                   />
                   <div className="flex gap-2">
-                    <button
-                      type="button"
+                    <Button
+                      size="sm"
+                      className="flex-1"
                       onClick={handleChangePassword}
                       disabled={
                         isChangingPassword || !currentPassword || !newPassword
                       }
-                      className="flex-1 min-h-10 rounded-lg bg-brand-600 text-white text-sm font-medium hover:bg-brand-700 disabled:opacity-50"
                     >
                       {isChangingPassword ? 'Saving…' : 'Save new password'}
-                    </button>
-                    <button
-                      type="button"
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       onClick={() => {
                         setShowPasswordForm(false);
                         setCurrentPassword('');
                         setNewPassword('');
                       }}
                       disabled={isChangingPassword}
-                      className="min-h-10 px-4 rounded-lg text-sm font-medium text-ink-muted hover:bg-surface-sunken"
                     >
                       Cancel
-                    </button>
+                    </Button>
                   </div>
                   <p className="text-xs text-ink-subtle">
                     Forgot it? Sign out and use &ldquo;Forgot password&rdquo;
@@ -365,23 +366,25 @@ function SettingsPage() {
             .
           </p>
 
-          <button
-            type="button"
+          <Button
+            variant="outline"
+            fullWidth
+            className="mt-3"
             onClick={handleExport}
             disabled={isExporting}
-            className="mt-3 w-full min-h-11 rounded-lg border border-brand-600 text-brand-700 text-sm font-medium hover:bg-brand-50 disabled:opacity-50"
           >
             {isExporting ? 'Preparing…' : 'Download my data (JSON)'}
-          </button>
+          </Button>
 
           {!confirmingDelete ? (
-            <button
-              type="button"
+            <Button
+              variant="dangerGhost"
+              fullWidth
+              className="mt-2"
               onClick={() => setConfirmingDelete(true)}
-              className="mt-2 w-full min-h-11 rounded-lg text-sm font-medium text-danger hover:bg-danger-soft"
             >
               Delete my account…
-            </button>
+            </Button>
           ) : (
             <div className="mt-3 border border-danger/30 rounded-lg p-3 space-y-2">
               <p className="text-xs text-ink-muted leading-relaxed">
@@ -390,35 +393,35 @@ function SettingsPage() {
                 downloading your data first.
               </p>
               {!isGuest && (
-                <input
+                <TextInput
                   type="password"
                   value={deletePassword}
                   onChange={(e) => setDeletePassword(e.target.value)}
                   placeholder="Your password"
                   aria-label="Confirm your password to delete the account"
-                  className="w-full min-h-10 px-3 border border-line rounded-lg bg-surface text-ink text-sm placeholder:text-ink-subtle focus:outline-none focus:ring-2 focus:ring-brand-500"
                 />
               )}
               <div className="flex gap-2">
-                <button
-                  type="button"
+                <Button
+                  variant="danger"
+                  size="sm"
+                  className="flex-1"
                   onClick={handleDelete}
                   disabled={isDeleting || (!isGuest && !deletePassword)}
-                  className="flex-1 min-h-10 rounded-lg bg-danger text-white text-sm font-medium disabled:opacity-50"
                 >
                   {isDeleting ? 'Deleting…' : 'Permanently delete everything'}
-                </button>
-                <button
-                  type="button"
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
                   onClick={() => {
                     setConfirmingDelete(false);
                     setDeletePassword('');
                   }}
                   disabled={isDeleting}
-                  className="min-h-10 px-4 rounded-lg text-sm font-medium text-ink-muted hover:bg-surface-sunken"
                 >
                   Cancel
-                </button>
+                </Button>
               </div>
             </div>
           )}

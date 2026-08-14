@@ -13,6 +13,7 @@ import { useToast } from '../../components/Toast/ToastProvider';
 import { useAuth } from '../auth/authApi';
 import { formatJourneyDate } from '../../utils/journeyDate';
 import { track } from '../../lib/analytics';
+import Button from '../../components/ui/Button';
 
 /**
  * One journey as a boarding-pass image (trip share v1, 2026-08-14).
@@ -174,35 +175,30 @@ function TripShareDialog({
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-sm text-ink-muted px-6 text-center">
               <span>{error ?? 'Drawing your boarding pass…'}</span>
               {error && (
-                <button
-                  type="button"
-                  onClick={() => setRetryToken((n) => n + 1)}
-                  className="min-h-10 px-4 rounded-xl bg-brand-600 text-white text-sm font-medium hover:bg-brand-700"
-                >
+                <Button size="sm" onClick={() => setRetryToken((n) => n + 1)}>
                   Try again
-                </button>
+                </Button>
               )}
             </div>
           )}
         </div>
 
         <div className="flex gap-2">
-          <button
-            type="button"
+          <Button
+            className="flex-1 rounded-xl font-semibold"
             onClick={handleShare}
             disabled={!previewUrl}
-            className="flex-1 min-h-11 rounded-xl bg-brand-600 text-white font-semibold hover:bg-brand-700 disabled:opacity-50"
           >
             Share
-          </button>
-          <button
-            type="button"
+          </Button>
+          <Button
+            variant="outline"
+            className="flex-1 rounded-xl font-semibold"
             onClick={handleDownload}
             disabled={!previewUrl}
-            className="flex-1 min-h-11 rounded-xl border border-brand-600 text-brand-700 font-semibold hover:bg-brand-50 disabled:opacity-50"
           >
             Save image
-          </button>
+          </Button>
         </div>
       </div>
     </div>
