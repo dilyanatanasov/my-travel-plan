@@ -10,6 +10,8 @@ import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { hash, verify } from '@node-rs/argon2';
 import { User } from '../users/entities/user.entity';
+import { FlightJourney } from '../flights/entities/flight-journey.entity';
+import { Visit } from '../visits/entities/visit.entity';
 import { UsersService } from '../users/users.service';
 import { MailService } from '../mail/mail.service';
 import { AuthTokensService } from './auth-tokens.service';
@@ -314,5 +316,96 @@ export class AuthService {
       throw new UnauthorizedException();
     }
     return this.toPublicUser(user);
+  }
+
+  /**
+   * GDPR right to erasure (2026-08-14).
+   *
+   * Registered accounts confirm with their password — a stolen session must
+   * not be enough to destroy someone's data. Guests have no password and may
+   * delete freely; their rows are throwaway by design.
+   *
+   * Deletion is one user-row delete: visits, journeys+legs, auth tokens and
+   * the share card all cascade in the database. saved_duels is token-keyed
+   * with no FK (revoking a token must break bookmarks), so our own rows are
+   * removed explicitly. Bookmarks OTHER users hold against this account's
+   * token die naturally — the token no longer resolves.
+   */
+  async deleteAccount(userId: number, password?: string): Promise<void> {
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new UnauthorizedException();
+    }
+    if (user.passwordHash) {
+      const passwordMatches = password
+        ? await verify(user.passwordHash, password).catch(() => false)
+        : false;
+      if (!passwordMatches) {
+        throw new UnauthorizedException('Wrong password');
+      }
+    }
+
+    await this.dataSource.query('DELETE FROM saved_duels WHERE user_id = $1', [
+      userId,
+    ]);
+    await this.userRepository.delete(userId);
+    // The id only — never the email — so the log itself stays clean of
+    // personal data about someone who just asked to be forgotten.
+    this.logger.log(`Account ${userId} deleted at the user's request`);
+  }
+
+  /**
+   * GDPR right to portability: everything the account owns, as plain JSON.
+   * Shape mirrors the import format where possible so a re-import is
+   * conceivable. No internal ids beyond the journey's own, no hashes.
+   */
+  async exportMyData(userId: number) {
+    const user = await this.usersService.findById(userId);
+    if (!user) {
+      throw new UnauthorizedException();
+    }
+
+    const journeys = await this.dataSource.getRepository(FlightJourney).find({
+      where: { userId },
+      relations: ['legs', 'legs.departureAirport', 'legs.arrivalAirport'],
+      order: { journeyDate: 'ASC', sortIndex: 'ASC' },
+    });
+    const visits = await this.dataSource.getRepository(Visit).find({
+      where: { userId },
+      relations: ['country'],
+    });
+
+    return {
+      exportedAt: new Date().toISOString(),
+      profile: {
+        email: user.email,
+        displayName: user.displayName,
+        emailVerified: user.emailVerified,
+        createdAt: user.createdAt,
+      },
+      visits: visits.map((visit) => ({
+        country: visit.country?.name ?? null,
+        countryIso: visit.country?.isoCode2 ?? null,
+        visitType: visit.visitType ?? 'trip',
+        notes: visit.notes ?? null,
+        createdAt: visit.createdAt,
+      })),
+      journeys: journeys.map((journey) => {
+        const legs = [...(journey.legs ?? [])].sort(
+          (a, b) => a.legOrder - b.legOrder,
+        );
+        return {
+          date: journey.journeyDate ?? null,
+          datePrecision: journey.datePrecision,
+          isRoundTrip: journey.isRoundTrip,
+          notes: journey.notes ?? null,
+          legs: legs.map((leg) => ({
+            from: leg.departureAirport?.iataCode ?? null,
+            to: leg.arrivalAirport?.iataCode ?? null,
+            distanceKm: Number(leg.distanceKm) || 0,
+          })),
+        };
+      }),
+    };
   }
 }

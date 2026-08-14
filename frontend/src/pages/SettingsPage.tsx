@@ -1,9 +1,11 @@
-import { Link } from 'react-router-dom';
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   useTheme,
   type ThemePreference,
 } from '../features/theme/ThemeContext';
-import { useAuth } from '../features/auth/authApi';
+import { useAuth, useDeleteAccountMutation } from '../features/auth/authApi';
+import { downloadBlob } from '../utils/exportMapImage';
 import {
   useGetCountriesQuery,
   useGetVisitsQuery,
@@ -51,6 +53,45 @@ function SettingsPage() {
   const { data: visits = [] } = useGetVisitsQuery();
   const [setHomeCountry, { isLoading: isSavingHome }] = useSetHomeCountryMutation();
   const { showToast } = useToast();
+  const navigate = useNavigate();
+  const [deleteAccount, { isLoading: isDeleting }] = useDeleteAccountMutation();
+  const [isExporting, setIsExporting] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deletePassword, setDeletePassword] = useState('');
+
+  const handleExport = async () => {
+    setIsExporting(true);
+    try {
+      // Same-origin cookie auth, same base the API slice uses.
+      const base = (import.meta.env.VITE_API_URL as string | undefined) ?? '/api';
+      const response = await fetch(`${base}/auth/export`, {
+        credentials: 'include',
+      });
+      if (!response.ok) throw new Error(String(response.status));
+      const blob = await response.blob();
+      downloadBlob(blob, 'mycontrail-export.json');
+      showToast('Your data has been downloaded', { tone: 'success' });
+    } catch {
+      showToast('Could not export your data — try again', { tone: 'error' });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    try {
+      await deleteAccount(
+        isGuest ? {} : { password: deletePassword },
+      ).unwrap();
+      showToast('Your account and all its data have been deleted');
+      navigate('/');
+    } catch {
+      showToast(
+        isGuest ? 'Could not delete the account' : 'Wrong password',
+        { tone: 'error' },
+      );
+    }
+  };
 
   const homeCountryId =
     visits.find((visit) => visit.visitType === 'home')?.countryId ?? '';
@@ -216,10 +257,89 @@ function SettingsPage() {
                 </div>
               </dl>
               <p className="text-xs text-ink-subtle mt-4">
-                Changing your password and deleting your account are not built
-                yet.
+                Changing your password is not built yet — use the password
+                reset from the login page instead.
               </p>
             </>
+          )}
+        </section>
+
+        {/* GDPR rights, as features: portability and erasure. */}
+        <section
+          aria-labelledby="data-heading"
+          className="bg-surface border border-line rounded-xl p-4 sm:p-5 mt-4"
+        >
+          <h2 id="data-heading" className="text-base font-semibold text-ink">
+            Your data
+          </h2>
+          <p className="text-sm text-ink-muted mt-1">
+            Everything you have entered belongs to you. See the{' '}
+            <Link to="/privacy" className="text-brand-700 hover:underline">
+              privacy policy
+            </Link>{' '}
+            and{' '}
+            <Link to="/terms" className="text-brand-700 hover:underline">
+              terms
+            </Link>
+            .
+          </p>
+
+          <button
+            type="button"
+            onClick={handleExport}
+            disabled={isExporting}
+            className="mt-3 w-full min-h-11 rounded-lg border border-brand-600 text-brand-700 text-sm font-medium hover:bg-brand-50 disabled:opacity-50"
+          >
+            {isExporting ? 'Preparing…' : 'Download my data (JSON)'}
+          </button>
+
+          {!confirmingDelete ? (
+            <button
+              type="button"
+              onClick={() => setConfirmingDelete(true)}
+              className="mt-2 w-full min-h-11 rounded-lg text-sm font-medium text-danger hover:bg-danger-soft"
+            >
+              Delete my account…
+            </button>
+          ) : (
+            <div className="mt-3 border border-danger/30 rounded-lg p-3 space-y-2">
+              <p className="text-xs text-ink-muted leading-relaxed">
+                This permanently deletes your account, countries, flights and
+                any share or duel links. There is no undo — consider
+                downloading your data first.
+              </p>
+              {!isGuest && (
+                <input
+                  type="password"
+                  value={deletePassword}
+                  onChange={(e) => setDeletePassword(e.target.value)}
+                  placeholder="Your password"
+                  aria-label="Confirm your password to delete the account"
+                  className="w-full min-h-10 px-3 border border-line rounded-lg bg-surface text-ink text-sm placeholder:text-ink-subtle focus:outline-none focus:ring-2 focus:ring-brand-500"
+                />
+              )}
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  disabled={isDeleting || (!isGuest && !deletePassword)}
+                  className="flex-1 min-h-10 rounded-lg bg-danger text-white text-sm font-medium disabled:opacity-50"
+                >
+                  {isDeleting ? 'Deleting…' : 'Permanently delete everything'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setConfirmingDelete(false);
+                    setDeletePassword('');
+                  }}
+                  disabled={isDeleting}
+                  className="min-h-10 px-4 rounded-lg text-sm font-medium text-ink-muted hover:bg-surface-sunken"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
           )}
         </section>
       </div>

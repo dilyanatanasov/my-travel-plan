@@ -145,6 +145,23 @@ export const authApi = apiSlice.injectEndpoints({
         dispatch(apiSlice.util.resetApiState());
       },
     }),
+
+    /**
+     * GDPR erasure. The server verifies the password for registered
+     * accounts and clears the session cookie; the cache reset mirrors
+     * logout — a deleted account's map must vanish immediately.
+     */
+    deleteAccount: builder.mutation<{ ok: boolean }, { password?: string }>({
+      query: (body) => ({
+        url: '/auth/account',
+        method: 'DELETE',
+        body,
+      }),
+      async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
+        await queryFulfilled;
+        dispatch(apiSlice.util.resetApiState());
+      },
+    }),
   }),
 });
 
@@ -158,6 +175,7 @@ export const {
   useVerifyEmailMutation,
   useResendVerificationMutation,
   useLogoutMutation,
+  useDeleteAccountMutation,
 } = authApi;
 
 /**

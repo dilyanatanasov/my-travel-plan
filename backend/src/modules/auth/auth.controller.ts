@@ -2,6 +2,7 @@ import {
   Controller,
   Post,
   Get,
+  Delete,
   Body,
   Req,
   Res,
@@ -17,6 +18,7 @@ import { LoginDto } from './dto/login.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { VerifyEmailDto } from './dto/verify-email.dto';
+import { DeleteAccountDto } from './dto/delete-account.dto';
 import { Public } from '../../common/decorators/public.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { ACCESS_TOKEN_COOKIE } from './jwt.strategy';
@@ -144,6 +146,32 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async resendVerification(@CurrentUser('id') userId: number) {
     await this.authService.resendVerification(userId);
+    return { ok: true };
+  }
+
+  /** GDPR portability: everything the account owns, as one JSON document. */
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Get('export')
+  async exportData(@CurrentUser('id') userId: number) {
+    return this.authService.exportMyData(userId);
+  }
+
+  /**
+   * GDPR erasure. Registered accounts must confirm their password (enforced
+   * in the service); the session cookie dies with the account. Throttled:
+   * a wrong-password loop is a credential-guessing oracle.
+   */
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Delete('account')
+  @HttpCode(HttpStatus.OK)
+  async deleteAccount(
+    @CurrentUser('id') userId: number,
+    @Body() dto: DeleteAccountDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    await this.authService.deleteAccount(userId, dto.password);
+    const { maxAge, ...options } = this.cookieOptions();
+    res.clearCookie(ACCESS_TOKEN_COOKIE, options);
     return { ok: true };
   }
 

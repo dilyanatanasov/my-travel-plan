@@ -18,6 +18,9 @@ import {
   getApiErrorMessage,
 } from '../features/auth/authStyles';
 
+/** The form carries consent; the API request deliberately does not. */
+type RegisterForm = RegisterRequest & { acceptedTerms: boolean };
+
 function RegisterPage() {
   const navigate = useNavigate();
   const [registerUser, { isLoading, error }] = useRegisterMutation();
@@ -52,15 +55,20 @@ function RegisterPage() {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<RegisterRequest>();
+  } = useForm<RegisterForm>();
 
-  const onSubmit = async (values: RegisterRequest) => {
+  const onSubmit = async (values: RegisterForm) => {
     // Captured before the mutation flips it: was this a guest converting?
     const wasGuest = isGuest;
+    // Consent stays client-side; the API type does not carry it.
+    const payload: RegisterRequest & { acceptedTerms?: boolean } = {
+      ...values,
+    };
+    delete payload.acceptedTerms;
     try {
       await registerUser({
-        ...values,
-        displayName: values.displayName?.trim() || undefined,
+        ...payload,
+        displayName: payload.displayName?.trim() || undefined,
       }).unwrap();
       if (wasGuest) {
         // The funnel number that matters. No properties at all.
@@ -175,6 +183,39 @@ function RegisterPage() {
             </p>
           )}
         </div>
+
+        {/* Consent to the legal pages, required to register (2026-08-14). */}
+        <label className="flex items-start gap-2 text-sm text-ink-muted cursor-pointer">
+          <input
+            type="checkbox"
+            className="mt-0.5 w-4 h-4 rounded text-brand-600 focus:ring-brand-500"
+            {...register('acceptedTerms', {
+              required: 'Please accept the terms to continue',
+            })}
+          />
+          <span>
+            I agree to the{' '}
+            <Link
+              to="/terms"
+              target="_blank"
+              className="text-brand-700 hover:underline"
+            >
+              terms of service
+            </Link>{' '}
+            and the{' '}
+            <Link
+              to="/privacy"
+              target="_blank"
+              className="text-brand-700 hover:underline"
+            >
+              privacy policy
+            </Link>
+            .
+          </span>
+        </label>
+        {errors.acceptedTerms && (
+          <p className={fieldErrorClass}>{errors.acceptedTerms.message}</p>
+        )}
 
         <button type="submit" disabled={isLoading} className={submitClass}>
           {isLoading ? 'Creating account…' : 'Create account'}

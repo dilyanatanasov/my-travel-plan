@@ -18,6 +18,8 @@ const VerifyEmailPage = lazy(() => import('./pages/VerifyEmailPage'));
 const SharedMapPage = lazy(() => import('./pages/SharedMapPage'));
 const DuelPage = lazy(() => import('./pages/DuelPage'));
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
+const PrivacyPage = lazy(() => import('./pages/PrivacyPage'));
+const TermsPage = lazy(() => import('./pages/TermsPage'));
 
 function App() {
   // Stale open tabs get a "new version — reload" toast after deploys.
@@ -36,6 +38,9 @@ function App() {
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/verify-email" element={<VerifyEmailPage />} />
+        {/* Legal pages — public: linked from registration */}
+        <Route path="/privacy" element={<PrivacyPage />} />
+        <Route path="/terms" element={<TermsPage />} />
         {/* Public shared map — deliberately outside RequireAuth */}
         <Route path="/s/:token" element={<SharedMapPage />} />
         {/* Duels: public like the maps they compose; depth gated in-page */}
