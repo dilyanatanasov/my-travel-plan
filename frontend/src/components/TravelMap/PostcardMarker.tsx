@@ -49,7 +49,8 @@ function PostcardMarker({ postcard }: { postcard: ReplayPostcard }) {
   */
   const screenY = zoomPan.y + zoom * y;
   const screenCardTop = 38 + frameH; // constant on screen by construction
-  const flipped = screenY - screenCardTop < 170;
+  // 230px clears even a tall two-line itinerary bar on a phone.
+  const flipped = screenY - screenCardTop < 230;
 
   return (
     <g
