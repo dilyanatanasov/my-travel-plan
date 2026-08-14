@@ -226,6 +226,7 @@ function SharePanel() {
   const handleDownload = useCallback(() => {
     if (!blobRef.current) return;
     downloadBlob(blobRef.current, filename);
+    track('share_action', { kind: 'download' });
     showToast('Image saved', { tone: 'success' });
   }, [filename, showToast]);
 
@@ -249,6 +250,8 @@ function SharePanel() {
           title: 'myContrail map',
           text: content.headline,
         });
+        // How people share — the kind of action, never the content.
+        track('share_action', { kind: 'native_sheet' });
         return;
       } catch (error) {
         // A cancelled sheet throws AbortError; that is not a failure.
@@ -267,11 +270,13 @@ function SharePanel() {
     try {
       if (token) {
         await disableShare().unwrap();
+        track('share_action', { kind: 'link_disabled' });
         showToast('Sharing turned off. Existing links no longer work.', {
           tone: 'success',
         });
       } else {
         const result = await enableShare().unwrap();
+        track('share_action', { kind: 'link_created' });
         // The link is live from this moment, so give its preview the card
         // that is already on screen rather than waiting for a re-render.
         if (blobRef.current) {
@@ -291,6 +296,7 @@ function SharePanel() {
     if (!shareUrl) return;
     try {
       await navigator.clipboard.writeText(shareUrl);
+      track('share_action', { kind: 'link_copied' });
       showToast('Share link copied', { tone: 'success' });
     } catch {
       // Clipboard is blocked over plain http on a LAN address; show the link
@@ -499,9 +505,12 @@ function SharePanel() {
                     <button
                       key={intent.label}
                       type="button"
-                      onClick={() =>
-                        window.open(intent.href, '_blank', 'noopener,noreferrer')
-                      }
+                      onClick={() => {
+                        track('share_action', {
+                          kind: `intent_${intent.label.toLowerCase()}`,
+                        });
+                        window.open(intent.href, '_blank', 'noopener,noreferrer');
+                      }}
                       className="flex-1 min-h-10 px-2 rounded-xl border border-line bg-surface text-xs font-medium text-ink hover:bg-surface-sunken
                         focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
                     >

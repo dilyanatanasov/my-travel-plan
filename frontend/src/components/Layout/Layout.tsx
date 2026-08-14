@@ -1,9 +1,25 @@
+import { useEffect, useRef } from 'react';
 import { Outlet, Link } from 'react-router-dom';
 import AccountMenu from '../../features/auth/AccountMenu';
 import VerifyEmailBanner from '../../features/auth/VerifyEmailBanner';
 import BrandMark from '../BrandMark';
+import { useAuth } from '../../features/auth/authApi';
+import { track } from '../../lib/analytics';
 
 function Layout() {
+  /*
+    One session-kind beacon per load (2026-08-14): guest vs registered is
+    the split the owner cannot otherwise see in Umami. A kind, never an
+    identity — same privacy rule as every other event.
+  */
+  const { user } = useAuth();
+  const kindReported = useRef(false);
+  useEffect(() => {
+    if (!user || kindReported.current) return;
+    kindReported.current = true;
+    track('app_session', { kind: user.isGuest ? 'guest' : 'registered' });
+  }, [user]);
+
   return (
     // Fixed shell: the app fills the viewport and never scrolls as a page.
     // Only panels scroll. This is what stops content hiding below the fold and
