@@ -194,6 +194,15 @@ interface GlobeViewProps {
     bounds?: Map<string, [LonLat, LonLat]>,
   ) => void;
   replay: ReplayState;
+  /*
+    Country editing on the sphere (D8, 2026-08-14): the same tap-cycle and
+    long-press handlers the flat map gets from useCountryInteraction. The
+    globe guards them against its own rotate gesture before passing them on.
+  */
+  onCountryClick?: (isoCode: string) => void | Promise<void>;
+  onCountryLongPress?: (isoCode: string) => void | Promise<void>;
+  /** The country detail card, built and positioned by TravelMap. */
+  detailCard?: ReactNode;
   landedIsoCode: string | null;
   popAirport: { iata: string; key: number } | null;
   yearChip: string | null;
@@ -245,6 +254,9 @@ function GlobeView({
   countryBounds,
   onCentroids,
   replay,
+  onCountryClick,
+  onCountryLongPress,
+  detailCard,
   landedIsoCode,
   popAirport,
   yearChip,
@@ -334,6 +346,8 @@ function GlobeView({
     fly, and it keeps the whole gesture 20 lines with no new dependency.
   */
   const pointersRef = useRef(new Map<number, { x: number; y: number }>());
+  /** True from the end of a moved gesture until the next pointer-down. */
+  const lastGestureMovedRef = useRef(false);
   const dragRef = useRef<{
     rotation: [number, number];
     zoom: number;
@@ -425,7 +439,16 @@ function GlobeView({
       if (event.pointerType === 'mouse' && event.button !== 0) return;
       // A press on the map takes the camera back from a search flight.
       cancelFlight();
-      event.currentTarget.setPointerCapture(event.pointerId);
+      /*
+        No pointer capture here (D8): capture retargets every later event to
+        the container, which starves the country paths — their click never
+        fires (the tap-cycle went dead) and their long-press timer never gets
+        the move/leave that would cancel it. Capture now happens in
+        handlePointerMove, on the first movement past the slop: a clean tap
+        never captures and reaches the country like on the flat map, while a
+        real drag captures before it can leave the element.
+      */
+      lastGestureMovedRef.current = false;
       pointersRef.current.set(event.pointerId, {
         x: event.clientX,
         y: event.clientY,
@@ -450,6 +473,9 @@ function GlobeView({
           points[0].x - points[1].x,
           points[0].y - points[1].y,
         );
+        if (!event.currentTarget.hasPointerCapture(event.pointerId)) {
+          event.currentTarget.setPointerCapture(event.pointerId);
+        }
         drag.moved = true;
         markMoved();
         scheduleCamera({
@@ -462,6 +488,12 @@ function GlobeView({
       const dx = event.clientX - drag.x;
       const dy = event.clientY - drag.y;
       if (!drag.moved && Math.abs(dx) + Math.abs(dy) < 3) return;
+      if (!drag.moved) {
+        // The gesture has become a drag: take the pointer now (see the
+        // pointer-down comment), which also fires pointerleave on the
+        // country path and cancels its long-press timer.
+        event.currentTarget.setPointerCapture(event.pointerId);
+      }
       drag.moved = true;
       markMoved();
       // Degrees per pixel shrink as the globe grows, so the ground tracks
@@ -486,6 +518,9 @@ function GlobeView({
         // it looked.
         track('map_interact', { kind: 'globe-rotate' });
       }
+      // Survives the click that follows this pointerup, so the country
+      // handlers can tell a tap from the end of a rotation.
+      lastGestureMovedRef.current = dragRef.current?.moved ?? false;
       dragRef.current = null;
       setIsDragging(false);
     } else {
@@ -675,6 +710,33 @@ function GlobeView({
     });
   }, [homeCenter, setCamera]);
 
+  /*
+    The flat map's tap-cycle and long-press, guarded against the globe's own
+    gestures (D8, 2026-08-14). Click fires after the gesture ended, so it
+    checks the flag the gesture left behind; the long-press timer fires
+    mid-gesture, so it reads the live drag state instead.
+  */
+  const guardedCountryClick = useMemo(
+    () =>
+      onCountryClick
+        ? (isoCode: string) => {
+            if (lastGestureMovedRef.current) return;
+            void onCountryClick(isoCode);
+          }
+        : undefined,
+    [onCountryClick],
+  );
+  const guardedCountryLongPress = useMemo(
+    () =>
+      onCountryLongPress
+        ? (isoCode: string) => {
+            if (dragRef.current?.moved) return;
+            void onCountryLongPress(isoCode);
+          }
+        : undefined,
+    [onCountryLongPress],
+  );
+
   const sphereRadius = baseRadius * camera.zoom;
 
   return (
@@ -744,11 +806,14 @@ function GlobeView({
             countryDisplayMap={countryDisplayMap}
             showVisitColors={settings.showCountries}
             /*
-              No click or long-press: the tap-cycle edits real data, and v1
-              defers country editing to the flat map. Omitting the handlers
-              renders the layer read-only, so nothing lights up promising an
-              interaction that is not there.
+              The tap-cycle and long-press arrived with D8 (2026-08-14),
+              guarded above against the rotate gesture. Withheld during
+              replay, same as the flat map: the replay owns the globe.
             */
+            onCountryClick={replay.isActive ? undefined : guardedCountryClick}
+            onCountryLongPress={
+              replay.isActive ? undefined : guardedCountryLongPress
+            }
             onCountryHover={canHover ? handleCountryHover : undefined}
             onCentroids={onCentroids}
             landedIsoCode={landedIsoCode}
@@ -850,6 +915,10 @@ function GlobeView({
       )}
 
       <MapLegend showFlights={settings.showFlights} stats={stats} />
+
+      {/* The country detail card, built and positioned by TravelMap (D8) —
+          opened by tapping a home country or holding any country. */}
+      {!replay.isActive && detailCard}
 
       {replay.isActive && (
         <div className="absolute z-30 top-3 left-3 right-3 md:right-auto md:w-[30rem]">

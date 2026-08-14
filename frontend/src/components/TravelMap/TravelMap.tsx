@@ -610,6 +610,42 @@ function TravelMap() {
   const effectiveCenter = hasMovedMap ? center : openingCenter;
   const effectiveZoom = hasMovedMap ? zoom : openingZoom;
 
+  /*
+    One card for both modes (D8): the flat map renders it in place, the globe
+    receives it as a slot. Same berth as the journey card — they are never
+    open together (and the globe has no journey selection at all).
+  */
+  const countryDetailCard = openCountry && !selectedJourney && (
+    <div className="absolute z-20 left-3 right-3 sm:right-auto bottom-20 lg:bottom-4 lg:left-auto lg:right-20">
+      <CountryDetailCard
+        countryName={openCountry.name}
+        isoAlpha2={openCountry.isoAlpha2}
+        visit={openCountry.visit}
+        journeys={flights}
+        onClose={() => setOpenCountryIso(null)}
+        onChangeType={(type) => {
+          void updateVisit({
+            id: openCountry.visit.id,
+            data: { visitType: type },
+          });
+        }}
+        onRemove={() => {
+          setOpenCountryIso(null);
+          void removeVisitWithUndo(openCountry.visit);
+        }}
+        onShowJourney={(journeyId) => {
+          const journey = flights.find((f) => f.id === journeyId);
+          if (!journey) return;
+          setOpenCountryIso(null);
+          setSelectedJourney(journey);
+          // Journey highlighting lives on the flat map; land the viewer
+          // where the thing they asked to see exists.
+          if (globeMode) handleGlobeModeChange(false);
+        }}
+      />
+    </div>
+  );
+
   if (globeMode) {
     return (
       <GlobeView
@@ -639,6 +675,9 @@ function TravelMap() {
         countryBounds={countryBounds}
         onCentroids={handleCentroids}
         replay={replayForUi}
+        onCountryClick={handleCountryClick}
+        onCountryLongPress={handleCountryLongPress}
+        detailCard={countryDetailCard || undefined}
         landedIsoCode={landedIsoCode}
         popAirport={popAirport}
         yearChip={yearChip}
@@ -923,33 +962,7 @@ function TravelMap() {
       )}
 
       {/* Same berth as the journey card — they are never open together. */}
-      {openCountry && !selectedJourney && (
-        <div className="absolute z-20 left-3 right-3 sm:right-auto bottom-20 lg:bottom-4 lg:left-auto lg:right-20">
-          <CountryDetailCard
-            countryName={openCountry.name}
-            isoAlpha2={openCountry.isoAlpha2}
-            visit={openCountry.visit}
-            journeys={flights}
-            onClose={() => setOpenCountryIso(null)}
-            onChangeType={(type) => {
-              void updateVisit({
-                id: openCountry.visit.id,
-                data: { visitType: type },
-              });
-            }}
-            onRemove={() => {
-              setOpenCountryIso(null);
-              void removeVisitWithUndo(openCountry.visit);
-            }}
-            onShowJourney={(journeyId) => {
-              const journey = flights.find((f) => f.id === journeyId);
-              if (!journey) return;
-              setOpenCountryIso(null);
-              setSelectedJourney(journey);
-            }}
-          />
-        </div>
-      )}
+      {countryDetailCard}
 
       {/* Hover-only. On touch the route's details are in the card instead. */}
       {canHover && (
