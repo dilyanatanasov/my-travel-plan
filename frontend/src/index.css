@@ -339,3 +339,30 @@ select option {
 .map-ping {
   animation: country-blink 0.55s ease-in-out 3;
 }
+
+/* The replay postcard: slides up and settles like a photo being laid down.
+   Lives on an SVG group — transform-box/origin make the scale grow from
+   the card's bottom edge (where it points at the city) instead of the SVG
+   origin. */
+@keyframes postcard-in {
+  from {
+    opacity: 0;
+    transform: translateY(28px) scale(0.7);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.postcard-pop {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: postcard-in 420ms cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .postcard-pop {
+    animation: none;
+  }
+}

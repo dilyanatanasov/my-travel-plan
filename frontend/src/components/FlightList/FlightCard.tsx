@@ -10,6 +10,7 @@ import {
 import { useUpdateFlightMutation } from '../../features/flights/flightsApi';
 import { useToast } from '../../components/Toast/ToastProvider';
 import { moveStop, loopStatus } from './stopChain';
+import StopPhotoControl from '../../features/flights/StopPhotoControl';
 
 interface FlightCardProps {
   journey: FlightJourney;
@@ -336,6 +337,10 @@ function FlightCard({
           {/* The route as editable stops. A ground-transfer chain (NRT→HND)
               is rejected server-side with a message pointing at separate
               journeys, matching the add form's split behavior. */}
+          <p className="text-xs text-ink-subtle">
+            Changing the route rebuilds its stops — stop photos are removed
+            with them.
+          </p>
           <div className="space-y-1.5">
             {editStops.map((stop, index) => (
               <div key={index} className="flex items-center gap-1.5">
@@ -521,6 +526,9 @@ function FlightCard({
               <span className="text-ink-subtle">
                 ({Math.round(Number(leg.distanceKm) || 0)} km)
               </span>
+              {/* One postcard per stop; editing the route resets its
+                  photos (legs are rebuilt), noted in the edit form. */}
+              {leg.id && <StopPhotoControl legId={leg.id} />}
               {index < journey.legs.length - 1 && (
                 <span className="text-gray-300 mx-1">|</span>
               )}

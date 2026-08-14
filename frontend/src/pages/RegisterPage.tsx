@@ -73,6 +73,9 @@ function RegisterPage() {
       if (wasGuest) {
         // The funnel number that matters. No properties at all.
         track('guest_convert');
+      } else {
+        // Fresh registrations, so Umami can show signups next to visitors.
+        track('signup');
       }
       navigate('/', { replace: true });
     } catch {

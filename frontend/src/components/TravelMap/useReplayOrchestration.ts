@@ -11,6 +11,17 @@ import {
   STOP_PAUSE_SECONDS,
   type ReplayState,
 } from './useJourneyReplay';
+import { formatJourneyDate } from '../../utils/journeyDate';
+
+/** Everything the postcard needs to render at the arrival city. */
+export interface ReplayPostcard {
+  legId: number;
+  key: number;
+  lon: number;
+  lat: number;
+  /** Caption: city (or IATA) plus the journey's precision-aware date. */
+  caption: string;
+}
 
 /**
  * Everything the replay narrates on top of the base map: countries revealed
@@ -29,6 +40,8 @@ export interface ReplayOrchestration {
   popAirport: { iata: string; key: number } | null;
   /** Year chapter: flashes when the replay crosses into a new year. */
   yearChip: string | null;
+  /** The stop whose postcard is showing (trip photos, 2026-08-14). */
+  postcard: ReplayPostcard | null;
   /** Display map holding only the countries revealed so far this replay. */
   replayCountryDisplayMap: Map<string, CountryDisplayInfo>;
   replayRoutes: AggregatedRoute[];
@@ -39,6 +52,8 @@ export interface ReplayOrchestration {
 export function useReplayOrchestration(
   replay: ReplayState,
   countries: { isoCode: string; isoCode2: string }[],
+  /** Legs that have photos — arrivals there show a postcard. */
+  photoLegIds?: Set<number>,
 ): ReplayOrchestration {
   /*
     Countries revealed so far in this replay.
@@ -65,6 +80,7 @@ export function useReplayOrchestration(
     key: number;
   } | null>(null);
   const [yearChip, setYearChip] = useState<string | null>(null);
+  const [postcard, setPostcard] = useState<ReplayPostcard | null>(null);
   const lastYearRef = useRef<string | null>(null);
   /*
     Countries already lit during this replay.
@@ -82,6 +98,7 @@ export function useReplayOrchestration(
       setRevealedIsos(new Set());
       setPopAirport(null);
       setYearChip(null);
+      setPostcard(null);
     }
   }, [replay.isActive]);
 
@@ -94,6 +111,10 @@ export function useReplayOrchestration(
   useEffect(() => {
     setLandedIsoCode(null);
     setPopAirport(null);
+    // Cleared here, not only by its own timer: that timer dies with this
+    // journey's cleanup, so a card shown near a step's end would otherwise
+    // survive into the next journey (the "doesn't disappear" report).
+    setPostcard(null);
     if (!replay.isActive || !replay.current) return;
 
     const legs = [...replay.current.legs].sort((a, b) => a.legOrder - b.legOrder);
@@ -138,6 +159,38 @@ export function useReplayOrchestration(
           setPopAirport({ iata: airport.iataCode, key: Date.now() });
         }, at),
       );
+      /*
+        The postcard (trip photos): where a stop has a photo, it pops at
+        the arrival city as the plane lands and holds through the ground
+        pause — a memory at the moment of arrival.
+      */
+      const lon = Number(airport.longitude);
+      const lat = Number(airport.latitude);
+      if (
+        leg.id &&
+        photoLegIds?.has(leg.id) &&
+        Number.isFinite(lon) &&
+        Number.isFinite(lat)
+      ) {
+        /*
+          The journey's own note captions the postcard when there is one —
+          "Honeymoon, day 3" beats "Barcelona · May 2023" (user call,
+          2026-08-14); the place · date remains the fallback. One line,
+          ellipsized to what the band can hold.
+        */
+        const date = replay.current ? formatJourneyDate(replay.current) : null;
+        const place = airport.city || airport.iataCode;
+        const note = replay.current?.notes?.trim();
+        const fallback = date ? `${place} · ${date}` : place;
+        const raw = note || fallback;
+        const caption = raw.length > 28 ? `${raw.slice(0, 27)}…` : raw;
+        timers.push(
+          window.setTimeout(() => {
+            setPostcard({ legId: leg.id, key: Date.now(), lon, lat, caption });
+          }, at),
+        );
+        timers.push(window.setTimeout(() => setPostcard(null), at + 3200));
+      }
     });
 
     /**
@@ -181,7 +234,7 @@ export function useReplayOrchestration(
     });
 
     return () => timers.forEach((timer) => window.clearTimeout(timer));
-  }, [replay.isActive, replay.current, alpha2ToAlpha3]);
+  }, [replay.isActive, replay.current, alpha2ToAlpha3, photoLegIds]);
 
   const replayCountryDisplayMap = useMemo(() => {
     const map = new Map<string, CountryDisplayInfo>();
@@ -220,6 +273,7 @@ export function useReplayOrchestration(
     landedIsoCode,
     popAirport,
     yearChip,
+    postcard,
     replayCountryDisplayMap,
     replayRoutes,
     replayMaxRouteCount,

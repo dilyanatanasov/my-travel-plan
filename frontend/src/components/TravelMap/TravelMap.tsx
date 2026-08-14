@@ -8,7 +8,11 @@ import { useVisitActions } from '../../features/visits/useVisitActions';
 import { useToast } from '../Toast/ToastProvider';
 import { track } from '../../lib/analytics';
 import type { Visit, FlightJourney } from '../../types';
-import { useGetFlightsQuery } from '../../features/flights/flightsApi';
+import {
+  useGetFlightsQuery,
+  useGetLegPhotoIdsQuery,
+} from '../../features/flights/flightsApi';
+import PostcardMarker from './PostcardMarker';
 import { useUpdateVisitMutation } from '../../features/visits/visitsApi';
 import { aggregateRoutes, extractUniqueAirports, countAirportVisits } from '../FlightMap/routeUtils';
 import { applyFilters, extractFilterOptions } from '../FlightMap/filterUtils';
@@ -470,15 +474,23 @@ function TravelMap() {
     The replay's narration state — revealed countries, landing flash, airport
     pop, year chip, played-so-far routes — lives in useReplayOrchestration.
   */
+  // Stops with photos, so the replay can schedule their postcards.
+  const { data: legPhotoData } = useGetLegPhotoIdsQuery();
+  const photoLegIds = useMemo(
+    () => new Set(legPhotoData?.legIds ?? []),
+    [legPhotoData],
+  );
+
   const {
     landedIsoCode,
     popAirport,
     yearChip,
+    postcard,
     replayCountryDisplayMap,
     replayRoutes,
     replayMaxRouteCount,
     replayAirports,
-  } = useReplayOrchestration(replay, countries);
+  } = useReplayOrchestration(replay, countries, photoLegIds);
 
   /*
     Fly the camera to each journey as it plays.
@@ -681,6 +693,7 @@ function TravelMap() {
         onCountryClick={handleCountryClick}
         onCountryLongPress={handleCountryLongPress}
         detailCard={countryDetailCard || undefined}
+        postcard={postcard}
         landedIsoCode={landedIsoCode}
         popAirport={popAirport}
         yearChip={yearChip}
@@ -826,6 +839,11 @@ function TravelMap() {
               popIata={replay.isActive ? popAirport?.iata : undefined}
               popKey={popAirport?.key}
             />
+          )}
+
+          {/* The postcard, above the arrival city (trip photos). */}
+          {replay.isActive && postcard && (
+            <PostcardMarker postcard={postcard} />
           )}
         </ZoomableGroup>
       </ComposableMap>

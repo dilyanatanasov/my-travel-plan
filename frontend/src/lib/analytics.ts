@@ -45,6 +45,10 @@ export function initAnalytics(): void {
   // Without this the tracker would post to the script's origin root, which
   // nginx does not proxy — collect must go to <hostUrl>/api/send.
   script.setAttribute('data-host-url', hostUrl);
+  // Opt-in web-vitals collection: this is what feeds the dashboard's
+  // Performance view (empty without it). Ignored by older Umami versions,
+  // and carries timing numbers only — nothing about content.
+  script.setAttribute('data-web-vitals', 'true');
   document.head.appendChild(script);
 }
 
