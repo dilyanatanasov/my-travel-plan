@@ -105,6 +105,29 @@ function Layout() {
                 Beta
               </span>
             </Link>
+            {/* The daily guesser: icon-only — the shared link is the real
+                front door, this is for regulars (density budget). */}
+            <Link
+              to="/daily"
+              aria-label="Daily country puzzle"
+              title="Daily country puzzle"
+              className="flex items-center justify-center w-11 h-11 rounded-lg border border-line text-ink hover:bg-canvas"
+            >
+              <svg
+                className="w-4 h-4"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3" />
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="17" x2="12.01" y2="17" />
+              </svg>
+            </Link>
             {/* Settings stays inside the account menu: a header gear was
                 tried (2026-08-13) and crowded the mobile header out. */}
             <AccountMenu />

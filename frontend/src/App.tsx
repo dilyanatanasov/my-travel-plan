@@ -20,6 +20,7 @@ const DuelPage = lazy(() => import('./pages/DuelPage'));
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
 const PrivacyPage = lazy(() => import('./pages/PrivacyPage'));
 const TermsPage = lazy(() => import('./pages/TermsPage'));
+const DailyPage = lazy(() => import('./pages/DailyPage'));
 
 function App() {
   // Stale open tabs get a "new version — reload" toast after deploys.
@@ -41,6 +42,8 @@ function App() {
         {/* Legal pages — public: linked from registration */}
         <Route path="/privacy" element={<PrivacyPage />} />
         <Route path="/terms" element={<TermsPage />} />
+        {/* The daily guesser — public by design: the game is the funnel */}
+        <Route path="/daily" element={<DailyPage />} />
         {/* Public shared map — deliberately outside RequireAuth */}
         <Route path="/s/:token" element={<SharedMapPage />} />
         {/* Duels: public like the maps they compose; depth gated in-page */}
