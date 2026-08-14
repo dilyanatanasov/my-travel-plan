@@ -49,6 +49,10 @@ services:
       # Same-origin in this topology, since nginx proxies /api. Kept explicit
       # so a split-origin deployment has one obvious place to change.
       CORS_ORIGIN: ${CORS_ORIGIN:-https://${DOMAIN}}
+    # Trip photos survive deploys on their own volume. Served only through
+    # the backend's authenticated endpoint — never exposed via nginx.
+    volumes:
+      - uploads_data:/app/uploads
     # Reachable only from nginx on the compose network.
     expose:
       - '3000'
@@ -106,6 +110,7 @@ services:
 
 volumes:
   pgdata:
+  uploads_data:
   certbot_webroot:
 
 networks:

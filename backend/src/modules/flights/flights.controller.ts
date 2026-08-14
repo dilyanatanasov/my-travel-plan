@@ -9,7 +9,16 @@ import {
   Query,
   ParseIntPipe,
   UseGuards,
+  UseInterceptors,
+  UploadedFile,
+  StreamableFile,
+  Header,
+  BadRequestException,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { diskStorage } from 'multer';
+import { randomBytes } from 'crypto';
+import { extname } from 'path';
 import { Throttle } from '@nestjs/throttler';
 import { NonGuestGuard } from '../auth/guards/non-guest.guard';
 import { FlightsService } from './flights.service';
@@ -27,6 +36,36 @@ import { ImportFlightsDto, type ImportResultDto } from './dto/import-flights.dto
 import { ReorderFlightsDto } from './dto/reorder-flights.dto';
 import { FlightJourney } from './entities/flight-journey.entity';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { LegPhotosService, LEG_PHOTOS_DIR } from './leg-photos.service';
+import { SUPPORTED_IMAGE_MIME_TYPES } from '../../common/services/image-processing.service';
+
+/*
+  Trip-photo upload plumbing (2026-08-14). Random hex names carry nothing
+  about the user or the trip; the MIME filter is the first gate, the
+  magic-byte check in ImageProcessingService the second.
+*/
+const legPhotoStorage = diskStorage({
+  destination: LEG_PHOTOS_DIR,
+  filename: (_req, file, cb) => {
+    const ext = extname(file.originalname).toLowerCase() || '.img';
+    cb(null, `${randomBytes(16).toString('hex')}${ext}`);
+  },
+});
+
+const legPhotoFileFilter = (
+  _req: Express.Request,
+  file: Express.Multer.File,
+  cb: (error: Error | null, accept: boolean) => void,
+) => {
+  if ((SUPPORTED_IMAGE_MIME_TYPES as readonly string[]).includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(
+      new BadRequestException('Only JPEG, PNG or WebP photos are allowed'),
+      false,
+    );
+  }
+};
 
 @Controller('flights')
 export class FlightsController {
@@ -36,7 +75,56 @@ export class FlightsController {
     private readonly flightSearchService: FlightSearchService,
     private readonly flightExplorationService: FlightExplorationService,
     private readonly filterService: FilterService,
+    private readonly legPhotosService: LegPhotosService,
   ) {}
+
+  /**
+   * Trip photos: one per stop, owner-only end to end. Literal 'legs/photos'
+   * is declared before the ':legId' routes so it cannot be captured as an
+   * id. Serving streams through the ownership check — deliberately never
+   * public static files.
+   */
+  @Get('legs/photos')
+  async listLegPhotos(@CurrentUser('id') userId: number) {
+    return { legIds: await this.legPhotosService.listLegIds(userId) };
+  }
+
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @Post('legs/:legId/photo')
+  @UseInterceptors(
+    FileInterceptor('photo', {
+      storage: legPhotoStorage,
+      fileFilter: legPhotoFileFilter,
+      // 10MB raw; compressed server-side to ~300KB.
+      limits: { fileSize: 10 * 1024 * 1024 },
+    }),
+  )
+  async uploadLegPhoto(
+    @CurrentUser('id') userId: number,
+    @Param('legId', ParseIntPipe) legId: number,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    return this.legPhotosService.upload(userId, legId, file);
+  }
+
+  @Get('legs/:legId/photo')
+  @Header('Content-Type', 'image/jpeg')
+  @Header('Cache-Control', 'private, max-age=86400')
+  async getLegPhoto(
+    @CurrentUser('id') userId: number,
+    @Param('legId', ParseIntPipe) legId: number,
+  ): Promise<StreamableFile> {
+    const { stream } = await this.legPhotosService.stream(userId, legId);
+    return new StreamableFile(stream);
+  }
+
+  @Delete('legs/:legId/photo')
+  async deleteLegPhoto(
+    @CurrentUser('id') userId: number,
+    @Param('legId', ParseIntPipe) legId: number,
+  ): Promise<void> {
+    return this.legPhotosService.remove(userId, legId);
+  }
 
   /**
    * Live flight search. Each call hits the paid RapidAPI upstream, so it is

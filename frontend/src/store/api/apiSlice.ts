@@ -115,6 +115,7 @@ export const apiSlice = createApi({
     'FlightStats',
     'Auth',
     'Share',
+    'LegPhoto',
   ],
   endpoints: () => ({}),
 });

@@ -12,13 +12,22 @@ import { SafetyService } from './services/safety.service';
 import { ApiKeyManagerService } from './services/api-key-manager.service';
 import { FlightJourney } from './entities/flight-journey.entity';
 import { FlightLeg } from './entities/flight-leg.entity';
+import { LegPhoto } from './entities/leg-photo.entity';
 import { BannedAirline } from './entities/banned-airline.entity';
 import { Airport } from '../airports/entities/airport.entity';
 import { VisitsModule } from '../visits/visits.module';
+import { LegPhotosService } from './leg-photos.service';
+import { ImageProcessingService } from '../../common/services/image-processing.service';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([FlightJourney, FlightLeg, BannedAirline, Airport]),
+    TypeOrmModule.forFeature([
+      FlightJourney,
+      FlightLeg,
+      LegPhoto,
+      BannedAirline,
+      Airport,
+    ]),
     VisitsModule,
   ],
   controllers: [FlightsController],
@@ -32,6 +41,8 @@ import { VisitsModule } from '../visits/visits.module';
     HubService,
     FilterService,
     SafetyService,
+    LegPhotosService,
+    ImageProcessingService,
   ],
   exports: [
     FlightsService,

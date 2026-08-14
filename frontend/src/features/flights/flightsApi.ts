@@ -92,6 +92,34 @@ export const flightsApi = apiSlice.injectEndpoints({
       invalidatesTags: ['Flight', 'FlightStats'],
     }),
 
+    /*
+      Trip photos (2026-08-14): one per stop. The list feeds both the leg
+      chips' camera state and the replay's postcard schedule; the image
+      itself is fetched by <img src> — same-origin cookies ride along, so
+      the authenticated stream needs no special client.
+    */
+    getLegPhotoIds: builder.query<{ legIds: number[] }, void>({
+      query: () => '/flights/legs/photos',
+      providesTags: ['LegPhoto'],
+    }),
+
+    uploadLegPhoto: builder.mutation<{ legId: number }, { legId: number; file: File }>({
+      query: ({ legId, file }) => {
+        const body = new FormData();
+        body.append('photo', file);
+        return { url: `/flights/legs/${legId}/photo`, method: 'POST', body };
+      },
+      invalidatesTags: ['LegPhoto'],
+    }),
+
+    deleteLegPhoto: builder.mutation<void, number>({
+      query: (legId) => ({
+        url: `/flights/legs/${legId}/photo`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['LegPhoto'],
+    }),
+
     // Stats endpoint
     getFlightStats: builder.query<FlightStats, void>({
       query: () => '/flights/stats',
@@ -124,6 +152,9 @@ export const {
   useImportFlightsMutation,
   useReorderFlightsMutation,
   useRemoveFlightMutation,
+  useGetLegPhotoIdsQuery,
+  useUploadLegPhotoMutation,
+  useDeleteLegPhotoMutation,
   useGetFlightStatsQuery,
   useGetFlightSummaryQuery,
 } = flightsApi;
