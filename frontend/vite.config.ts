@@ -9,6 +9,17 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  build: {
+    /**
+     * Never inline flag SVGs as data URIs. Vite's default inlines any asset
+     * under 4KB, which swept ~350 small flags from flag-icons into the main
+     * CSS file and roughly quadrupled it — every visitor would download every
+     * flag up front. Kept as separate files, the browser fetches only the
+     * flags actually shown. `undefined` keeps the default for everything else.
+     */
+    assetsInlineLimit: (filePath) =>
+      filePath.includes('flag-icons') ? false : undefined,
+  },
   server: {
     host: '0.0.0.0',
     port: 5173,
