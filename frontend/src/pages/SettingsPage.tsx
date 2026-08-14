@@ -4,7 +4,11 @@ import {
   useTheme,
   type ThemePreference,
 } from '../features/theme/ThemeContext';
-import { useAuth, useDeleteAccountMutation } from '../features/auth/authApi';
+import {
+  useAuth,
+  useChangePasswordMutation,
+  useDeleteAccountMutation,
+} from '../features/auth/authApi';
 import { downloadBlob } from '../utils/exportMapImage';
 import {
   useGetCountriesQuery,
@@ -58,6 +62,29 @@ function SettingsPage() {
   const [isExporting, setIsExporting] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deletePassword, setDeletePassword] = useState('');
+  const [changePassword, { isLoading: isChangingPassword }] =
+    useChangePasswordMutation();
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+
+  const handleChangePassword = async () => {
+    if (newPassword.length < 8) {
+      showToast('The new password needs at least 8 characters', {
+        tone: 'error',
+      });
+      return;
+    }
+    try {
+      await changePassword({ currentPassword, newPassword }).unwrap();
+      setShowPasswordForm(false);
+      setCurrentPassword('');
+      setNewPassword('');
+      showToast('Password changed', { tone: 'success' });
+    } catch {
+      showToast('Wrong current password', { tone: 'error' });
+    }
+  };
 
   const handleExport = async () => {
     setIsExporting(true);
@@ -256,10 +283,64 @@ function SettingsPage() {
                   <dd className="text-ink truncate">{user?.email}</dd>
                 </div>
               </dl>
-              <p className="text-xs text-ink-subtle mt-4">
-                Changing your password is not built yet — use the password
-                reset from the login page instead.
-              </p>
+              {!showPasswordForm ? (
+                <button
+                  type="button"
+                  onClick={() => setShowPasswordForm(true)}
+                  className="mt-4 w-full min-h-11 rounded-lg border border-line text-sm font-medium text-ink hover:bg-surface-sunken"
+                >
+                  Change password…
+                </button>
+              ) : (
+                <div className="mt-4 space-y-2">
+                  <input
+                    type="password"
+                    autoComplete="current-password"
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    placeholder="Current password"
+                    aria-label="Current password"
+                    className="w-full min-h-10 px-3 border border-line rounded-lg bg-surface text-ink text-sm placeholder:text-ink-subtle focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  />
+                  <input
+                    type="password"
+                    autoComplete="new-password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="New password (at least 8 characters)"
+                    aria-label="New password"
+                    className="w-full min-h-10 px-3 border border-line rounded-lg bg-surface text-ink text-sm placeholder:text-ink-subtle focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={handleChangePassword}
+                      disabled={
+                        isChangingPassword || !currentPassword || !newPassword
+                      }
+                      className="flex-1 min-h-10 rounded-lg bg-brand-600 text-white text-sm font-medium hover:bg-brand-700 disabled:opacity-50"
+                    >
+                      {isChangingPassword ? 'Saving…' : 'Save new password'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowPasswordForm(false);
+                        setCurrentPassword('');
+                        setNewPassword('');
+                      }}
+                      disabled={isChangingPassword}
+                      className="min-h-10 px-4 rounded-lg text-sm font-medium text-ink-muted hover:bg-surface-sunken"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                  <p className="text-xs text-ink-subtle">
+                    Forgot it? Sign out and use &ldquo;Forgot password&rdquo;
+                    on the login page instead.
+                  </p>
+                </div>
+              )}
             </>
           )}
         </section>

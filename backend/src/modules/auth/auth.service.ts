@@ -319,6 +319,34 @@ export class AuthService {
   }
 
   /**
+   * Change password while signed in (2026-08-14). The current password is
+   * required — a stolen session must not be able to lock the owner out.
+   * Guests have no password to change; they set one by registering.
+   *
+   * Honest limitation: existing JWT cookies stay valid until they expire
+   * (7 days) — there is no token versioning yet. Worth adding if sessions
+   * ever feel long-lived enough to matter.
+   */
+  async changePassword(
+    userId: number,
+    currentPassword: string,
+    newPassword: string,
+  ): Promise<void> {
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user || !user.passwordHash) {
+      throw new UnauthorizedException();
+    }
+    const matches = await verify(user.passwordHash, currentPassword).catch(
+      () => false,
+    );
+    if (!matches) {
+      throw new UnauthorizedException('Wrong password');
+    }
+    user.passwordHash = await hash(newPassword);
+    await this.userRepository.save(user);
+  }
+
+  /**
    * GDPR right to erasure (2026-08-14).
    *
    * Registered accounts confirm with their password — a stolen session must

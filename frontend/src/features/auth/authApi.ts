@@ -146,6 +146,18 @@ export const authApi = apiSlice.injectEndpoints({
       },
     }),
 
+    /** Signed-in password change; the current password proves it is you. */
+    changePassword: builder.mutation<
+      { ok: boolean },
+      { currentPassword: string; newPassword: string }
+    >({
+      query: (body) => ({
+        url: '/auth/password',
+        method: 'PATCH',
+        body,
+      }),
+    }),
+
     /**
      * GDPR erasure. The server verifies the password for registered
      * accounts and clears the session cookie; the cache reset mirrors
@@ -175,6 +187,7 @@ export const {
   useVerifyEmailMutation,
   useResendVerificationMutation,
   useLogoutMutation,
+  useChangePasswordMutation,
   useDeleteAccountMutation,
 } = authApi;
 

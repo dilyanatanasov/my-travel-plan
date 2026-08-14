@@ -2,6 +2,7 @@ import {
   Controller,
   Post,
   Get,
+  Patch,
   Delete,
   Body,
   Req,
@@ -19,6 +20,7 @@ import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { VerifyEmailDto } from './dto/verify-email.dto';
 import { DeleteAccountDto } from './dto/delete-account.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { Public } from '../../common/decorators/public.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { ACCESS_TOKEN_COOKIE } from './jwt.strategy';
@@ -146,6 +148,22 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async resendVerification(@CurrentUser('id') userId: number) {
     await this.authService.resendVerification(userId);
+    return { ok: true };
+  }
+
+  /** Throttled like deletion: a wrong-password loop is a guessing oracle. */
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Patch('password')
+  @HttpCode(HttpStatus.OK)
+  async changePassword(
+    @CurrentUser('id') userId: number,
+    @Body() dto: ChangePasswordDto,
+  ) {
+    await this.authService.changePassword(
+      userId,
+      dto.currentPassword,
+      dto.newPassword,
+    );
     return { ok: true };
   }
 
