@@ -30,6 +30,9 @@ const STYLES: { id: ShareStyle; label: string; hint: string }[] = [
   { id: 'warm', label: 'Warm', hint: 'Cream and terracotta' },
   { id: 'ink', label: 'Ink', hint: 'Dark, one big number' },
   { id: 'editorial', label: 'Editorial', hint: 'Full-bleed map' },
+  // Promoted from the trip card by request ("add this ticket version to
+  // the normal also", 2026-08-14).
+  { id: 'ticket', label: 'Ticket', hint: 'Boarding pass' },
 ];
 
 function SharePanel() {
@@ -100,6 +103,7 @@ function SharePanel() {
 
     const kicker = `${new Date().getFullYear()} · myContrail`;
     const headline = `${countries} ${countries === 1 ? 'country' : 'countries'} and counting`;
+    const passenger = user?.displayName ?? null;
 
     /*
       A card full of zeros undersells a real traveller: someone who came by
@@ -116,6 +120,7 @@ function SharePanel() {
       return {
         kicker,
         headline,
+        passenger,
         hero: {
           value: String(countries),
           caption: `${countries === 1 ? 'country' : 'countries'} · ${worldPercent}% of the world`,
@@ -135,6 +140,7 @@ function SharePanel() {
     return {
       kicker,
       headline,
+      passenger,
       hero: {
         value: km.toLocaleString(),
         caption: `kilometres · ${countries} countries · ${airports} airports`,
@@ -146,7 +152,7 @@ function SharePanel() {
         { label: 'airports touched', value: String(airports) },
       ],
     };
-  }, [visits, flightStats, totalCountries]);
+  }, [visits, flightStats, totalCountries, user?.displayName]);
 
   /*
     Render the card whenever the style or the numbers change. The resulting

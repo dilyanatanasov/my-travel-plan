@@ -13,7 +13,7 @@
  * tainted and the output stays crisp.
  */
 
-export type ShareStyle = 'warm' | 'ink' | 'editorial';
+export type ShareStyle = 'warm' | 'ink' | 'editorial' | 'ticket';
 
 export interface ShareContent {
   /** e.g. "21 countries and counting" */
@@ -24,6 +24,8 @@ export interface ShareContent {
   facts: { label: string; value: string }[];
   /** The single number Ink builds itself around. */
   hero: { value: string; caption: string };
+  /** displayName for the Ticket style's PASSENGER stub; null → TRAVELLER. */
+  passenger?: string | null;
 }
 
 interface Palette {
@@ -55,6 +57,14 @@ const PALETTES: Record<ShareStyle, Palette> = {
     muted: '#645c50',
     accent: '#402310',
     mapBg: '#8fa073',
+  },
+  // Mirrors the TICKET constants; listed here so the Record stays total.
+  ticket: {
+    bg: '#e3d3b7',
+    text: '#201e1d',
+    muted: '#645c50',
+    accent: '#8c491a',
+    mapBg: '#f8f0e1',
   },
 };
 
@@ -279,7 +289,13 @@ export async function renderShareCard(
   ctx.fillRect(0, 0, CARD_WIDTH, CARD_HEIGHT);
   ctx.textBaseline = 'top';
 
-  if (style === 'editorial') {
+  if (style === 'ticket') {
+    // The ticket paints its own ground and carries the domain on its stub,
+    // so the shared palette background and watermark both stay out.
+    const stubTop = drawTicketShell(ctx);
+    drawTicket(ctx, mapImage, content, stubTop);
+    drawTicketStub(ctx, stubTop, content.passenger ?? null);
+  } else if (style === 'editorial') {
     drawEditorial(ctx, mapImage, content, p);
   } else if (style === 'ink') {
     drawInk(ctx, mapImage, content, p);
@@ -287,7 +303,7 @@ export async function renderShareCard(
     drawWarm(ctx, mapImage, content, p);
   }
 
-  drawWatermark(ctx, p);
+  if (style !== 'ticket') drawWatermark(ctx, p);
 
   return new Promise((resolve, reject) => {
     canvas.toBlob((blob) => {
@@ -350,6 +366,134 @@ const TICKET = {
   accent: '#8c491a',
 };
 
+/* Shared ticket chrome — used by the trip card and the map's Ticket style. */
+
+const TICKET_INSET = 24;
+
+/** Paper on ground; returns the perforation line's y. */
+function drawTicketShell(ctx: CanvasRenderingContext2D): number {
+  const T = TICKET_INSET;
+  ctx.fillStyle = TICKET.bg;
+  ctx.fillRect(0, 0, CARD_WIDTH, CARD_HEIGHT);
+  roundedRect(ctx, T, T, CARD_WIDTH - T * 2, CARD_HEIGHT - T * 2, 48);
+  ctx.fillStyle = TICKET.paper;
+  ctx.fill();
+  return CARD_HEIGHT - T - 170;
+}
+
+function drawTicketPair(
+  ctx: CanvasRenderingContext2D,
+  label: string,
+  value: string,
+  x: number,
+  y: number,
+  alignRight = false,
+) {
+  if (alignRight) ctx.textAlign = 'right';
+  ctx.font = mono(20, '600');
+  ctx.fillStyle = TICKET.muted;
+  ctx.fillText(label, x, y);
+  ctx.font = mono(40, '700');
+  ctx.fillStyle = TICKET.text;
+  ctx.fillText(value, x, y + 30);
+  ctx.textAlign = 'left';
+}
+
+/** Dashed tear line with edge notches, then the PASSENGER/domain stub. */
+function drawTicketStub(
+  ctx: CanvasRenderingContext2D,
+  stubTop: number,
+  passenger: string | null,
+) {
+  const T = TICKET_INSET;
+  const P = 88;
+  ctx.strokeStyle = TICKET.muted;
+  ctx.globalAlpha = 0.5;
+  ctx.lineWidth = 3;
+  ctx.setLineDash([4, 16]);
+  ctx.beginPath();
+  ctx.moveTo(T + 44, stubTop);
+  ctx.lineTo(CARD_WIDTH - T - 44, stubTop);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = TICKET.bg;
+  for (const notchX of [T, CARD_WIDTH - T]) {
+    ctx.beginPath();
+    ctx.arc(notchX, stubTop, 26, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  const stubY = stubTop + 44;
+  drawTicketPair(ctx, 'PASSENGER', (passenger ?? 'Traveller').toUpperCase(), P, stubY);
+  ctx.textAlign = 'right';
+  ctx.font = mono(26, '600');
+  ctx.fillStyle = TICKET.accent;
+  ctx.fillText('mycontrail.com', CARD_WIDTH - P, stubY + 34);
+  ctx.textAlign = 'left';
+}
+
+function drawTicketHeader(ctx: CanvasRenderingContext2D, y: number) {
+  const P = 88;
+  ctx.font = mono(26, '600');
+  ctx.fillStyle = TICKET.accent;
+  ctx.fillText('MYCONTRAIL', P, y);
+  ctx.fillStyle = TICKET.muted;
+  ctx.textAlign = 'right';
+  ctx.fillText('BOARDING PASS', CARD_WIDTH - P, y);
+  ctx.textAlign = 'left';
+}
+
+/** The whole-map Ticket style: same paper, the life map in the strip. */
+function drawTicket(
+  ctx: CanvasRenderingContext2D,
+  map: HTMLImageElement,
+  content: ShareContent,
+  stubTop: number,
+) {
+  const P = 88;
+  const inner = CARD_WIDTH - P * 2;
+
+  const headline = content.headline.toUpperCase();
+  const headlineSize = fitFont(ctx, headline, inner, 72, (s) => mono(s, '700'));
+  ctx.font = mono(headlineSize, '700');
+  const lines = wrap(ctx, headline, inner, 2);
+  const headlineH = lines.length * headlineSize * 1.15;
+
+  const rowH = 20 + 10 + 40;
+  const mapX = TICKET_INSET + 40;
+  const mapW = CARD_WIDTH - mapX * 2;
+  const mapH = mapW / 2;
+  const contentTop = TICKET_INSET + 56;
+  const blocksH = 30 + headlineH + rowH + mapH + rowH;
+  const gap = Math.max(28, (stubTop - 40 - contentTop - blocksH) / 5);
+
+  let y = contentTop;
+  drawTicketHeader(ctx, y);
+  y += 30 + gap;
+
+  ctx.font = mono(headlineSize, '700');
+  ctx.fillStyle = TICKET.text;
+  lines.forEach((line, i) => ctx.fillText(line, P, y + i * headlineSize * 1.15));
+  y += headlineH + gap;
+
+  const [first, second, third, fourth] = content.facts;
+  if (first) drawTicketPair(ctx, first.label.toUpperCase(), first.value, P, y);
+  if (second)
+    drawTicketPair(ctx, second.label.toUpperCase(), second.value, CARD_WIDTH - P, y, true);
+  y += rowH + gap;
+
+  ctx.save();
+  roundedRect(ctx, mapX, y, mapW, mapH, 36);
+  ctx.clip();
+  drawMapContain(ctx, map, mapX, y, mapW, mapH);
+  ctx.restore();
+  y += mapH + gap;
+
+  if (third) drawTicketPair(ctx, third.label.toUpperCase(), third.value, P, y);
+  if (fourth)
+    drawTicketPair(ctx, fourth.label.toUpperCase(), fourth.value, CARD_WIDTH - P, y, true);
+}
+
 export async function renderTripCard(
   svg: SVGSVGElement,
   trip: TripContent,
@@ -385,17 +529,10 @@ export async function renderTripCard(
 
   /* The ticket: a rounded paper card inset on a darker ground, so the
      perforation notches read as cut-outs rather than decoration. */
-  const T = 24;
-  const radius = 48;
-  ctx.fillStyle = TICKET.bg;
-  ctx.fillRect(0, 0, CARD_WIDTH, CARD_HEIGHT);
-  roundedRect(ctx, T, T, CARD_WIDTH - T * 2, CARD_HEIGHT - T * 2, radius);
-  ctx.fillStyle = TICKET.paper;
-  ctx.fill();
-
+  const T = TICKET_INSET;
+  const stubTop = drawTicketShell(ctx);
   const P = 88;
   const inner = CARD_WIDTH - P * 2;
-  const stubTop = CARD_HEIGHT - T - 170;
 
   // Measure the route before laying anything out.
   const route = trip.routeCodes.join(' → ');
@@ -414,13 +551,7 @@ export async function renderTripCard(
   const gap = Math.max(28, (stubTop - 40 - contentTop - blocksH) / 5);
 
   let y = contentTop;
-  ctx.font = mono(26, '600');
-  ctx.fillStyle = TICKET.accent;
-  ctx.fillText('MYCONTRAIL', P, y);
-  ctx.fillStyle = TICKET.muted;
-  ctx.textAlign = 'right';
-  ctx.fillText('BOARDING PASS', CARD_WIDTH - P, y);
-  ctx.textAlign = 'left';
+  drawTicketHeader(ctx, y);
   y += 30 + gap;
 
   ctx.font = mono(routeSize, '700');
@@ -430,31 +561,8 @@ export async function renderTripCard(
   );
   y += routeH + gap;
 
-  const drawPair = (
-    label: string,
-    value: string,
-    x: number,
-    atY: number,
-    alignRight = false,
-  ) => {
-    if (alignRight) ctx.textAlign = 'right';
-    ctx.font = mono(20, '600');
-    ctx.fillStyle = TICKET.muted;
-    ctx.fillText(label, x, atY);
-    ctx.font = mono(40, '700');
-    ctx.fillStyle = TICKET.text;
-    ctx.fillText(value, x, atY + 30);
-    ctx.textAlign = 'left';
-  };
-
-  drawPair('DATE', (trip.dateLabel ?? '—').toUpperCase(), P, y);
-  drawPair(
-    'FLIGHTS',
-    String(trip.flights),
-    CARD_WIDTH - P,
-    y,
-    true,
-  );
+  drawTicketPair(ctx, 'DATE', (trip.dateLabel ?? '—').toUpperCase(), P, y);
+  drawTicketPair(ctx, 'FLIGHTS', String(trip.flights), CARD_WIDTH - P, y, true);
   y += rowH + gap;
 
   ctx.save();
@@ -464,8 +572,15 @@ export async function renderTripCard(
   ctx.restore();
   y += mapH + gap;
 
-  drawPair('DISTANCE', `${Math.round(trip.km).toLocaleString()} KM`, P, y);
-  drawPair(
+  drawTicketPair(
+    ctx,
+    'DISTANCE',
+    `${Math.round(trip.km).toLocaleString()} KM`,
+    P,
+    y,
+  );
+  drawTicketPair(
+    ctx,
     'STOPS',
     String(Math.max(trip.routeCodes.length - 2, 0)),
     CARD_WIDTH - P,
@@ -473,36 +588,7 @@ export async function renderTripCard(
     true,
   );
 
-  // Perforation: dashed tear line with a notch cut into each edge.
-  ctx.strokeStyle = TICKET.muted;
-  ctx.globalAlpha = 0.5;
-  ctx.lineWidth = 3;
-  ctx.setLineDash([4, 16]);
-  ctx.beginPath();
-  ctx.moveTo(T + 44, stubTop);
-  ctx.lineTo(CARD_WIDTH - T - 44, stubTop);
-  ctx.stroke();
-  ctx.setLineDash([]);
-  ctx.globalAlpha = 1;
-  ctx.fillStyle = TICKET.bg;
-  for (const notchX of [T, CARD_WIDTH - T]) {
-    ctx.beginPath();
-    ctx.arc(notchX, stubTop, 26, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  const stubY = stubTop + 44;
-  drawPair(
-    'PASSENGER',
-    (trip.passenger ?? 'Traveller').toUpperCase(),
-    P,
-    stubY,
-  );
-  ctx.textAlign = 'right';
-  ctx.font = mono(26, '600');
-  ctx.fillStyle = TICKET.accent;
-  ctx.fillText('mycontrail.com', CARD_WIDTH - P, stubY + 34);
-  ctx.textAlign = 'left';
+  drawTicketStub(ctx, stubTop, trip.passenger);
 
   return new Promise((resolve, reject) => {
     canvas.toBlob((blob) => {

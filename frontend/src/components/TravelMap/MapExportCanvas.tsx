@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ComposableMap, ZoomableGroup } from 'react-simple-maps';
 import type { FlightJourney } from '../../types';
 import { useGetVisitsQuery } from '../../features/visits/visitsApi';
@@ -135,9 +135,24 @@ function MapExportCanvasInner({
     new Map(),
   );
   // Trip mode frames on the journey's own airports, so it never waits for
-  // centroids — the geography-path count is the only readiness gate left.
+  // centroids. It must still wait for ZoomableGroup to APPLY that framing:
+  // reporting ready on the mount render let the serializer catch frame zero
+  // — an untransformed world of plain outlines instead of the trip
+  // (Rome–Varna bug, 2026-08-14). Two rAFs span the transform's effect.
+  const [transformSettled, setTransformSettled] = useState(false);
+  useEffect(() => {
+    let inner: number | null = null;
+    const outer = requestAnimationFrame(() => {
+      inner = requestAnimationFrame(() => setTransformSettled(true));
+    });
+    return () => {
+      cancelAnimationFrame(outer);
+      if (inner !== null) cancelAnimationFrame(inner);
+    };
+  }, []);
   const hasCountries = !journey && countryDisplayMap.size > 0;
-  const centroidsSettled = !hasCountries || countryCentroids.size > 0;
+  const centroidsSettled =
+    (!hasCountries || countryCentroids.size > 0) && transformSettled;
 
   const framing = useMemo(() => {
     const points: LonLat[] = airports.map((a) => [a.longitude, a.latitude]);
