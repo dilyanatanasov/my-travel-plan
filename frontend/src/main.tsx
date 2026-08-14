@@ -12,6 +12,8 @@ import App from './App';
 // these custom properties.
 import './styles/tokens.css';
 import './index.css';
+// Flag sprites for <CountryFlag>; SVGs load on demand, not into the bundle.
+import 'flag-icons/css/flag-icons.min.css';
 
 registerServiceWorker();
 // No-op unless VITE_UMAMI_URL + VITE_UMAMI_WEBSITE_ID are set (prod only).
