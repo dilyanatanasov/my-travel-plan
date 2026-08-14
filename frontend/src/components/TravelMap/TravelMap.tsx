@@ -909,7 +909,10 @@ function TravelMap() {
         accepted: the panel is dismissible and this is a rare orientation for
         a world map.
       */}
-      <MapLegend showFlights={settings.showFlights} stats={stats} />
+      {/* Hidden during replay (density budget): the map is the show. */}
+      {!replay.isActive && (
+        <MapLegend showFlights={settings.showFlights} stats={stats} />
+      )}
 
       {/*
         Transport controls appear only while replaying, and take the slot the

@@ -937,7 +937,10 @@ function GlobeView({
         </div>
       )}
 
-      <MapLegend showFlights={settings.showFlights} stats={stats} />
+      {/* Hidden during replay (density budget): the map is the show. */}
+      {!replay.isActive && (
+        <MapLegend showFlights={settings.showFlights} stats={stats} />
+      )}
 
       {/* The country detail card, built and positioned by TravelMap (D8) —
           opened by tapping a home country or holding any country. */}
