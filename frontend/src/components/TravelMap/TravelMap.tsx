@@ -12,7 +12,7 @@ import {
   useGetFlightsQuery,
   useGetLegPhotoIdsQuery,
 } from '../../features/flights/flightsApi';
-import PostcardOverlay from './PostcardOverlay';
+import PostcardMarker from './PostcardMarker';
 import { useUpdateVisitMutation } from '../../features/visits/visitsApi';
 import { aggregateRoutes, extractUniqueAirports, countAirportVisits } from '../FlightMap/routeUtils';
 import { applyFilters, extractFilterOptions } from '../FlightMap/filterUtils';
@@ -840,6 +840,11 @@ function TravelMap() {
               popKey={popAirport?.key}
             />
           )}
+
+          {/* The postcard, above the arrival city (trip photos). */}
+          {replay.isActive && postcard && (
+            <PostcardMarker postcard={postcard} />
+          )}
         </ZoomableGroup>
       </ComposableMap>
 
@@ -875,8 +880,6 @@ function TravelMap() {
           {yearChip}
         </div>
       )}
-
-      {replay.isActive && <PostcardOverlay postcard={postcard} />}
 
       {!replay.isActive && (
       <div className="absolute top-3 left-3 right-3 md:right-auto md:w-[30rem] z-30 flex flex-col gap-2">

@@ -11,6 +11,17 @@ import {
   STOP_PAUSE_SECONDS,
   type ReplayState,
 } from './useJourneyReplay';
+import { formatJourneyDate } from '../../utils/journeyDate';
+
+/** Everything the postcard needs to render at the arrival city. */
+export interface ReplayPostcard {
+  legId: number;
+  key: number;
+  lon: number;
+  lat: number;
+  /** Caption: city (or IATA) plus the journey's precision-aware date. */
+  caption: string;
+}
 
 /**
  * Everything the replay narrates on top of the base map: countries revealed
@@ -30,7 +41,7 @@ export interface ReplayOrchestration {
   /** Year chapter: flashes when the replay crosses into a new year. */
   yearChip: string | null;
   /** The stop whose postcard is showing (trip photos, 2026-08-14). */
-  postcard: { legId: number; key: number } | null;
+  postcard: ReplayPostcard | null;
   /** Display map holding only the countries revealed so far this replay. */
   replayCountryDisplayMap: Map<string, CountryDisplayInfo>;
   replayRoutes: AggregatedRoute[];
@@ -69,10 +80,7 @@ export function useReplayOrchestration(
     key: number;
   } | null>(null);
   const [yearChip, setYearChip] = useState<string | null>(null);
-  const [postcard, setPostcard] = useState<{
-    legId: number;
-    key: number;
-  } | null>(null);
+  const [postcard, setPostcard] = useState<ReplayPostcard | null>(null);
   const lastYearRef = useRef<string | null>(null);
   /*
     Countries already lit during this replay.
@@ -103,6 +111,10 @@ export function useReplayOrchestration(
   useEffect(() => {
     setLandedIsoCode(null);
     setPopAirport(null);
+    // Cleared here, not only by its own timer: that timer dies with this
+    // journey's cleanup, so a card shown near a step's end would otherwise
+    // survive into the next journey (the "doesn't disappear" report).
+    setPostcard(null);
     if (!replay.isActive || !replay.current) return;
 
     const legs = [...replay.current.legs].sort((a, b) => a.legOrder - b.legOrder);
@@ -148,14 +160,24 @@ export function useReplayOrchestration(
         }, at),
       );
       /*
-        The postcard (trip photos): where a stop has a photo, it pops as
-        the plane lands and holds through the ground pause — a memory at
-        the moment of arrival, which is the whole point of the feature.
+        The postcard (trip photos): where a stop has a photo, it pops at
+        the arrival city as the plane lands and holds through the ground
+        pause — a memory at the moment of arrival.
       */
-      if (leg.id && photoLegIds?.has(leg.id)) {
+      const lon = Number(airport.longitude);
+      const lat = Number(airport.latitude);
+      if (
+        leg.id &&
+        photoLegIds?.has(leg.id) &&
+        Number.isFinite(lon) &&
+        Number.isFinite(lat)
+      ) {
+        const date = replay.current ? formatJourneyDate(replay.current) : null;
+        const place = airport.city || airport.iataCode;
+        const caption = date ? `${place} · ${date}` : place;
         timers.push(
           window.setTimeout(() => {
-            setPostcard({ legId: leg.id, key: Date.now() });
+            setPostcard({ legId: leg.id, key: Date.now(), lon, lat, caption });
           }, at),
         );
         timers.push(window.setTimeout(() => setPostcard(null), at + 3200));

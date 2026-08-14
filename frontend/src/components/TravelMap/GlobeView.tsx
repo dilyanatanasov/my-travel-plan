@@ -33,7 +33,8 @@ import MapSearch, { type SearchTarget } from './MapSearch';
 import { useSearchLanding } from './useSearchLanding';
 import CountryTooltip from './CountryTooltip';
 import GlobeJourney from './GlobeJourney';
-import PostcardOverlay from './PostcardOverlay';
+import PostcardMarker from './PostcardMarker';
+import type { ReplayPostcard } from './useReplayOrchestration';
 import MapControlPanel, { type TravelMapSettings } from './MapControlPanel';
 import MapLegend from './MapLegend';
 import MapZoomControls from './MapZoomControls';
@@ -205,7 +206,7 @@ interface GlobeViewProps {
   /** The country detail card, built and positioned by TravelMap. */
   detailCard?: ReactNode;
   /** The stop whose postcard is showing during replay (trip photos). */
-  postcard?: { legId: number; key: number } | null;
+  postcard?: ReplayPostcard | null;
   landedIsoCode: string | null;
   popAirport: { iata: string; key: number } | null;
   yearChip: string | null;
@@ -870,6 +871,13 @@ function GlobeView({
             />
           )}
 
+          {/* The postcard above its city — hemisphere-gated like the ping. */}
+          {replay.isActive &&
+            postcard &&
+            isOnVisibleSide([postcard.lon, postcard.lat], center) && (
+              <PostcardMarker postcard={postcard} />
+            )}
+
           {/*
             Search ping, same chip as the flat map — gated by hemisphere:
             the raw projection happily maps the far side onto the same disk,
@@ -935,7 +943,6 @@ function GlobeView({
           opened by tapping a home country or holding any country. */}
       {!replay.isActive && detailCard}
 
-      {replay.isActive && <PostcardOverlay postcard={postcard} />}
 
       {replay.isActive && (
         <div className="absolute z-30 top-3 left-3 right-3 md:right-auto md:w-[30rem]">
