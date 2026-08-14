@@ -2,6 +2,7 @@ import { useMapContext, useZoomPanContext } from 'react-simple-maps';
 import { getZoomAdjustedSize } from '../FlightMap/routeUtils';
 import { legPhotoUrl } from '../../features/flights/StopPhotoControl';
 import type { ReplayPostcard } from './useReplayOrchestration';
+import { wrapCaption } from './postcardCaption';
 
 /**
  * The replay postcard (trip photos, 2026-08-14): a tilted polaroid that
@@ -22,7 +23,10 @@ function PostcardMarker({ postcard }: { postcard: ReplayPostcard }) {
   const photoW = getZoomAdjustedSize(150, zoom);
   const photoH = photoW * 0.7;
   const pad = photoW * 0.055;
-  const band = photoW * 0.2;
+  const lines = wrapCaption(postcard.caption);
+  // The band grows for a second caption line instead of cutting it off.
+  const band = photoW * (lines.length > 1 ? 0.32 : 0.2);
+  const fontSize = photoW * 0.082;
   const frameW = photoW + pad * 2;
   const frameH = photoH + pad + band;
   // Clears the airport's popping name pill, which also lands above the
@@ -75,16 +79,25 @@ function PostcardMarker({ postcard }: { postcard: ReplayPostcard }) {
             height={photoH}
             preserveAspectRatio="xMidYMid slice"
           />
-          <text
-            x={frameW / 2}
-            y={pad + photoH + band * 0.68}
-            textAnchor="middle"
-            fontSize={photoW * 0.082}
-            fontFamily="Caprasimo, Georgia, serif"
-            fill="#201e1d"
-          >
-            {postcard.caption}
-          </text>
+          {lines.map((lineText, i) => (
+            <text
+              key={i}
+              x={frameW / 2}
+              y={
+                pad +
+                photoH +
+                (lines.length > 1
+                  ? band * 0.36 + i * fontSize * 1.3
+                  : band * 0.68)
+              }
+              textAnchor="middle"
+              fontSize={fontSize}
+              fontFamily="Caprasimo, Georgia, serif"
+              fill="#201e1d"
+            >
+              {lineText}
+            </text>
+          ))}
         </g>
       </g>
     </g>

@@ -183,7 +183,8 @@ export function useReplayOrchestration(
         const note = replay.current?.notes?.trim();
         const fallback = date ? `${place} · ${date}` : place;
         const raw = note || fallback;
-        const caption = raw.length > 28 ? `${raw.slice(0, 27)}…` : raw;
+        // The marker wraps to two lines; this only guards absurd lengths.
+        const caption = raw.length > 64 ? `${raw.slice(0, 63)}…` : raw;
         timers.push(
           window.setTimeout(() => {
             setPostcard({ legId: leg.id, key: Date.now(), lon, lat, caption });

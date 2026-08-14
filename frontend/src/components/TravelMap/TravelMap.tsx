@@ -874,7 +874,7 @@ function TravelMap() {
         <div
           key={yearChip}
           aria-hidden="true"
-          className="year-chip absolute top-16 left-1/2 z-30 map-glass rounded-2xl border shadow-xl
+          className="year-chip absolute top-16 left-1/2 z-40 map-glass rounded-2xl border shadow-xl
             px-6 py-2 font-display text-3xl pointer-events-none"
         >
           {yearChip}
