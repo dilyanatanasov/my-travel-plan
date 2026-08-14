@@ -5,6 +5,8 @@ import {
   loadDayState,
   loadStats,
 } from './dailyPuzzle';
+import { useGetDailyStatsQuery } from './dailyApi';
+import { useAuth } from '../auth/authApi';
 
 /**
  * The daily guesser's home inside the app (owner decision 2026-08-14:
@@ -15,7 +17,13 @@ function DailyCard() {
   const date = todayUtc();
   const number = puzzleNumber(date);
   const state = loadDayState(date);
-  const stats = loadStats();
+  // Server streak when the session has one (survives new devices and
+  // cleared caches); localStorage otherwise.
+  const { user } = useAuth();
+  const { data: serverStats } = useGetDailyStatsQuery(undefined, {
+    skip: !user,
+  });
+  const stats = serverStats ?? loadStats();
 
   const status =
     state?.status === 'won'

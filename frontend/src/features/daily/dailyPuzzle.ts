@@ -1,6 +1,31 @@
 import { geoDistance } from 'd3-geo';
 
 /**
+ * The puzzle uses the 50m-resolution atlas, not the map's 110m one: the
+ * coarse tier silently drops microstates — Malta, Andorra, Liechtenstein —
+ * which is unacceptable in a guessing game (typing "Malta" and finding
+ * nothing reads as broken). ~240KB gzipped, fetched only on /daily, cached
+ * per session like the map's own loader.
+ */
+const GEO_50M_URL =
+  'https://cdn.jsdelivr.net/npm/world-atlas@2/countries-50m.json';
+let dailyGeographyPromise: Promise<unknown> | null = null;
+
+export function loadDailyGeography(): Promise<unknown> {
+  dailyGeographyPromise ??= fetch(GEO_50M_URL)
+    .then((response) => {
+      if (!response.ok)
+        throw new Error(`Geography fetch failed: ${response.status}`);
+      return response.json();
+    })
+    .catch((error) => {
+      dailyGeographyPromise = null;
+      throw error;
+    });
+  return dailyGeographyPromise;
+}
+
+/**
  * The daily country guesser's pure logic (2026-08-14, D6): deterministic
  * daily pick, Worldle-style hints (distance + compass direction +
  * proximity), localStorage streaks, emoji share grid. No backend — the

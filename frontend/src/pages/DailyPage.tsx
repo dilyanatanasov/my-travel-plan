@@ -1,8 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { geoAzimuthalEqualArea, geoCentroid, geoPath } from 'd3-geo';
-import { loadGeography } from '../components/TravelMap/CountriesLayer';
-import { numericToAlpha3 } from '../components/TravelMap/isoCodes';
 import { feature } from 'topojson-client';
 import type { Topology, GeometryCollection } from 'topojson-specification';
 import Button from '../components/ui/Button';
@@ -22,14 +20,18 @@ import {
   saveDayState,
   loadStats,
   saveStats,
+  loadDailyGeography,
   type DayState,
   type GuessResult,
   type LonLat,
 } from '../features/daily/dailyPuzzle';
+import {
+  useGetDailyStatsQuery,
+  usePostDailyResultMutation,
+} from '../features/daily/dailyApi';
 
 interface Candidate {
   name: string;
-  iso3: string;
   centroid: LonLat;
   geometry: GeoJSON.Feature;
 }
@@ -66,13 +68,24 @@ function DailyPage() {
   // signed-in player must never be sent to a login they already passed.
   const { user, isGuest } = useAuth();
   const isSignedIn = Boolean(user) && !isGuest;
+  /*
+    Streaks of record: any session (guests included) mirrors results to the
+    server, where first-write-wins per day makes cache-clearing pointless.
+    Truly anonymous players keep localStorage — that is anonymity's deal.
+  */
+  const hasSession = Boolean(user);
+  const { data: serverStats } = useGetDailyStatsQuery(undefined, {
+    skip: !hasSession,
+  });
+  const [postDailyResult] = usePostDailyResultMutation();
   const [candidates, setCandidates] = useState<Candidate[] | null>(null);
   const date = todayUtc();
   const number = puzzleNumber(date);
 
   useEffect(() => {
     let active = true;
-    loadGeography()
+    // 50m atlas: the coarse map tier drops Malta-sized countries entirely.
+    loadDailyGeography()
       .then((topology) => {
         if (!active) return;
         const topo = topology as unknown as Topology;
@@ -81,15 +94,15 @@ function DailyPage() {
           topo.objects.countries as GeometryCollection,
         ) as unknown as { features: GeoJSON.Feature[] };
         const list: Candidate[] = [];
+        const seen = new Set<string>();
         for (const geometry of collection.features) {
-          const iso3 =
-            numericToAlpha3[String(parseInt(String(geometry.id), 10))];
           const name = (geometry.properties as { name?: string })?.name;
           const centroid = geoCentroid(geometry);
-          if (!iso3 || !name) continue;
+          if (!name || seen.has(name)) continue;
           if (!Number.isFinite(centroid[0]) || !Number.isFinite(centroid[1]))
             continue;
-          list.push({ name, iso3, centroid: [centroid[0], centroid[1]], geometry });
+          seen.add(name);
+          list.push({ name, centroid: [centroid[0], centroid[1]], geometry });
         }
         list.sort((a, b) => a.name.localeCompare(b.name));
         setCandidates(list);
@@ -127,6 +140,8 @@ function DailyPage() {
   );
   const [query, setQuery] = useState('');
   const [stats, setStats] = useState(loadStats);
+  // The server's numbers win when a session has them; local is the fallback.
+  const shownStats = serverStats ?? stats;
   const [countdown, setCountdown] = useState(msToNextUtcMidnight());
 
   useEffect(() => {
@@ -166,6 +181,11 @@ function DailyPage() {
     const nextStats = applyResult(stats, date, won);
     setStats(nextStats);
     saveStats(nextStats);
+    if (hasSession) {
+      void postDailyResult({ date, won, tries: guesses.length })
+        .unwrap()
+        .catch(() => undefined); // local copy already has it
+    }
     // Result and try-count only — never which country it was.
     track('daily_play', { result: won ? 'won' : 'lost', tries: guesses.length });
   };
@@ -226,7 +246,7 @@ function DailyPage() {
             </h1>
             <p className="text-xs text-ink-subtle">
               #{number} · guess the shape in {MAX_GUESSES}
-              {stats.streak > 0 && ` · streak ${stats.streak}`}
+              {shownStats.streak > 0 && ` · streak ${shownStats.streak}`}
             </p>
           </div>
           <Link to="/" className="font-display text-lg text-ink flex-shrink-0">
@@ -301,7 +321,7 @@ function DailyPage() {
                  list fell off-screen behind the scroll (user report). */
               <ul className="absolute z-10 left-0 right-0 bottom-full mb-1 bg-surface border border-line rounded-lg shadow-lg overflow-hidden">
                 {suggestions.map((candidate) => (
-                  <li key={candidate.iso3}>
+                  <li key={candidate.name}>
                     <button
                       type="button"
                       onClick={() => submitGuess(candidate)}
@@ -332,8 +352,8 @@ function DailyPage() {
               )}
             </p>
             <p className="text-xs text-ink-subtle tabular-nums">
-              Streak {stats.streak} · best {stats.maxStreak} · played{' '}
-              {stats.played} · next in {formatCountdown(countdown)}
+              Streak {shownStats.streak} · best {shownStats.maxStreak} ·
+              played {shownStats.played} · next in {formatCountdown(countdown)}
             </p>
             <Button fullWidth onClick={handleShare}>
               Share result
