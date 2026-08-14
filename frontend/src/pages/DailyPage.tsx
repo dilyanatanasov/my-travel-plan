@@ -5,6 +5,7 @@ import { feature } from 'topojson-client';
 import type { Topology, GeometryCollection } from 'topojson-specification';
 import Button from '../components/ui/Button';
 import TextInput from '../components/ui/TextInput';
+import SatelliteShell from '../components/Layout/SatelliteShell';
 import { useToast } from '../components/Toast/ToastProvider';
 import { useAuth } from '../features/auth/authApi';
 import { track } from '../lib/analytics';
@@ -264,9 +265,18 @@ function DailyPage() {
   const done = state.status !== 'playing';
 
   return (
-    <div className="scroll-page bg-canvas">
+    <SatelliteShell
+      anonymousAction={
+        <Link
+          to="/register?ref=daily"
+          className="inline-flex items-center min-h-11 px-3 sm:px-4 rounded-lg bg-brand-600 text-white text-sm font-medium hover:bg-brand-700"
+        >
+          Make your own map
+        </Link>
+      }
+    >
       <div className="max-w-md mx-auto px-4 py-6 sm:py-10">
-        <div className="flex items-center justify-between gap-3 mb-4">
+        <div className="flex items-end justify-between gap-3 mb-4">
           <div>
             <h1 className="font-display font-normal text-2xl text-ink">
               Daily country
@@ -276,9 +286,30 @@ function DailyPage() {
               {shownStats.streak > 0 && ` · streak ${shownStats.streak}`}
             </p>
           </div>
-          <Link to="/" className="font-display text-lg text-ink flex-shrink-0">
-            <span className="text-brand-600 text-sm">my</span>Contrail
-          </Link>
+          {/* The last week, newest right — the record of what you guessed. */}
+          {serverStats?.recent && serverStats.recent.length > 0 && (
+            <div
+              className="flex gap-1 flex-shrink-0"
+              aria-label="Your recent results"
+            >
+              {[...serverStats.recent]
+                .slice(0, 7)
+                .reverse()
+                .map((day) => (
+                  <span
+                    key={day.date}
+                    title={`${day.date} — ${day.won ? `won in ${day.tries}` : 'lost'}`}
+                    className={`w-6 h-6 rounded flex items-center justify-center text-[10px] font-semibold ${
+                      day.won
+                        ? 'bg-brand-600 text-white'
+                        : 'bg-danger-soft text-danger'
+                    }`}
+                  >
+                    {day.won ? day.tries : '✕'}
+                  </span>
+                ))}
+            </div>
+          )}
         </div>
 
         {/* The shape. currentColor keeps it honest in both themes. */}
@@ -407,7 +438,7 @@ function DailyPage() {
           </div>
         )}
       </div>
-    </div>
+    </SatelliteShell>
   );
 }
 

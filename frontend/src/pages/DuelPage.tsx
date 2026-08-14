@@ -9,6 +9,7 @@ import {
   type PublicMap,
 } from '../features/share/shareApi';
 import { useAuth } from '../features/auth/authApi';
+import SatelliteShell from '../components/Layout/SatelliteShell';
 import CountriesLayer from '../components/TravelMap/CountriesLayer';
 import { useMapViewport } from '../components/TravelMap/useMapViewport';
 import { useMapColors } from '../theme/mapColors';
@@ -107,18 +108,22 @@ function ChallengeLanding({ token }: { token: string }) {
 
 function PageShell({ children }: { children: React.ReactNode }) {
   return (
-    // scroll-page, not min-h: the app shell sets overflow:hidden on <body>
-    // (the map is a canvas, not a document), so this page must own its own
-    // scrolling — on desktop the wide map pushed the rosters below a fold
-    // that could never be scrolled to.
-    <div className="scroll-page bg-canvas">
-      <header className="bg-surface border-b border-line px-4 py-3">
-        <Link to="/?ref=duel" className="font-display text-xl text-ink">
-          <span className="text-brand-600 text-base">my</span>Contrail
+    /* SatelliteShell (2026-08-14 coherence pass): a session gets the real
+       app header, strangers the shared slim one — this page's hand-rolled
+       mini-header retired with it. Scrolling stays owned here via the
+       shell (the app body is overflow:hidden). */
+    <SatelliteShell
+      anonymousAction={
+        <Link
+          to="/register?ref=duel"
+          className="inline-flex items-center min-h-11 px-3 sm:px-4 rounded-lg bg-brand-600 text-white text-sm font-medium hover:bg-brand-700"
+        >
+          Make your own map
         </Link>
-      </header>
+      }
+    >
       <main className="p-4 sm:p-6">{children}</main>
-    </div>
+    </SatelliteShell>
   );
 }
 

@@ -9,6 +9,8 @@ export interface DailyStats {
   streak: number;
   maxStreak: number;
   lastWonDate: string | null;
+  /** Most recent days first — the "track what you've guessed" strip. */
+  recent: { date: string; won: boolean; tries: number }[];
 }
 
 /** Server clock, UTC — the same day everyone's puzzle derives from. */
@@ -30,7 +32,7 @@ function previousDay(dateStr: string): string {
 export function computeStats(
   rows: { date: string; won: boolean }[],
   today: string,
-): DailyStats {
+): Omit<DailyStats, 'recent'> {
   const byDate = new Map(rows.map((row) => [row.date, row.won]));
   const played = rows.length;
   const won = rows.filter((row) => row.won).length;
@@ -102,11 +104,17 @@ export class DailyService {
   async stats(userId: number): Promise<DailyStats> {
     const rows = await this.resultRepository.find({
       where: { userId },
-      select: ['date', 'won'],
+      select: ['date', 'won', 'tries'],
+      order: { date: 'DESC' },
     });
-    return computeStats(
-      rows.map((row) => ({ date: String(row.date), won: row.won })),
-      todayUtc(),
-    );
+    const normalized = rows.map((row) => ({
+      date: String(row.date),
+      won: row.won,
+      tries: row.tries,
+    }));
+    return {
+      ...computeStats(normalized, todayUtc()),
+      recent: normalized.slice(0, 14),
+    };
   }
 }

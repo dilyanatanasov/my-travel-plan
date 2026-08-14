@@ -150,6 +150,8 @@ export interface DailyStats {
   streak: number;
   maxStreak: number;
   lastWonDate: string | null;
+  /** Server-side only: most recent days first, for the history strip. */
+  recent?: { date: string; won: boolean; tries: number }[];
 }
 
 const STATE_KEY = 'contrail:daily-state';
