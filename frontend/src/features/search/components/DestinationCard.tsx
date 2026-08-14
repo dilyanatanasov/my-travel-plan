@@ -3,6 +3,7 @@ import type { DiscoveryRow } from '../types';
 import { freshnessLabel } from '../discovery';
 import { buildDeepLink, trackOutboundClick } from '../affiliate';
 import { HOME_ORIGIN } from '../fixtures/priceMatrix';
+import CountryFlag from '../../../components/ui/CountryFlag';
 
 interface DestinationCardProps {
   row: DiscoveryRow;
@@ -80,6 +81,7 @@ function DestinationCard({ row, onShowOnMap }: DestinationCardProps) {
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h3 className="font-semibold text-ink leading-tight truncate">
+            <CountryFlag iso2={row.countryIso2} className="mr-1.5 align-baseline" />
             {row.countryName}
           </h3>
           <p className="text-xs text-ink-muted truncate">

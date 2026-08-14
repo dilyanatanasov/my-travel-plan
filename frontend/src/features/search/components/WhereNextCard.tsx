@@ -4,6 +4,7 @@ import { useGetVisitsQuery } from '../../visits/visitsApi';
 import { HOME_ORIGIN, getMonthMatrix } from '../fixtures/priceMatrix';
 import { deriveRows, visitedIsoSet } from '../discovery';
 import { defaultMonth, nextTwelveMonths } from '../months';
+import CountryFlag from '../../../components/ui/CountryFlag';
 
 const euro = new Intl.NumberFormat(undefined, {
   style: 'currency',
@@ -56,7 +57,10 @@ function WhereNextCard() {
       <ul className="space-y-1.5">
         {top.map((row) => (
           <li key={row.iata} className="flex items-baseline justify-between gap-2 text-sm">
-            <span className="text-ink font-medium truncate">{row.countryName}</span>
+            <span className="text-ink font-medium truncate">
+              <CountryFlag iso2={row.countryIso2} className="mr-1.5 align-baseline" />
+              {row.countryName}
+            </span>
             <span className="text-ink-muted tabular-nums flex-shrink-0">
               from {euro.format(row.cheapest.value)}
             </span>

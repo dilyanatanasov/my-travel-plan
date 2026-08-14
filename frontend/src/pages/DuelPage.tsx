@@ -14,7 +14,8 @@ import { useMapViewport } from '../components/TravelMap/useMapViewport';
 import { useMapColors } from '../theme/mapColors';
 import { useToast } from '../components/Toast/ToastProvider';
 import type { CountryDisplayInfo } from '../components/TravelMap/countryColors';
-import type { Alpha3 } from '../types';
+import CountryFlag from '../components/ui/CountryFlag';
+import type { Alpha2, Alpha3 } from '../types';
 
 /*
   The duel: two public maps on one canvas, a scoreline, and — behind a
@@ -150,8 +151,8 @@ function DuelPage() {
     const display = new Map<string, CountryDisplayInfo>();
     const empty = {
       display,
-      listA: [] as { name: string; shared: boolean }[],
-      listB: [] as { name: string; shared: boolean }[],
+      listA: [] as { name: string; iso2: Alpha2; shared: boolean }[],
+      listB: [] as { name: string; iso2: Alpha2; shared: boolean }[],
       onlyACount: 0,
       onlyBCount: 0,
     };
@@ -175,17 +176,17 @@ function DuelPage() {
       (the common ground). A country both have paints as 'home' — the map's
       highest-contrast tone — and repeats in both columns marked shared.
     */
-    const listA: { name: string; shared: boolean }[] = [];
-    const listB: { name: string; shared: boolean }[] = [];
+    const listA: { name: string; iso2: Alpha2; shared: boolean }[] = [];
+    const listB: { name: string; iso2: Alpha2; shared: boolean }[] = [];
     for (const [iso, c] of aSet) {
       const shared = bSet.has(iso);
       paint(iso, shared ? 'home' : 'trip');
-      listA.push({ name: c.name, shared });
+      listA.push({ name: c.name, iso2: c.isoCode2, shared });
     }
     for (const [iso, c] of bSet) {
       const shared = aSet.has(iso);
       if (!shared) paint(iso, 'transit');
-      listB.push({ name: c.name, shared });
+      listB.push({ name: c.name, iso2: c.isoCode2, shared });
     }
     const order = (
       x: { name: string; shared: boolean },
@@ -347,6 +348,7 @@ function DuelPage() {
                           background: country.shared ? colors.home : color,
                         }}
                       />
+                      <CountryFlag iso2={country.iso2} className="mr-1 align-baseline" />
                       {country.name}
                     </li>
                   ))}

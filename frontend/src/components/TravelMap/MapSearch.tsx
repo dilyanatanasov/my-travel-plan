@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { Alpha3, Country, LonLatTuple } from '../../types';
+import type { Alpha2, Alpha3, Country, LonLatTuple } from '../../types';
 import { useSearchAirportsQuery } from '../../features/flights/flightsApi';
+import CountryFlag from '../ui/CountryFlag';
 
 export interface SearchTarget {
   center: [number, number];
@@ -22,6 +23,8 @@ interface Hit {
   key: string;
   label: string;
   detail: string;
+  /** Alpha-2 for the row's flag: the country itself, or an airport's country. */
+  iso2: Alpha2 | null;
   target: SearchTarget;
 }
 
@@ -81,6 +84,7 @@ function MapSearch({ countries, countryCentroids, onGo }: MapSearchProps) {
         key: `c-${country.id}`,
         label: country.name,
         detail: 'Country',
+        iso2: country.isoCode2,
         // Countries vary hugely in size; 2.5 frames a mid-sized one without
         // burying a small one in ocean.
         target: { center: centroid, zoom: 2.5, isoCode: country.isoCode },
@@ -95,6 +99,7 @@ function MapSearch({ countries, countryCentroids, onGo }: MapSearchProps) {
         key: `a-${airport.id}`,
         label: airport.iataCode,
         detail: [airport.city, airport.country].filter(Boolean).join(', ') || airport.name,
+        iso2: airport.countryIso,
         // Same string-from-Postgres problem as fitBounds; see the note there.
         target: {
           center: [Number(airport.longitude), Number(airport.latitude)],
@@ -206,6 +211,7 @@ function MapSearch({ countries, countryCentroids, onGo }: MapSearchProps) {
                   index === activeIndex ? 'bg-current/10' : ''
                 }`}
               >
+                <CountryFlag iso2={hit.iso2} className="self-center" />
                 <span className="font-medium text-sm">{hit.label}</span>
                 <span className="text-xs map-glass-muted truncate">{hit.detail}</span>
               </button>

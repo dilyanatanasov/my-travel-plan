@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react';
 import type { Alpha2, FlightJourney, Visit, VisitType } from '../../types';
+import CountryFlag from '../ui/CountryFlag';
 
 interface CountryDetailCardProps {
   countryName: string;
@@ -160,6 +161,7 @@ function CountryDetailCard({
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <h3 className="font-display font-normal text-xl leading-tight truncate">
+            <CountryFlag iso2={isoAlpha2} className="mr-2 align-baseline" />
             {countryName}
           </h3>
           <p className="text-xs map-glass-muted mt-0.5">
