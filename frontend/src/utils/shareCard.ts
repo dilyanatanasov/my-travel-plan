@@ -485,6 +485,9 @@ function drawTicket(
   ctx.save();
   roundedRect(ctx, mapX, y, mapW, mapH, 36);
   ctx.clip();
+  // Backdrop first: any contain slack must read as paper, not a white bar.
+  ctx.fillStyle = TICKET.paper;
+  ctx.fillRect(mapX, y, mapW, mapH);
   drawMapContain(ctx, map, mapX, y, mapW, mapH);
   ctx.restore();
   y += mapH + gap;
@@ -568,6 +571,9 @@ export async function renderTripCard(
   ctx.save();
   roundedRect(ctx, mapX, y, mapW, mapH, 36);
   ctx.clip();
+  // Backdrop first: any contain slack must read as paper, not a white bar.
+  ctx.fillStyle = TICKET.paper;
+  ctx.fillRect(mapX, y, mapW, mapH);
   drawMapContain(ctx, mapImage, mapX, y, mapW, mapH);
   ctx.restore();
   y += mapH + gap;

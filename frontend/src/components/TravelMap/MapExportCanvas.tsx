@@ -1,8 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ComposableMap, ZoomableGroup } from 'react-simple-maps';
 import type { FlightJourney } from '../../types';
-import { useGetVisitsQuery } from '../../features/visits/visitsApi';
+import {
+  useGetVisitsQuery,
+  useGetCountriesQuery,
+} from '../../features/visits/visitsApi';
 import { useGetFlightsQuery } from '../../features/flights/flightsApi';
+import type { Alpha3 } from '../../types';
+import type { CountryDisplayInfo } from './countryColors';
 import {
   aggregateRoutes,
   extractUniqueAirports,
@@ -108,10 +113,42 @@ function MapExportCanvasInner({
     [journey, flights],
   );
 
-  const countryDisplayMap = useMemo(
+  const { data: countries = [] } = useGetCountriesQuery();
+
+  const fullDisplayMap = useMemo(
     () => buildCountryDisplayMap(visits),
     [visits]
   );
+
+  /*
+    Trip mode highlights the countries this journey touches (user request,
+    2026-08-14) — the rest stay plain land, so the trip reads as the story
+    against a quiet world. Airports carry alpha-2; the map keys on alpha-3,
+    same join the replay orchestration does.
+  */
+  const countryDisplayMap = useMemo(() => {
+    if (!journey) return fullDisplayMap;
+    const alpha2ToAlpha3 = new Map(
+      countries.map((c) => [c.isoCode2, c.isoCode]),
+    );
+    const map = new Map<string, CountryDisplayInfo>();
+    for (const leg of journey.legs ?? []) {
+      for (const airport of [leg.departureAirport, leg.arrivalAirport]) {
+        const iso3 = airport?.countryIso
+          ? alpha2ToAlpha3.get(airport.countryIso)
+          : undefined;
+        if (!iso3 || map.has(iso3)) continue;
+        map.set(iso3, {
+          isoCode: iso3 as Alpha3,
+          visitType: 'trip',
+          isHome: false,
+          hasFlights: true,
+          visit: null,
+        });
+      }
+    }
+    return map;
+  }, [journey, fullDisplayMap, countries]);
   const routes = useMemo(() => aggregateRoutes(shownFlights), [shownFlights]);
   const airports = useMemo(
     () => extractUniqueAirports(shownFlights),
@@ -134,25 +171,7 @@ function MapExportCanvasInner({
   const [countryCentroids, setCountryCentroids] = useState<Map<string, LonLat>>(
     new Map(),
   );
-  // Trip mode frames on the journey's own airports, so it never waits for
-  // centroids. It must still wait for ZoomableGroup to APPLY that framing:
-  // reporting ready on the mount render let the serializer catch frame zero
-  // — an untransformed world of plain outlines instead of the trip
-  // (Rome–Varna bug, 2026-08-14). Two rAFs span the transform's effect.
-  const [transformSettled, setTransformSettled] = useState(false);
-  useEffect(() => {
-    let inner: number | null = null;
-    const outer = requestAnimationFrame(() => {
-      inner = requestAnimationFrame(() => setTransformSettled(true));
-    });
-    return () => {
-      cancelAnimationFrame(outer);
-      if (inner !== null) cancelAnimationFrame(inner);
-    };
-  }, []);
   const hasCountries = !journey && countryDisplayMap.size > 0;
-  const centroidsSettled =
-    (!hasCountries || countryCentroids.size > 0) && transformSettled;
 
   const framing = useMemo(() => {
     const points: LonLat[] = airports.map((a) => [a.longitude, a.latitude]);
@@ -168,6 +187,34 @@ function MapExportCanvasInner({
       ? fitToPoints(points, { maxZoom: 5, fill: 0.72 })
       : fitToPoints(points, { maxZoom: 3.2, fill: 0.82 });
   }, [airports, countryDisplayMap, countryCentroids, journey]);
+
+  /*
+    ZoomableGroup applies zoom/center when the props CHANGE, not on mount.
+    The map card always framed late (centroids arrive → change); trip mode
+    computed its framing on the first render, so the group never moved and
+    the card showed an untransformed world (Rome–Varna bug, 2026-08-14).
+    Routing the framing through post-mount state makes it a change in both
+    modes, and readiness waits two rAFs past its application.
+  */
+  const [appliedFraming, setAppliedFraming] = useState<typeof framing>(null);
+  const [transformSettled, setTransformSettled] = useState(false);
+  useEffect(() => {
+    if (!framing) return;
+    setAppliedFraming(framing);
+    setTransformSettled(false);
+    let inner: number | null = null;
+    const outer = requestAnimationFrame(() => {
+      inner = requestAnimationFrame(() => setTransformSettled(true));
+    });
+    return () => {
+      cancelAnimationFrame(outer);
+      if (inner !== null) cancelAnimationFrame(inner);
+    };
+  }, [framing]);
+
+  const centroidsSettled =
+    (!hasCountries || countryCentroids.size > 0) &&
+    (framing === null || (appliedFraming === framing && transformSettled));
 
   return (
     <div
@@ -195,9 +242,8 @@ function MapExportCanvasInner({
             fill={colors.ocean}
           />
           <CountriesLayer
+            /* In trip mode this map holds only the trip's countries. */
             countryDisplayMap={countryDisplayMap}
-            /* Trip mode: plain land — the route is the story. */
-            showVisitColors={!journey}
             onCentroids={setCountryCentroids}
             /*
               Borders scale with the map here, unlike the live views. This SVG
