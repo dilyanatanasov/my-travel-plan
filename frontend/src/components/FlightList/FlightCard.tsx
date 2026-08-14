@@ -9,6 +9,7 @@ import {
 } from '../../utils/journeyDate';
 import { useUpdateFlightMutation } from '../../features/flights/flightsApi';
 import { useToast } from '../../components/Toast/ToastProvider';
+import { moveStop, loopStatus } from './stopChain';
 
 interface FlightCardProps {
   journey: FlightJourney;
@@ -56,6 +57,24 @@ function FlightCard({
     ];
   };
   const [editStops, setEditStops] = useState<(Airport | null)[]>(chainFromLegs);
+  /** Set when the honesty rule unchecked Round trip, so the form says why. */
+  const [roundTripAutoCleared, setRoundTripAutoCleared] = useState(false);
+
+  /*
+    Every stop mutation (reorder, retype, remove) flows through here so the
+    Round trip label stays honest (2026-08-14): a chain that provably no
+    longer ends where it started is not a round trip, and the checkbox
+    unchecks itself — visibly, with the reason shown — rather than shipping
+    a label that lies. It never re-checks itself: "round trip" is the
+    user's claim to make.
+  */
+  const applyStops = (next: (Airport | null)[]) => {
+    setEditStops(next);
+    if (editRoundTrip && loopStatus(next) === 'broken') {
+      setEditRoundTrip(false);
+      setRoundTripAutoCleared(true);
+    }
+  };
 
   const startEdit = () => {
     const parts = journeyDateParts(journey);
@@ -65,6 +84,7 @@ function FlightCard({
     setEditNotes(journey.notes ?? '');
     setEditRoundTrip(journey.isRoundTrip);
     setEditStops(chainFromLegs());
+    setRoundTripAutoCleared(false);
     setIsEditing(true);
   };
 
@@ -222,13 +242,40 @@ function FlightCard({
           <div className="space-y-1.5">
             {editStops.map((stop, index) => (
               <div key={index} className="flex items-center gap-1.5">
+                {/* Reorder the chain without retyping airports. */}
+                <div className="flex flex-col flex-shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => applyStops(moveStop(editStops, index, -1))}
+                    disabled={index === 0}
+                    aria-label="Move this stop earlier"
+                    title="Move earlier"
+                    className="p-0.5 text-ink-subtle hover:text-brand-700 rounded disabled:opacity-30"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyStops(moveStop(editStops, index, 1))}
+                    disabled={index === editStops.length - 1}
+                    aria-label="Move this stop later"
+                    title="Move later"
+                    className="p-0.5 text-ink-subtle hover:text-brand-700 rounded disabled:opacity-30"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                </div>
                 <div className="flex-1 min-w-0">
                   <AirportSearch
                     value={stop}
                     onChange={(airport) => {
                       const next = [...editStops];
                       next[index] = airport;
-                      setEditStops(next);
+                      applyStops(next);
                     }}
                     placeholder={index === 0 ? 'From airport' : 'To airport'}
                   />
@@ -237,7 +284,7 @@ function FlightCard({
                   <button
                     type="button"
                     onClick={() =>
-                      setEditStops(editStops.filter((_, i) => i !== index))
+                      applyStops(editStops.filter((_, i) => i !== index))
                     }
                     aria-label="Remove this stop"
                     className="flex-shrink-0 p-1.5 text-ink-subtle hover:text-red-500 rounded"
@@ -249,7 +296,7 @@ function FlightCard({
             ))}
             <button
               type="button"
-              onClick={() => setEditStops([...editStops, null])}
+              onClick={() => applyStops([...editStops, null])}
               className="text-xs font-medium text-brand-text hover:text-brand-700 underline min-h-8"
             >
               + Add a stop
@@ -308,12 +355,22 @@ function FlightCard({
               <input
                 type="checkbox"
                 checked={editRoundTrip}
-                onChange={(e) => setEditRoundTrip(e.target.checked)}
+                onChange={(e) => {
+                  setEditRoundTrip(e.target.checked);
+                  // A manual choice replaces the automatic one, either way.
+                  setRoundTripAutoCleared(false);
+                }}
                 className="w-4 h-4 text-brand-text rounded focus:ring-brand-500"
               />
               Round trip
             </label>
           </div>
+          {roundTripAutoCleared && (
+            <p className="text-xs text-ink-muted">
+              Round trip unchecked — the route no longer ends where it
+              started. Re-check it if that is still wrong.
+            </p>
+          )}
           <input
             type="text"
             placeholder="Notes"
