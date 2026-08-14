@@ -136,6 +136,12 @@ export interface DayState {
   date: string;
   guesses: GuessResult[];
   status: 'playing' | 'won' | 'lost';
+  /**
+   * The answer this state was played against. If the candidate dataset
+   * ever changes mid-day (it did once, 110m→50m), the pick shifts — and
+   * old guesses must not render against a new answer.
+   */
+  answerName?: string;
 }
 
 export interface DailyStats {

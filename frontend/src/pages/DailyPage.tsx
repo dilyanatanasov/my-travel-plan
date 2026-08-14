@@ -138,6 +138,27 @@ function DailyPage() {
   const [state, setState] = useState<DayState>(() =>
     loadDayState(date) ?? { date, guesses: [], status: 'playing' },
   );
+
+  /*
+    Guard against a shifted answer: saved guesses belong to the answer they
+    were made against. A dataset change mid-day re-rolls the pick (seen
+    once, 110m→50m: "I got Mongolia with my old answers"), so a state whose
+    answerName no longer matches resets to a fresh board.
+  */
+  useEffect(() => {
+    if (!answer || state.guesses.length === 0) return;
+    if (state.answerName !== answer.name) {
+      const fresh: DayState = {
+        date,
+        guesses: [],
+        status: 'playing',
+        answerName: answer.name,
+      };
+      setState(fresh);
+      saveDayState(fresh);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [answer?.name]);
   const [query, setQuery] = useState('');
   const [stats, setStats] = useState(loadStats);
   // The server's numbers win when a session has them; local is the fallback.
@@ -175,6 +196,7 @@ function DailyPage() {
       date,
       guesses,
       status: won ? 'won' : 'lost',
+      answerName: answer?.name,
     };
     setState(nextState);
     saveDayState(nextState);
@@ -205,7 +227,12 @@ function DailyPage() {
     } else if (guesses.length >= MAX_GUESSES) {
       finish(guesses, false);
     } else {
-      const nextState: DayState = { date, guesses, status: 'playing' };
+      const nextState: DayState = {
+        date,
+        guesses,
+        status: 'playing',
+        answerName: answer.name,
+      };
       setState(nextState);
       saveDayState(nextState);
     }
