@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { ComposableMap, ZoomableGroup } from 'react-simple-maps';
+import type { FlightJourney } from '../../types';
 import { useGetVisitsQuery } from '../../features/visits/visitsApi';
 import { useGetFlightsQuery } from '../../features/flights/flightsApi';
 import {
@@ -54,9 +55,22 @@ interface MapExportCanvasProps {
    * can only be a little wider than optimal, never cropped.
    */
   height?: number;
+  /**
+   * Trip mode (2026-08-14): draw only this journey — its route, its
+   * airports, plain land underneath (the trip is the highlight, not the
+   * visit colours) — framed on its own legs.
+   */
+  journey?: FlightJourney;
+  /** Distinct id so a trip canvas cannot collide with the map-card one. */
+  svgId?: string;
 }
 
-function MapExportCanvas({ theme, height = EXPORT_HEIGHT }: MapExportCanvasProps) {
+function MapExportCanvas({
+  theme,
+  height = EXPORT_HEIGHT,
+  journey,
+  svgId,
+}: MapExportCanvasProps) {
   const outer = useTheme();
 
   /*
@@ -70,23 +84,43 @@ function MapExportCanvas({ theme, height = EXPORT_HEIGHT }: MapExportCanvasProps
     <ThemeContext.Provider
       value={{ ...outer, resolved: theme ?? outer.resolved }}
     >
-      <MapExportCanvasInner height={height} />
+      <MapExportCanvasInner height={height} journey={journey} svgId={svgId} />
     </ThemeContext.Provider>
   );
 }
 
-function MapExportCanvasInner({ height }: { height: number }) {
+function MapExportCanvasInner({
+  height,
+  journey,
+  svgId,
+}: {
+  height: number;
+  journey?: FlightJourney;
+  svgId?: string;
+}) {
   const { map: colors } = useMapColors();
   const { data: visits = [] } = useGetVisitsQuery();
   const { data: flights = [] } = useGetFlightsQuery();
+
+  // Trip mode narrows every layer to the one journey.
+  const shownFlights = useMemo(
+    () => (journey ? [journey] : flights),
+    [journey, flights],
+  );
 
   const countryDisplayMap = useMemo(
     () => buildCountryDisplayMap(visits),
     [visits]
   );
-  const routes = useMemo(() => aggregateRoutes(flights), [flights]);
-  const airports = useMemo(() => extractUniqueAirports(flights), [flights]);
-  const airportVisitCounts = useMemo(() => countAirportVisits(flights), [flights]);
+  const routes = useMemo(() => aggregateRoutes(shownFlights), [shownFlights]);
+  const airports = useMemo(
+    () => extractUniqueAirports(shownFlights),
+    [shownFlights],
+  );
+  const airportVisitCounts = useMemo(
+    () => countAirportVisits(shownFlights),
+    [shownFlights],
+  );
   const maxRouteCount = Math.max(...routes.map((r) => r.count), 1);
 
   /*
@@ -100,18 +134,25 @@ function MapExportCanvasInner({ height }: { height: number }) {
   const [countryCentroids, setCountryCentroids] = useState<Map<string, LonLat>>(
     new Map(),
   );
-  const hasCountries = countryDisplayMap.size > 0;
+  // Trip mode frames on the journey's own airports, so it never waits for
+  // centroids — the geography-path count is the only readiness gate left.
+  const hasCountries = !journey && countryDisplayMap.size > 0;
   const centroidsSettled = !hasCountries || countryCentroids.size > 0;
 
   const framing = useMemo(() => {
     const points: LonLat[] = airports.map((a) => [a.longitude, a.latitude]);
-    for (const [iso, info] of countryDisplayMap) {
-      if (info.visitType === 'transit') continue;
-      const centroid = countryCentroids.get(iso);
-      if (centroid) points.push(centroid);
+    if (!journey) {
+      for (const [iso, info] of countryDisplayMap) {
+        if (info.visitType === 'transit') continue;
+        const centroid = countryCentroids.get(iso);
+        if (centroid) points.push(centroid);
+      }
     }
-    return fitToPoints(points, { maxZoom: 3.2, fill: 0.82 });
-  }, [airports, countryDisplayMap, countryCentroids]);
+    // A single trip affords a closer camera than the whole life map.
+    return journey
+      ? fitToPoints(points, { maxZoom: 5, fill: 0.72 })
+      : fitToPoints(points, { maxZoom: 3.2, fill: 0.82 });
+  }, [airports, countryDisplayMap, countryCentroids, journey]);
 
   return (
     <div
@@ -120,7 +161,7 @@ function MapExportCanvasInner({ height }: { height: number }) {
       style={{ width: EXPORT_WIDTH, height }}
     >
       <ComposableMap
-        id={EXPORT_SVG_ID}
+        id={svgId ?? EXPORT_SVG_ID}
         width={EXPORT_WIDTH}
         height={height}
         projectionConfig={{ rotate: [-10, 0, 0], scale: EXPORT_SCALE }}
@@ -140,6 +181,8 @@ function MapExportCanvasInner({ height }: { height: number }) {
           />
           <CountriesLayer
             countryDisplayMap={countryDisplayMap}
+            /* Trip mode: plain land — the route is the story. */
+            showVisitColors={!journey}
             onCentroids={setCountryCentroids}
             /*
               Borders scale with the map here, unlike the live views. This SVG

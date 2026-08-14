@@ -22,6 +22,8 @@ interface FlightCardProps {
   onMoveUp?: () => void;
   onMoveDown?: () => void;
   isReordering?: boolean;
+  /** Opens the trip boarding-pass dialog (trip share, 2026-08-14). */
+  onShare?: () => void;
 }
 
 function FlightCard({
@@ -30,6 +32,7 @@ function FlightCard({
   onMoveUp,
   onMoveDown,
   isReordering = false,
+  onShare,
 }: FlightCardProps) {
   /*
     Inline editing for what the backend can change on an existing journey:
@@ -193,6 +196,29 @@ function FlightCard({
               </button>
             )}
           </div>
+        )}
+        {onShare && (
+          <button
+            onClick={onShare}
+            aria-label="Share this trip"
+            title="Share this trip"
+            className="p-2 text-ink-subtle hover:text-brand-700 hover:bg-brand-50 rounded-lg transition-colors"
+          >
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M8.684 13.342a3 3 0 100-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684zm0-9.316a3 3 0 105.368-2.684 3 3 0 00-5.368 2.684z"
+              />
+            </svg>
+          </button>
         )}
         <button
           onClick={startEdit}

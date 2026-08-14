@@ -6,6 +6,7 @@ import {
 } from '../../features/flights/flightsApi';
 import { useToast } from '../Toast/ToastProvider';
 import FlightCard from './FlightCard';
+import TripShareDialog from '../../features/share/TripShareDialog';
 import type { FlightJourney } from '../../types';
 
 const UNDATED = 'Undated';
@@ -71,6 +72,8 @@ function FlightList() {
   };
 
   const [query, setQuery] = useState('');
+  /** The journey whose boarding-pass dialog is open. */
+  const [shareJourney, setShareJourney] = useState<FlightJourney | null>(null);
   // Year sections start collapsed apart from the newest: 41 journeys rendered
   // flat produced a 7,700px page.
   const [collapsedYears, setCollapsedYears] = useState<Set<string>>(new Set());
@@ -289,6 +292,7 @@ function FlightList() {
                         onMoveUp={moveUp}
                         onMoveDown={moveDown}
                         isReordering={isReordering}
+                        onShare={() => setShareJourney(journey)}
                       />
                     );
                   })}
@@ -297,6 +301,13 @@ function FlightList() {
             </section>
           );
         })
+      )}
+
+      {shareJourney && (
+        <TripShareDialog
+          journey={shareJourney}
+          onClose={() => setShareJourney(null)}
+        />
       )}
     </div>
   );

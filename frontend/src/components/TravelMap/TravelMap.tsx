@@ -19,6 +19,7 @@ import RouteTooltip from '../FlightMap/RouteTooltip';
 import JourneyHighlight from '../FlightMap/JourneyHighlight';
 import ArrivalChip from '../FlightMap/ArrivalChip';
 import SelectedJourneyCard from './SelectedJourneyCard';
+import TripShareDialog from '../../features/share/TripShareDialog';
 import MapControlPanel, { type TravelMapSettings } from './MapControlPanel';
 import MapZoomControls from './MapZoomControls';
 import MapLegend from './MapLegend';
@@ -224,6 +225,8 @@ function TravelMap() {
   const [selectedJourney, setSelectedJourney] = useState<FlightJourney | null>(
     null
   );
+  /** The journey whose boarding-pass dialog is open (trip share). */
+  const [shareJourney, setShareJourney] = useState<FlightJourney | null>(null);
 
   /**
    * Distinguishes a tap from the end of a drag.
@@ -958,6 +961,14 @@ function TravelMap() {
         <SelectedJourneyCard
           journey={selectedJourney}
           onClose={() => setSelectedJourney(null)}
+          onShare={() => setShareJourney(selectedJourney)}
+        />
+      )}
+
+      {shareJourney && (
+        <TripShareDialog
+          journey={shareJourney}
+          onClose={() => setShareJourney(null)}
         />
       )}
 

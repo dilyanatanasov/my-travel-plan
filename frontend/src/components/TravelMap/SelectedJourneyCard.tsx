@@ -5,6 +5,8 @@ import { formatJourneyDate } from '../../utils/journeyDate';
 interface SelectedJourneyCardProps {
   journey: FlightJourney;
   onClose: () => void;
+  /** Opens the trip boarding-pass dialog (trip share, 2026-08-14). */
+  onShare?: () => void;
 }
 
 /**
@@ -13,7 +15,11 @@ interface SelectedJourneyCardProps {
  * Without this the highlight is a pretty animation with no explanation — you
  * can see something is selected but not what, or how to get rid of it.
  */
-function SelectedJourneyCard({ journey, onClose }: SelectedJourneyCardProps) {
+function SelectedJourneyCard({
+  journey,
+  onClose,
+  onShare,
+}: SelectedJourneyCardProps) {
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') onClose();
@@ -67,6 +73,30 @@ function SelectedJourneyCard({ journey, onClose }: SelectedJourneyCardProps) {
             </p>
           )}
         </div>
+        {onShare && (
+          <button
+            type="button"
+            onClick={onShare}
+            aria-label="Share this trip"
+            title="Share this trip"
+            className="map-glass-hover flex-shrink-0 w-9 h-9 -mt-1 flex items-center justify-center rounded-lg map-glass-muted focus:outline-none focus:ring-2 focus:ring-brand-400"
+          >
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M8.684 13.342a3 3 0 100-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684zm0-9.316a3 3 0 105.368-2.684 3 3 0 00-5.368 2.684z"
+              />
+            </svg>
+          </button>
+        )}
         <button
           type="button"
           onClick={onClose}

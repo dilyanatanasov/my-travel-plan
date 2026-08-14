@@ -297,6 +297,221 @@ export async function renderShareCard(
   });
 }
 
+/* ------------------------------------------------------------------ */
+/* Trip card: one journey as a boarding pass (2026-08-14).             */
+/* ------------------------------------------------------------------ */
+
+export interface TripContent {
+  /** Stop chain, e.g. ["SOF", "AMS", "NRT"]. */
+  routeCodes: string[];
+  /** Precision-aware date label, or null for an undated journey. */
+  dateLabel: string | null;
+  flights: number;
+  km: number;
+  /** displayName, shown as PASSENGER on the stub; null → TRAVELLER. */
+  passenger: string | null;
+}
+
+/** Off-screen canvas id for the trip card — distinct from the map card's. */
+export const TRIP_SVG_ID = 'trip-export-canvas';
+
+/** Can this browser share a file, rather than only a link? */
+export function canShareFiles(file: File): boolean {
+  return (
+    typeof navigator !== 'undefined' &&
+    typeof navigator.canShare === 'function' &&
+    navigator.canShare({ files: [file] })
+  );
+}
+
+/** Poll for an export SVG by id; shared by the share panel and trip dialog. */
+export async function findExportSvg(
+  id: string,
+  isCancelled: () => boolean,
+  timeoutMs = 6000,
+): Promise<SVGSVGElement | null> {
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    const found = document.getElementById(id) as SVGSVGElement | null;
+    // isConnected guards against grabbing a node mid-remount: a detached
+    // SVG never loads geography, so we would wait for it until timeout.
+    if ((found && found.isConnected) || Date.now() > deadline || isCancelled()) {
+      return found;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 80));
+  }
+}
+
+const TICKET = {
+  bg: '#e3d3b7',
+  paper: '#f8f0e1',
+  text: '#201e1d',
+  muted: '#645c50',
+  accent: '#8c491a',
+};
+
+export async function renderTripCard(
+  svg: SVGSVGElement,
+  trip: TripContent,
+): Promise<Blob> {
+  const srcWidth =
+    Number(svg.getAttribute('width')) || svg.getBoundingClientRect().width;
+  const srcHeight =
+    Number(svg.getAttribute('height')) || svg.getBoundingClientRect().height;
+  if (!srcWidth || !srcHeight) {
+    throw new ShareCardError('The map is not ready yet — try again in a moment');
+  }
+  await waitForGeography(svg);
+  if (document.fonts?.ready) {
+    try {
+      await document.fonts.ready;
+    } catch {
+      /* fall back to whatever is loaded */
+    }
+  }
+
+  const mapImage = await loadImage(
+    `data:image/svg+xml;charset=utf-8,${encodeURIComponent(
+      serializeSvg(svg, srcWidth, srcHeight),
+    )}`,
+  );
+
+  const canvas = document.createElement('canvas');
+  canvas.width = CARD_WIDTH;
+  canvas.height = CARD_HEIGHT;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new ShareCardError('Your browser could not create the image');
+  ctx.textBaseline = 'top';
+
+  /* The ticket: a rounded paper card inset on a darker ground, so the
+     perforation notches read as cut-outs rather than decoration. */
+  const T = 24;
+  const radius = 48;
+  ctx.fillStyle = TICKET.bg;
+  ctx.fillRect(0, 0, CARD_WIDTH, CARD_HEIGHT);
+  roundedRect(ctx, T, T, CARD_WIDTH - T * 2, CARD_HEIGHT - T * 2, radius);
+  ctx.fillStyle = TICKET.paper;
+  ctx.fill();
+
+  const P = 88;
+  const inner = CARD_WIDTH - P * 2;
+  const stubTop = CARD_HEIGHT - T - 170;
+
+  // Measure the route before laying anything out.
+  const route = trip.routeCodes.join(' → ');
+  const routeSize = fitFont(ctx, route, inner, 84, (s) => mono(s, '700'));
+  ctx.font = mono(routeSize, '700');
+  const routeLines = wrap(ctx, route, inner, 2);
+  const routeH = routeLines.length * routeSize * 1.15;
+
+  const rowH = 20 + 10 + 40;
+  const mapX = T + 40;
+  const mapW = CARD_WIDTH - mapX * 2;
+  const mapH = mapW / 2;
+
+  const contentTop = T + 56;
+  const blocksH = 30 + routeH + rowH + mapH + rowH;
+  const gap = Math.max(28, (stubTop - 40 - contentTop - blocksH) / 5);
+
+  let y = contentTop;
+  ctx.font = mono(26, '600');
+  ctx.fillStyle = TICKET.accent;
+  ctx.fillText('MYCONTRAIL', P, y);
+  ctx.fillStyle = TICKET.muted;
+  ctx.textAlign = 'right';
+  ctx.fillText('BOARDING PASS', CARD_WIDTH - P, y);
+  ctx.textAlign = 'left';
+  y += 30 + gap;
+
+  ctx.font = mono(routeSize, '700');
+  ctx.fillStyle = TICKET.text;
+  routeLines.forEach((line, i) =>
+    ctx.fillText(line, P, y + i * routeSize * 1.15),
+  );
+  y += routeH + gap;
+
+  const drawPair = (
+    label: string,
+    value: string,
+    x: number,
+    atY: number,
+    alignRight = false,
+  ) => {
+    if (alignRight) ctx.textAlign = 'right';
+    ctx.font = mono(20, '600');
+    ctx.fillStyle = TICKET.muted;
+    ctx.fillText(label, x, atY);
+    ctx.font = mono(40, '700');
+    ctx.fillStyle = TICKET.text;
+    ctx.fillText(value, x, atY + 30);
+    ctx.textAlign = 'left';
+  };
+
+  drawPair('DATE', (trip.dateLabel ?? '—').toUpperCase(), P, y);
+  drawPair(
+    'FLIGHTS',
+    String(trip.flights),
+    CARD_WIDTH - P,
+    y,
+    true,
+  );
+  y += rowH + gap;
+
+  ctx.save();
+  roundedRect(ctx, mapX, y, mapW, mapH, 36);
+  ctx.clip();
+  drawMapContain(ctx, mapImage, mapX, y, mapW, mapH);
+  ctx.restore();
+  y += mapH + gap;
+
+  drawPair('DISTANCE', `${Math.round(trip.km).toLocaleString()} KM`, P, y);
+  drawPair(
+    'STOPS',
+    String(Math.max(trip.routeCodes.length - 2, 0)),
+    CARD_WIDTH - P,
+    y,
+    true,
+  );
+
+  // Perforation: dashed tear line with a notch cut into each edge.
+  ctx.strokeStyle = TICKET.muted;
+  ctx.globalAlpha = 0.5;
+  ctx.lineWidth = 3;
+  ctx.setLineDash([4, 16]);
+  ctx.beginPath();
+  ctx.moveTo(T + 44, stubTop);
+  ctx.lineTo(CARD_WIDTH - T - 44, stubTop);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = TICKET.bg;
+  for (const notchX of [T, CARD_WIDTH - T]) {
+    ctx.beginPath();
+    ctx.arc(notchX, stubTop, 26, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  const stubY = stubTop + 44;
+  drawPair(
+    'PASSENGER',
+    (trip.passenger ?? 'Traveller').toUpperCase(),
+    P,
+    stubY,
+  );
+  ctx.textAlign = 'right';
+  ctx.font = mono(26, '600');
+  ctx.fillStyle = TICKET.accent;
+  ctx.fillText('mycontrail.com', CARD_WIDTH - P, stubY + 34);
+  ctx.textAlign = 'left';
+
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (blob) resolve(blob);
+      else reject(new ShareCardError('Your browser could not create the image'));
+    }, 'image/png');
+  });
+}
+
 /**
  * The domain, bottom-right on every style. The kicker names the product but
  * a stranger seeing the card in a chat has no idea where it lives — the

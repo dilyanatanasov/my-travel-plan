@@ -10,6 +10,8 @@ import { useToast } from '../../components/Toast/ToastProvider';
 import { downloadBlob } from '../../utils/exportMapImage';
 import {
   renderShareCard,
+  findExportSvg,
+  canShareFiles,
   CARD_WIDTH,
   CARD_HEIGHT,
   type ShareStyle,
@@ -29,15 +31,6 @@ const STYLES: { id: ShareStyle; label: string; hint: string }[] = [
   { id: 'ink', label: 'Ink', hint: 'Dark, one big number' },
   { id: 'editorial', label: 'Editorial', hint: 'Full-bleed map' },
 ];
-
-/** Can this browser share a file, rather than only a link? */
-function canShareFiles(file: File): boolean {
-  return (
-    typeof navigator !== 'undefined' &&
-    typeof navigator.canShare === 'function' &&
-    navigator.canShare({ files: [file] })
-  );
-}
 
 function SharePanel() {
   const [style, setStyle] = useState<ShareStyle>('warm');
@@ -164,32 +157,18 @@ function SharePanel() {
     let cancelled = false;
     let objectUrl: string | null = null;
 
-    /*
-      Poll for the off-screen canvas rather than assuming it exists after one
-      frame. It mounts in this same render pass, and react-simple-maps builds
-      its <svg> asynchronously, so a single rAF sometimes missed it — and the
-      old code turned that miss into a permanent error with no retry, which is
-      why the first visit to Share could show a card with no map.
-    */
-    const findExportSvg = async (): Promise<SVGSVGElement | null> => {
-      const deadline = Date.now() + 6000;
-      for (;;) {
-        const found = document.getElementById(EXPORT_SVG_ID) as SVGSVGElement | null;
-        // isConnected guards against grabbing a node mid-remount: a detached
-        // SVG never loads geography, so we would wait for it until timeout.
-        if ((found && found.isConnected) || Date.now() > deadline || cancelled) {
-          return found;
-        }
-        await new Promise((resolve) => setTimeout(resolve, 80));
-      }
-    };
-
     const render = async () => {
       if (isLoadingData || !hasSomethingToShow) return;
       setIsRendering(true);
       setRenderError(null);
 
-      const svg = await findExportSvg();
+      /*
+        Poll for the off-screen canvas rather than assuming it exists after
+        one frame — react-simple-maps builds its <svg> asynchronously, and a
+        permanent error here is why the first visit to Share could once show
+        a card with no map. Shared with the trip dialog.
+      */
+      const svg = await findExportSvg(EXPORT_SVG_ID, () => cancelled);
       if (cancelled) return;
       if (!svg) {
         setRenderError('The map is still loading — reopen Share in a moment.');
