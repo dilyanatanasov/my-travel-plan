@@ -14,7 +14,8 @@ import { wrapCaption } from './postcardCaption';
  */
 function PostcardMarker({ postcard }: { postcard: ReplayPostcard }) {
   const { projection } = useMapContext();
-  const { k: zoom } = useZoomPanContext();
+  const zoomPan = useZoomPanContext();
+  const { k: zoom } = zoomPan;
 
   const point = projection([postcard.lon, postcard.lat]);
   if (!point) return null;
@@ -40,19 +41,36 @@ function PostcardMarker({ postcard }: { postcard: ReplayPostcard }) {
   const tilt =
     (postcard.legId % 2 === 0 ? 1 : -1) * (3 + (postcard.legId % 3));
 
+  /*
+    An SVG marker cannot z-index above the HTML replay bar, so a city near
+    the top gets the equivalent: the postcard flips to hang BELOW it.
+    Screen-space y = pan offset + zoom·projected (the globe pins the
+    context at identity, so there it is just the projection).
+  */
+  const screenY = zoomPan.y + zoom * y;
+  const screenCardTop = 38 + frameH; // constant on screen by construction
+  const flipped = screenY - screenCardTop < 170;
+
   return (
     <g
-      transform={`translate(${x}, ${y - gap})`}
+      transform={`translate(${x}, ${flipped ? y + gap : y - gap})`}
       pointerEvents="none"
       aria-hidden="true"
     >
       {/* Keyed re-mount restarts the pop; CSS transform composes inside
           the positioned group (transform-box: fill-box in index.css). */}
-      <g key={postcard.key} className="postcard-pop">
+      <g
+        key={postcard.key}
+        className={flipped ? 'postcard-pop postcard-pop-down' : 'postcard-pop'}
+      >
         <g
-          transform={`translate(${-frameW / 2}, ${-frameH}) rotate(${tilt}, ${
-            frameW / 2
-          }, ${frameH})`}
+          transform={
+            flipped
+              ? `translate(${-frameW / 2}, 0) rotate(${tilt}, ${frameW / 2}, 0)`
+              : `translate(${-frameW / 2}, ${-frameH}) rotate(${tilt}, ${
+                  frameW / 2
+                }, ${frameH})`
+          }
         >
           {/* Soft drop shadow, then the paper. */}
           <rect
