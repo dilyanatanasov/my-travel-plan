@@ -8,6 +8,7 @@ import type { Topology, GeometryCollection } from 'topojson-specification';
 import Button from '../components/ui/Button';
 import TextInput from '../components/ui/TextInput';
 import { useToast } from '../components/Toast/ToastProvider';
+import { useAuth } from '../features/auth/authApi';
 import { track } from '../lib/analytics';
 import {
   todayUtc,
@@ -61,6 +62,10 @@ function formatCountdown(ms: number): string {
  */
 function DailyPage() {
   const { showToast } = useToast();
+  // Auth-aware, not auth-gated: anonymous players are the point, but a
+  // signed-in player must never be sent to a login they already passed.
+  const { user, isGuest } = useAuth();
+  const isSignedIn = Boolean(user) && !isGuest;
   const [candidates, setCandidates] = useState<Candidate[] | null>(null);
   const date = todayUtc();
   const number = puzzleNumber(date);
@@ -221,6 +226,7 @@ function DailyPage() {
             </h1>
             <p className="text-xs text-ink-subtle">
               #{number} · guess the shape in {MAX_GUESSES}
+              {stats.streak > 0 && ` · streak ${stats.streak}`}
             </p>
           </div>
           <Link to="/" className="font-display text-lg text-ink flex-shrink-0">
@@ -334,12 +340,21 @@ function DailyPage() {
             </Button>
             <p className="text-xs text-ink-muted pt-1">
               Been to {answer.name}?{' '}
-              <Link
-                to="/register?ref=daily"
-                className="text-brand-700 font-medium hover:underline"
-              >
-                Put it on your own travel map
-              </Link>
+              {isSignedIn ? (
+                <Link
+                  to="/"
+                  className="text-brand-700 font-medium hover:underline"
+                >
+                  Mark it on your travel map
+                </Link>
+              ) : (
+                <Link
+                  to="/register?ref=daily"
+                  className="text-brand-700 font-medium hover:underline"
+                >
+                  Put it on your own travel map
+                </Link>
+              )}
               .
             </p>
           </div>
