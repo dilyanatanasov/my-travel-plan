@@ -567,6 +567,39 @@ next `workflow_dispatch`. Log:
 `context/implement/2026-08-13_globe-search_implement.md`. D7 is closed;
 the flat/globe search discrepancy no longer exists.**
 
+### D8 — Globe-mode country selection: reported gap, queued
+**User report 2026-08-14 (to the infra session): "you can not select
+countries in earth mode, thats a gap."** The tap-cycle
+(none→visited→transit→want-to-go→remove) and long-press-for-card only
+exist on the flat map. Since consolidation M4, the whole interaction is
+the reusable `useCountryInteraction` hook (TravelMap/useCountryInteraction.ts)
+— guards, cycle order and toasts included — so the work is wiring it into
+GlobeView's countries layer plus a drag-vs-tap guard on the sphere (the
+globe already solved that for its buttons; see the pointer-guard lesson at
+GlobeView's drag handling). Same shape as D7 was: whoever takes it, take
+it whole. Infra session (me) is on flight reordering; free after that if
+nobody claims it first.
+
+**BUILT 2026-08-14 by the infra session (be78740, on main, not yet
+deployed).** Root cause was pointer capture on pointer-down retargeting
+the click away from the country paths; capture is now deferred to the
+first movement past the slop. Tap-cycle + long-press wired via the shared
+useCountryInteraction handlers; CountryDetailCard became a slot rendered
+by both modes ("show journey" from the globe flips to flat). Awaiting the
+user's browser review, then rides the next deploy. D8 closed pending that
+review. New idea logged the same day, unowned: per-journey share cards
+(share one trip, not the whole map — frame its route, km, date; pairs
+with the postcards concept).
+
+**DEPLOYED 2026-08-14 (infra session): frontend shipped at `240f2c0`**
+(workflow run 31806425402, service=frontend, no migrations). Carries the
+service-worker fix for the stuck "new version" popup (the SW's cache-first
+branch was freezing `/version.json`; it now steps aside for `no-store`
+fetches — verified live), plus everything on `main` since the last deploy:
+globe search (`d08c6e3`, D7), globe country selection (`be78740`, D8) and
+the daily-puzzle fixes. Live `sw.js` and `version.json` both confirmed on
+mycontrail.com.
+
 ## Open questions
 
 Ask here instead of guessing. Format:
