@@ -207,6 +207,9 @@ interface GlobeViewProps {
   detailCard?: ReactNode;
   /** The stop whose postcard is showing during replay (trip photos). */
   postcard?: ReplayPostcard | null;
+  /** Cockpit-audio mute, owned by TravelMap with the audio itself. */
+  audioMuted?: boolean;
+  onToggleAudioMuted?: () => void;
   landedIsoCode: string | null;
   popAirport: { iata: string; key: number } | null;
   yearChip: string | null;
@@ -262,6 +265,8 @@ function GlobeView({
   onCountryLongPress,
   detailCard,
   postcard = null,
+  audioMuted,
+  onToggleAudioMuted,
   landedIsoCode,
   popAirport,
   yearChip,
@@ -949,7 +954,11 @@ function GlobeView({
 
       {replay.isActive && (
         <div className="absolute z-30 top-3 left-3 right-3 md:right-auto md:w-[30rem]">
-          <ReplayControl replay={replay} />
+          <ReplayControl
+            replay={replay}
+            muted={audioMuted}
+            onToggleMuted={onToggleAudioMuted}
+          />
         </div>
       )}
 

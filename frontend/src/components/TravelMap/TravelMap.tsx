@@ -37,6 +37,7 @@ import CountriesLayer from './CountriesLayer';
 import CountryDetailCard from './CountryDetailCard';
 import MapSearch from './MapSearch';
 import { useJourneyReplay, journeyFlightSeconds } from './useJourneyReplay';
+import { useReplayAudio } from './useReplayAudio';
 import { useReplayOrchestration } from './useReplayOrchestration';
 import { useSearchLanding } from './useSearchLanding';
 import { useCountryInteraction } from './useCountryInteraction';
@@ -493,6 +494,17 @@ function TravelMap() {
   } = useReplayOrchestration(replay, countries, photoLegIds);
 
   /*
+    Cockpit ambience: hum while flying, seatbelt chime per arrival. The
+    chime rides the popAirport beat, so both map modes get it for free.
+  */
+  const { muted, toggleMuted, chime } = useReplayAudio(replay.isActive);
+  const popKey = popAirport?.key;
+  useEffect(() => {
+    if (replay.isActive && popKey !== undefined) chime();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [popKey]);
+
+  /*
     Fly the camera to each journey as it plays.
 
     Watching a route draw itself while the whole world is in frame wastes the
@@ -694,6 +706,8 @@ function TravelMap() {
         onCountryLongPress={handleCountryLongPress}
         detailCard={countryDetailCard || undefined}
         postcard={postcard}
+        audioMuted={muted}
+        onToggleAudioMuted={toggleMuted}
         landedIsoCode={landedIsoCode}
         popAirport={popAirport}
         yearChip={yearChip}
@@ -922,7 +936,11 @@ function TravelMap() {
       */}
       {replay.isActive && (
         <div className="absolute z-30 top-3 left-3 right-3 md:right-auto md:w-[30rem]">
-          <ReplayControl replay={replayForUi} />
+          <ReplayControl
+            replay={replayForUi}
+            muted={muted}
+            onToggleMuted={toggleMuted}
+          />
         </div>
       )}
 

@@ -31,6 +31,9 @@ interface ReplayControlProps {
    * rather than a banner across the canvas.
    */
   compact?: boolean;
+  /** Cockpit-audio mute (2026-08-14); rendered only when both are given. */
+  muted?: boolean;
+  onToggleMuted?: () => void;
 }
 
 const iconProps = {
@@ -71,7 +74,12 @@ const buttonClass =
  *
  * Hidden below two journeys — replaying one flight is just drawing it.
  */
-function ReplayControl({ replay, compact = false }: ReplayControlProps) {
+function ReplayControl({
+  replay,
+  compact = false,
+  muted,
+  onToggleMuted,
+}: ReplayControlProps) {
   const { showToast } = useToast();
 
   /*
@@ -228,6 +236,40 @@ function ReplayControl({ replay, compact = false }: ReplayControlProps) {
         </span>
 
         <div className="flex-1" />
+
+        {onToggleMuted && (
+          <button
+            type="button"
+            onClick={onToggleMuted}
+            aria-label={muted ? 'Turn replay sound on' : 'Mute replay sound'}
+            aria-pressed={!muted}
+            className={buttonClass}
+          >
+            {muted ? (
+              <svg {...iconProps}>
+                <path d="M4 9v6h4l5 4V5L8 9H4z" />
+                <path
+                  d="M16 9l5 6m0-6l-5 6"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  fill="none"
+                />
+              </svg>
+            ) : (
+              <svg {...iconProps}>
+                <path d="M4 9v6h4l5 4V5L8 9H4z" />
+                <path
+                  d="M16.5 8.5a5 5 0 010 7M19 6a8.5 8.5 0 010 12"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  fill="none"
+                />
+              </svg>
+            )}
+          </button>
+        )}
 
         <button
           type="button"
