@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useGetFlightsQuery } from '../../features/flights/flightsApi';
 import JourneyHighlightCard from './JourneyHighlightCard';
 import RegionProgress from './RegionProgress';
+import DailyCard from '../../features/daily/DailyCard';
 import type { Country, FlightJourney, Visit } from '../../types';
 
 interface OverviewPanelProps {
@@ -127,6 +128,8 @@ function OverviewPanel({
       )}
 
       <RegionProgress countries={countries} visits={visits} />
+
+      <DailyCard />
 
       {!next && !last && (
         <p className="text-sm text-ink-muted">
