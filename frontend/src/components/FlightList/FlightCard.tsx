@@ -13,9 +13,23 @@ import { useToast } from '../../components/Toast/ToastProvider';
 interface FlightCardProps {
   journey: FlightJourney;
   onDelete: (id: number) => void;
+  /**
+   * Reorder arrows (2026-08-14): present only when the neighbouring swap is
+   * legal — same-date neighbour for dated journeys, any neighbour for
+   * undated ones. An absent arrow is the constraint made visible.
+   */
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
+  isReordering?: boolean;
 }
 
-function FlightCard({ journey, onDelete }: FlightCardProps) {
+function FlightCard({
+  journey,
+  onDelete,
+  onMoveUp,
+  onMoveDown,
+  isReordering = false,
+}: FlightCardProps) {
   /*
     Inline editing for what the backend can change on an existing journey:
     date (at any precision), notes, the round-trip label. The route itself
@@ -130,6 +144,36 @@ function FlightCard({ journey, onDelete }: FlightCardProps) {
             <p className="mt-2 text-sm text-ink-muted">{journey.notes}</p>
           )}
         </div>
+        {(onMoveUp || onMoveDown) && (
+          <div className="flex flex-col justify-center mr-0.5">
+            {onMoveUp && (
+              <button
+                onClick={onMoveUp}
+                disabled={isReordering}
+                aria-label="Move earlier in the order"
+                title="Move earlier"
+                className="p-1 text-ink-subtle hover:text-brand-700 hover:bg-brand-50 rounded transition-colors disabled:opacity-40"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                </svg>
+              </button>
+            )}
+            {onMoveDown && (
+              <button
+                onClick={onMoveDown}
+                disabled={isReordering}
+                aria-label="Move later in the order"
+                title="Move later"
+                className="p-1 text-ink-subtle hover:text-brand-700 hover:bg-brand-50 rounded transition-colors disabled:opacity-40"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+            )}
+          </div>
+        )}
         <button
           onClick={startEdit}
           aria-label="Edit this journey"

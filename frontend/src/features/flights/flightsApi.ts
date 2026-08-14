@@ -71,6 +71,19 @@ export const flightsApi = apiSlice.injectEndpoints({
       invalidatesTags: ['Flight', 'FlightStats', 'Visit'],
     }),
 
+    /**
+     * Swap the replay order of two journeys. The server enforces the rule
+     * the arrows encode: both undated, or the exact same stored date.
+     */
+    reorderFlights: builder.mutation<void, { aId: number; bId: number }>({
+      query: (body) => ({
+        url: '/flights/reorder',
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: ['Flight'],
+    }),
+
     removeFlight: builder.mutation<void, number>({
       query: (id) => ({
         url: `/flights/${id}`,
@@ -109,6 +122,7 @@ export const {
   useAddFlightMutation,
   useUpdateFlightMutation,
   useImportFlightsMutation,
+  useReorderFlightsMutation,
   useRemoveFlightMutation,
   useGetFlightStatsQuery,
   useGetFlightSummaryQuery,

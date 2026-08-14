@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import {
   useGetFlightsQuery,
   useRemoveFlightMutation,
+  useReorderFlightsMutation,
 } from '../../features/flights/flightsApi';
 import { useToast } from '../Toast/ToastProvider';
 import FlightCard from './FlightCard';
@@ -29,6 +30,15 @@ function groupByYear(journeys: FlightJourney[]): [string, FlightJourney[]][] {
   });
 }
 
+/**
+ * Whether two neighbouring cards may swap replay order (2026-08-14): both
+ * undated, or the exact same stored date. The server enforces the same rule;
+ * this only decides which arrows exist.
+ */
+function canSwap(a: FlightJourney, b: FlightJourney): boolean {
+  return (a.journeyDate ?? null) === (b.journeyDate ?? null);
+}
+
 /** Match against every IATA code, city and note on the journey. */
 function matchesQuery(journey: FlightJourney, query: string): boolean {
   const haystack = [
@@ -48,7 +58,17 @@ function matchesQuery(journey: FlightJourney, query: string): boolean {
 function FlightList() {
   const { data: journeys = [], isLoading, error } = useGetFlightsQuery();
   const [removeFlight] = useRemoveFlightMutation();
+  const [reorderFlights, { isLoading: isReordering }] =
+    useReorderFlightsMutation();
   const { showToast } = useToast();
+
+  const handleSwap = async (a: FlightJourney, b: FlightJourney) => {
+    try {
+      await reorderFlights({ aId: a.id, bId: b.id }).unwrap();
+    } catch {
+      showToast('Could not reorder those flights', { tone: 'error' });
+    }
+  };
 
   const [query, setQuery] = useState('');
   // Year sections start collapsed apart from the newest: 41 journeys rendered
@@ -240,13 +260,38 @@ function FlightList() {
 
               {!collapsed && (
                 <div className="space-y-3 pt-3">
-                  {yearJourneys.map((journey) => (
-                    <FlightCard
-                      key={journey.id}
-                      journey={journey}
-                      onDelete={handleDelete}
-                    />
-                  ))}
+                  {yearJourneys.map((journey, cardIndex) => {
+                    /*
+                      Arrows exist only where the swap is legal and the list
+                      is showing true neighbours — a search filter hides
+                      arrows entirely, because swapping across hidden cards
+                      would reorder things the user cannot see.
+                    */
+                    const searching = Boolean(query.trim());
+                    const above = cardIndex > 0 ? yearJourneys[cardIndex - 1] : null;
+                    const below =
+                      cardIndex < yearJourneys.length - 1
+                        ? yearJourneys[cardIndex + 1]
+                        : null;
+                    const moveUp =
+                      !searching && above && canSwap(journey, above)
+                        ? () => handleSwap(journey, above)
+                        : undefined;
+                    const moveDown =
+                      !searching && below && canSwap(journey, below)
+                        ? () => handleSwap(journey, below)
+                        : undefined;
+                    return (
+                      <FlightCard
+                        key={journey.id}
+                        journey={journey}
+                        onDelete={handleDelete}
+                        onMoveUp={moveUp}
+                        onMoveDown={moveDown}
+                        isReordering={isReordering}
+                      />
+                    );
+                  })}
                 </div>
               )}
             </section>

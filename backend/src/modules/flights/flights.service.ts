@@ -32,7 +32,9 @@ export class FlightsService {
     return this.journeyRepository.find({
       where: { userId },
       relations: ['legs', 'legs.departureAirport', 'legs.arrivalAirport'],
-      order: { journeyDate: 'DESC', createdAt: 'DESC' },
+      // sortIndex breaks same-date ties (user-controlled, ASC = plays
+      // first); it is unique per user's rows, so createdAt is not needed.
+      order: { journeyDate: 'DESC', sortIndex: 'ASC' },
     });
   }
 
@@ -128,6 +130,11 @@ export class FlightsService {
       });
       const savedJourney = await this.journeyRepository.save(journey);
       firstJourneyId ??= savedJourney.id;
+      // sortIndex = own id: monotonic creation order without a counter
+      // table. Reordering later swaps values between two rows.
+      await this.journeyRepository.update(savedJourney.id, {
+        sortIndex: savedJourney.id,
+      });
 
       const legs: FlightLeg[] = [];
       for (let i = 0; i < segment.length; i++) {
@@ -167,6 +174,44 @@ export class FlightsService {
     const first = await this.findOne(userId, firstJourneyId!);
     return Object.assign(first, {
       splitInto: segments.length > 1 ? segments.length : undefined,
+    });
+  }
+
+  /**
+   * Swap the replay order of two journeys (user decision, 2026-08-14: no
+   * hours on journeys — same-date order is adjusted by hand instead).
+   *
+   * Undated journeys may swap freely; dated ones only with the exact same
+   * stored date (precision may differ — two journeys sharing a stored date
+   * are ambiguous enough that either order is a legitimate claim). A
+   * cross-date swap would silently rewrite chronology, so it is refused:
+   * changing the date is the honest way to move a dated journey.
+   */
+  async reorder(userId: number, aId: number, bId: number): Promise<void> {
+    if (aId === bId) {
+      throw new BadRequestException('Pick two different journeys to reorder');
+    }
+    const [a, b] = await Promise.all([
+      this.findOne(userId, aId),
+      this.findOne(userId, bId),
+    ]);
+
+    // The date column arrives as a string or Date depending on the driver
+    // path; normalise both to YYYY-MM-DD (or null) before comparing.
+    const dateKey = (journey: FlightJourney): string | null =>
+      journey.journeyDate
+        ? new Date(journey.journeyDate).toISOString().slice(0, 10)
+        : null;
+    if (dateKey(a) !== dateKey(b)) {
+      throw new BadRequestException(
+        'Only journeys on the same date (or both undated) can be reordered',
+      );
+    }
+
+    // One transaction so a crash cannot leave both rows with the same index.
+    await this.journeyRepository.manager.transaction(async (manager) => {
+      await manager.update(FlightJourney, a.id, { sortIndex: b.sortIndex });
+      await manager.update(FlightJourney, b.id, { sortIndex: a.sortIndex });
     });
   }
 

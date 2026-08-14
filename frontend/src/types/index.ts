@@ -97,6 +97,11 @@ export interface FlightJourney {
   legs: FlightLeg[];
   /** Present on create when a ground transfer split the chain (e.g. NRT→HND). */
   splitInto?: number;
+  /**
+   * User-controlled tie-breaker: dated journeys order by (journeyDate,
+   * sortIndex), undated purely by sortIndex. Lower plays first.
+   */
+  sortIndex: number;
   createdAt: string;
   updatedAt: string;
 }

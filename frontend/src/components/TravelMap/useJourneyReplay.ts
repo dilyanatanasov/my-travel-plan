@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { FlightJourney } from '../../types';
 import { track } from '../../lib/analytics';
+import { orderJourneysForReplay } from './replayOrder';
 
 /** Pause after landing before the next journey — camera settle + a breath. */
 const SETTLE_MS = 1700;
@@ -85,15 +86,7 @@ export function useJourneyReplay(journeys: FlightJourney[]): ReplayState {
   const [isPaused, setIsPaused] = useState(false);
   const timerRef = useRef<number | null>(null);
 
-  const ordered = useMemo(() => {
-    const dated = journeys
-      .filter((journey) => journey.journeyDate)
-      .sort((a, b) => (a.journeyDate ?? '').localeCompare(b.journeyDate ?? ''));
-    const undated = journeys
-      .filter((journey) => !journey.journeyDate)
-      .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
-    return [...dated, ...undated];
-  }, [journeys]);
+  const ordered = useMemo(() => orderJourneysForReplay(journeys), [journeys]);
 
   const clearTimer = useCallback(() => {
     if (timerRef.current !== null) {

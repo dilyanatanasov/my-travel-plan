@@ -42,6 +42,14 @@ export class FlightJourney {
   @Column({ name: 'is_round_trip', type: 'boolean', default: false })
   isRoundTrip: boolean;
 
+  /**
+   * User-controlled tie-breaker for replay and list order: dated journeys
+   * sort by (journeyDate, sortIndex), undated purely by sortIndex. Set to
+   * the row's own id on insert; reordering swaps values between two rows.
+   */
+  @Column({ name: 'sort_index', type: 'integer', default: 0 })
+  sortIndex: number;
+
   @Column({ type: 'text', nullable: true })
   notes: string;
 

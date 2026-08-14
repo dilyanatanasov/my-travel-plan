@@ -24,6 +24,7 @@ import { FlexibleSearchDto } from './dto/flexible-search.dto';
 import { FlightSearchResultDto } from './dto/flight-result.dto';
 import { FlightExplorationResultDto } from './dto/flight-exploration-result.dto';
 import { ImportFlightsDto, type ImportResultDto } from './dto/import-flights.dto';
+import { ReorderFlightsDto } from './dto/reorder-flights.dto';
 import { FlightJourney } from './entities/flight-journey.entity';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 
@@ -95,6 +96,15 @@ export class FlightsController {
   @Get()
   async findAll(@CurrentUser('id') userId: number): Promise<FlightJourney[]> {
     return this.flightsService.findAll(userId);
+  }
+
+  /** Swap the replay order of two same-date (or both-undated) journeys. */
+  @Post('reorder')
+  async reorder(
+    @CurrentUser('id') userId: number,
+    @Body() dto: ReorderFlightsDto,
+  ): Promise<void> {
+    return this.flightsService.reorder(userId, dto.aId, dto.bId);
   }
 
   /**
