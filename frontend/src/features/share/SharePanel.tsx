@@ -338,7 +338,13 @@ function SharePanel() {
     <div className="space-y-5 max-w-md mx-auto">
       {/* Off-screen source for the card. */}
       {/* Ink is a dark card, so its map has to be the dark palette. */}
-      <MapExportCanvas theme={style === 'ink' ? 'dark' : 'light'} />
+      {/* Height per style (2026-08-14): Warm and Ink hold the map in a
+          near-square block, Editorial in a 2:1 band — rendering the source
+          at the slot's own aspect is what lets the map fill it. */}
+      <MapExportCanvas
+        theme={style === 'ink' ? 'dark' : 'light'}
+        height={style === 'editorial' ? 800 : 1400}
+      />
 
       <div className="flex gap-2">
         {STYLES.map((option) => {

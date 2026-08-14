@@ -103,7 +103,7 @@ function SharedMapPage() {
             The link may have been turned off, or it was never valid.
           </p>
           <Link
-            to="/"
+            to="/?ref=share"
             className="inline-flex items-center min-h-11 px-4 rounded-lg bg-brand-600 text-white font-medium hover:bg-brand-700"
           >
             Go to myContrail
@@ -128,7 +128,7 @@ function SharedMapPage() {
             </p>
           </div>
           <Link
-            to="/register"
+            to="/register?ref=share"
             className="flex-shrink-0 inline-flex items-center min-h-11 px-3 sm:px-4 rounded-lg bg-brand-600 text-white text-sm font-medium hover:bg-brand-700"
           >
             Make your own
@@ -207,7 +207,7 @@ function SharedMapPage() {
 
         <p className="text-center text-sm text-ink-muted py-4">
           Made with{' '}
-          <Link to="/" className="text-brand-700 font-medium hover:underline">
+          <Link to="/?ref=share" className="text-brand-700 font-medium hover:underline">
             myContrail
           </Link>
         </p>

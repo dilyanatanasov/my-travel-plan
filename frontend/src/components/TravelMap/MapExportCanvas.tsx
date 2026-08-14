@@ -44,9 +44,19 @@ interface MapExportCanvasProps {
    * from a different app.
    */
   theme?: ResolvedTheme;
+  /**
+   * Canvas height (2026-08-14): the consumer matches this to the aspect of
+   * the slot the map will occupy. A 2:1 world strip contained into the
+   * Warm/Ink cards' near-square block shrank to less than half the block and
+   * left empty band above and below — the "small map with gaps". Rendering
+   * at the slot's own aspect makes contain a no-op. fitToPoints' lat span
+   * assumes a 2:1 view, which on a taller canvas is conservative — the frame
+   * can only be a little wider than optimal, never cropped.
+   */
+  height?: number;
 }
 
-function MapExportCanvas({ theme }: MapExportCanvasProps) {
+function MapExportCanvas({ theme, height = EXPORT_HEIGHT }: MapExportCanvasProps) {
   const outer = useTheme();
 
   /*
@@ -60,12 +70,12 @@ function MapExportCanvas({ theme }: MapExportCanvasProps) {
     <ThemeContext.Provider
       value={{ ...outer, resolved: theme ?? outer.resolved }}
     >
-      <MapExportCanvasInner />
+      <MapExportCanvasInner height={height} />
     </ThemeContext.Provider>
   );
 }
 
-function MapExportCanvasInner() {
+function MapExportCanvasInner({ height }: { height: number }) {
   const { map: colors } = useMapColors();
   const { data: visits = [] } = useGetVisitsQuery();
   const { data: flights = [] } = useGetFlightsQuery();
@@ -107,15 +117,15 @@ function MapExportCanvasInner() {
     <div
       aria-hidden="true"
       className="pointer-events-none fixed top-0 -left-[20000px]"
-      style={{ width: EXPORT_WIDTH, height: EXPORT_HEIGHT }}
+      style={{ width: EXPORT_WIDTH, height }}
     >
       <ComposableMap
         id={EXPORT_SVG_ID}
         width={EXPORT_WIDTH}
-        height={EXPORT_HEIGHT}
+        height={height}
         projectionConfig={{ rotate: [-10, 0, 0], scale: EXPORT_SCALE }}
         data-framed={centroidsSettled ? '1' : '0'}
-        style={{ width: EXPORT_WIDTH, height: EXPORT_HEIGHT }}
+        style={{ width: EXPORT_WIDTH, height }}
       >
         <ZoomableGroup
           zoom={framing?.zoom ?? 1}
@@ -123,9 +133,9 @@ function MapExportCanvasInner() {
         >
           <rect
             x={-EXPORT_WIDTH}
-            y={-EXPORT_HEIGHT}
+            y={-height}
             width={EXPORT_WIDTH * 3}
-            height={EXPORT_HEIGHT * 3}
+            height={height * 3}
             fill={colors.ocean}
           />
           <CountriesLayer

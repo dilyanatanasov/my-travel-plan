@@ -85,7 +85,7 @@ function ChallengeLanding({ token }: { token: string }) {
           </p>
         ) : (
           <Link
-            to="/register"
+            to="/register?ref=duel"
             className="inline-flex items-center justify-center min-h-11 px-6 rounded-xl bg-brand-600 text-white font-medium hover:bg-brand-700"
           >
             Make your map to fight back
@@ -112,7 +112,7 @@ function PageShell({ children }: { children: React.ReactNode }) {
     // that could never be scrolled to.
     <div className="scroll-page bg-canvas">
       <header className="bg-surface border-b border-line px-4 py-3">
-        <Link to="/" className="font-display text-xl text-ink">
+        <Link to="/?ref=duel" className="font-display text-xl text-ink">
           <span className="text-brand-600 text-base">my</span>Contrail
         </Link>
       </header>
@@ -365,7 +365,7 @@ function DuelPage() {
               countries separating these two maps.
             </p>
             <Link
-              to="/register"
+              to="/register?ref=duel"
               className="inline-flex items-center justify-center min-h-10 px-5 rounded-xl bg-brand-600 text-white text-sm font-medium hover:bg-brand-700"
             >
               Make your own map
