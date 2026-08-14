@@ -41,6 +41,8 @@ function FlightCard({
     return journeys land here with no date, so this is where they get one.
   */
   const [isEditing, setIsEditing] = useState(false);
+  /** Mobile ⋯ menu: share/edit/delete collapse below sm (2026-08-14). */
+  const [menuOpen, setMenuOpen] = useState(false);
   const [updateFlight, { isLoading: isSaving }] = useUpdateFlightMutation();
   const { showToast } = useToast();
   const initialParts = journeyDateParts(journey);
@@ -151,7 +153,7 @@ function FlightCard({
               {routeString}
             </span>
             {journey.isRoundTrip && (
-              <span className="px-2 py-0.5 text-xs bg-brand-100 text-brand-700 rounded-full">
+              <span className="px-2 py-0.5 text-xs bg-brand-100 text-brand-700 rounded-full whitespace-nowrap flex-shrink-0">
                 Round trip
               </span>
             )}
@@ -197,12 +199,81 @@ function FlightCard({
             )}
           </div>
         )}
+        {/*
+          Below sm the three actions collapse into one ⋯ menu: four inline
+          controls left the route ~240px on a phone (user report,
+          2026-08-14). The reorder arrows stay inline — "tap and watch the
+          card move" dies inside a menu.
+        */}
+        <div className="relative sm:hidden">
+          <button
+            onClick={() => setMenuOpen((open) => !open)}
+            aria-label="More actions"
+            aria-expanded={menuOpen}
+            className="p-2 text-ink-subtle hover:text-ink hover:bg-surface-sunken rounded-lg transition-colors"
+          >
+            <svg
+              className="w-5 h-5"
+              fill="currentColor"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            >
+              <circle cx="5" cy="12" r="1.8" />
+              <circle cx="12" cy="12" r="1.8" />
+              <circle cx="19" cy="12" r="1.8" />
+            </svg>
+          </button>
+          {menuOpen && (
+            <>
+              {/* Invisible backdrop: any outside tap closes the menu. */}
+              <button
+                type="button"
+                aria-hidden="true"
+                tabIndex={-1}
+                onClick={() => setMenuOpen(false)}
+                className="fixed inset-0 z-10 cursor-default"
+              />
+              <div className="absolute right-0 top-10 z-20 min-w-36 bg-surface border border-line rounded-lg shadow-lg py-1">
+                {onShare && (
+                  <button
+                    onClick={() => {
+                      setMenuOpen(false);
+                      onShare();
+                    }}
+                    className="w-full text-left px-4 min-h-11 text-sm text-ink hover:bg-surface-sunken"
+                  >
+                    Share trip
+                  </button>
+                )}
+                <button
+                  onClick={() => {
+                    setMenuOpen(false);
+                    startEdit();
+                  }}
+                  className="w-full text-left px-4 min-h-11 text-sm text-ink hover:bg-surface-sunken"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onDelete(journey.id);
+                  }}
+                  className="w-full text-left px-4 min-h-11 text-sm text-danger hover:bg-danger-soft"
+                >
+                  Delete
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+
         {onShare && (
           <button
             onClick={onShare}
             aria-label="Share this trip"
             title="Share this trip"
-            className="p-2 text-ink-subtle hover:text-brand-700 hover:bg-brand-50 rounded-lg transition-colors"
+            className="hidden sm:block p-2 text-ink-subtle hover:text-brand-700 hover:bg-brand-50 rounded-lg transition-colors"
           >
             <svg
               className="w-5 h-5"
@@ -223,7 +294,7 @@ function FlightCard({
         <button
           onClick={startEdit}
           aria-label="Edit this journey"
-          className="p-2 text-ink-subtle hover:text-brand-700 hover:bg-brand-50 rounded-lg transition-colors"
+          className="hidden sm:block p-2 text-ink-subtle hover:text-brand-700 hover:bg-brand-50 rounded-lg transition-colors"
         >
           <svg
             className="w-5 h-5"
@@ -242,7 +313,7 @@ function FlightCard({
         <button
           onClick={() => onDelete(journey.id)}
           aria-label="Delete this journey"
-          className="p-2 text-ink-subtle hover:text-red-500 hover:bg-danger-soft rounded-lg transition-colors"
+          className="hidden sm:block p-2 text-ink-subtle hover:text-red-500 hover:bg-danger-soft rounded-lg transition-colors"
         >
           <svg
             className="w-5 h-5"
