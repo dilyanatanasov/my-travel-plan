@@ -172,9 +172,18 @@ export function useReplayOrchestration(
         Number.isFinite(lon) &&
         Number.isFinite(lat)
       ) {
+        /*
+          The journey's own note captions the postcard when there is one —
+          "Honeymoon, day 3" beats "Barcelona · May 2023" (user call,
+          2026-08-14); the place · date remains the fallback. One line,
+          ellipsized to what the band can hold.
+        */
         const date = replay.current ? formatJourneyDate(replay.current) : null;
         const place = airport.city || airport.iataCode;
-        const caption = date ? `${place} · ${date}` : place;
+        const note = replay.current?.notes?.trim();
+        const fallback = date ? `${place} · ${date}` : place;
+        const raw = note || fallback;
+        const caption = raw.length > 28 ? `${raw.slice(0, 27)}…` : raw;
         timers.push(
           window.setTimeout(() => {
             setPostcard({ legId: leg.id, key: Date.now(), lon, lat, caption });

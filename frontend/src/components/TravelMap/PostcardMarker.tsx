@@ -25,7 +25,16 @@ function PostcardMarker({ postcard }: { postcard: ReplayPostcard }) {
   const band = photoW * 0.2;
   const frameW = photoW + pad * 2;
   const frameH = photoH + pad + band;
-  const gap = getZoomAdjustedSize(16, zoom);
+  // Clears the airport's popping name pill, which also lands above the
+  // marker at the same moment (user report: they overlapped).
+  const gap = getZoomAdjustedSize(38, zoom);
+  /*
+    Every card leans its own way (user call, 2026-08-14): direction and
+    angle derive from the leg id, so a given stop's postcard is stable
+    across replays while neighbouring stops differ — ±3° to ±5°.
+  */
+  const tilt =
+    (postcard.legId % 2 === 0 ? 1 : -1) * (3 + (postcard.legId % 3));
 
   return (
     <g
@@ -37,7 +46,7 @@ function PostcardMarker({ postcard }: { postcard: ReplayPostcard }) {
           the positioned group (transform-box: fill-box in index.css). */}
       <g key={postcard.key} className="postcard-pop">
         <g
-          transform={`translate(${-frameW / 2}, ${-frameH}) rotate(-4, ${
+          transform={`translate(${-frameW / 2}, ${-frameH}) rotate(${tilt}, ${
             frameW / 2
           }, ${frameH})`}
         >
