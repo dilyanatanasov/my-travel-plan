@@ -319,7 +319,8 @@ function GlobeView({
     camera themselves, and never while the replay is flying it.
   */
   useEffect(() => {
-    if (hasMovedRef.current || replayActiveRef.current) return;
+    if (hasMovedRef.current || editPinnedRef.current || replayActiveRef.current)
+      return;
     setCamera((current) => ({
       ...current,
       rotation: [-homeCenter[0], clampLat(-homeCenter[1])],
@@ -348,6 +349,13 @@ function GlobeView({
   const pointersRef = useRef(new Map<number, { x: number; y: number }>());
   /** True from the end of a moved gesture until the next pointer-down. */
   const lastGestureMovedRef = useRef(false);
+  /*
+    Editing a country changes the visit data, which recomputes the framing
+    behind homeCenter — and the follow effect below then nudged the camera a
+    few degrees on every tap ("the earth tilts"). Once the user edits, the
+    camera is theirs; only Reset re-follows.
+  */
+  const editPinnedRef = useRef(false);
   const dragRef = useRef<{
     rotation: [number, number];
     zoom: number;
@@ -703,6 +711,7 @@ function GlobeView({
 
   const handleResetView = useCallback(() => {
     hasMovedRef.current = false;
+    editPinnedRef.current = false;
     setHasMoved(false);
     setCamera({
       rotation: [-homeCenter[0], clampLat(-homeCenter[1])],
@@ -721,6 +730,7 @@ function GlobeView({
       onCountryClick
         ? (isoCode: string) => {
             if (lastGestureMovedRef.current) return;
+            editPinnedRef.current = true;
             void onCountryClick(isoCode);
           }
         : undefined,
@@ -731,6 +741,7 @@ function GlobeView({
       onCountryLongPress
         ? (isoCode: string) => {
             if (dragRef.current?.moved) return;
+            editPinnedRef.current = true;
             void onCountryLongPress(isoCode);
           }
         : undefined,

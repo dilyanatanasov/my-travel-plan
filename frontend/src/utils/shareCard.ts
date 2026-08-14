@@ -313,6 +313,33 @@ function drawWatermark(ctx: CanvasRenderingContext2D, p: Palette) {
   ctx.restore();
 }
 
+/*
+  Warm and Ink share their geometry rules (2026-08-14 rework): the map block
+  is near-full-bleed at the source's own 2:1 aspect — 1000×500, which
+  contain-fits exactly, so no letterbox can appear inside the block — and the
+  leftover card height is distributed evenly between the content blocks
+  instead of pooling into one dead band above the facts, which is what
+  "small map with gaps" was.
+*/
+const MAP_X = 40;
+const MAP_W = CARD_WIDTH - MAP_X * 2;
+const MAP_H = MAP_W / 2;
+
+function drawMapBlock(
+  ctx: CanvasRenderingContext2D,
+  map: HTMLImageElement,
+  y: number,
+  p: Palette,
+) {
+  ctx.save();
+  roundedRect(ctx, MAP_X, y, MAP_W, MAP_H, 40);
+  ctx.clip();
+  ctx.fillStyle = p.mapBg;
+  ctx.fillRect(MAP_X, y, MAP_W, MAP_H);
+  drawMapContain(ctx, map, MAP_X, y, MAP_W, MAP_H);
+  ctx.restore();
+}
+
 function drawWarm(
   ctx: CanvasRenderingContext2D,
   map: HTMLImageElement,
@@ -321,40 +348,44 @@ function drawWarm(
 ) {
   const pad = 72;
   const inner = CARD_WIDTH - pad * 2;
+  const topPad = 64;
+  const bottomReserve = 120;
 
+  // Measure before drawing: the gaps depend on every block's height.
+  const size = fitFont(ctx, content.headline, inner, 96, display);
+  ctx.font = display(size);
+  const lines = wrap(ctx, content.headline, inner, 2);
+  const headlineH = lines.length * size * 1.06;
+  const factsH = 56 + 14 + 26;
+  const blocksH = 28 + headlineH + MAP_H + factsH;
+  const gap = Math.max(
+    36,
+    (CARD_HEIGHT - topPad - bottomReserve - blocksH) / 3,
+  );
+
+  let y = topPad;
   ctx.fillStyle = p.accent;
   ctx.font = mono(26, '600');
-  ctx.fillText(content.kicker.toUpperCase(), pad, pad);
+  ctx.fillText(content.kicker.toUpperCase(), pad, y);
+  y += 28 + gap;
 
-  const size = fitFont(ctx, content.headline, inner, 92, display);
   ctx.font = display(size);
   ctx.fillStyle = p.text;
-  const lines = wrap(ctx, content.headline, inner, 2);
-  lines.forEach((line, i) => ctx.fillText(line, pad, pad + 58 + i * size * 1.06));
+  lines.forEach((line, i) => ctx.fillText(line, pad, y + i * size * 1.06));
+  y += headlineH + gap;
 
-  const factTop = CARD_HEIGHT - 190;
-  const bandTop = pad + 58 + lines.length * size * 1.06 + 44;
-  const bandHeight = factTop - 56 - bandTop;
-  const mapHeight = Math.min(bandHeight, (inner * map.height) / map.width);
-  const mapTop = bandTop + (bandHeight - mapHeight) / 2;
+  drawMapBlock(ctx, map, y, p);
+  y += MAP_H + gap;
 
-  ctx.save();
-  roundedRect(ctx, pad, mapTop, inner, mapHeight, 44);
-  ctx.clip();
-  ctx.fillStyle = p.mapBg;
-  ctx.fillRect(pad, mapTop, inner, mapHeight);
-  drawMapContain(ctx, map, pad, mapTop, inner, mapHeight);
-  ctx.restore();
-
-  const columnWidth = inner / Math.max(content.facts.length, 1);
+  const columnWidth = inner / Math.max(Math.min(content.facts.length, 3), 1);
   content.facts.slice(0, 3).forEach((fact, i) => {
     const x = pad + i * columnWidth;
     ctx.fillStyle = p.text;
-    ctx.font = display(50);
-    ctx.fillText(fact.value, x, factTop);
+    ctx.font = display(56);
+    ctx.fillText(fact.value, x, y);
     ctx.fillStyle = p.muted;
     ctx.font = body(24, '600');
-    ctx.fillText(fact.label, x, factTop + 62);
+    ctx.fillText(fact.label, x, y + 70);
   });
 }
 
@@ -366,37 +397,40 @@ function drawInk(
 ) {
   const pad = 72;
   const inner = CARD_WIDTH - pad * 2;
+  const topPad = 64;
+  const bottomReserve = 110;
 
+  // Measure first — same even-gap rule as Warm.
+  const heroSize = fitFont(ctx, content.hero.value, inner, 190, display);
+  const capSize = fitFont(ctx, content.hero.caption, inner, 30, (s) =>
+    body(s, '600'),
+  );
+  const heroH = heroSize * 1.02 + capSize * 1.3;
+  const blocksH = 34 + MAP_H + heroH;
+  const gap = Math.max(
+    40,
+    (CARD_HEIGHT - topPad - bottomReserve - blocksH) / 2,
+  );
+
+  let y = topPad;
   ctx.fillStyle = p.accent;
   ctx.beginPath();
-  ctx.arc(pad + 16, pad + 16, 16, 0, Math.PI * 2);
+  ctx.arc(pad + 16, y + 14, 16, 0, Math.PI * 2);
   ctx.fill();
   ctx.font = mono(26, '600');
-  ctx.fillText(content.kicker.toUpperCase(), pad + 48, pad + 2);
+  ctx.fillText(content.kicker.toUpperCase(), pad + 48, y);
+  y += 34 + gap;
 
-  const heroTop = CARD_HEIGHT - 260;
-  const bandTop = pad + 90;
-  const bandHeight = heroTop - 60 - bandTop;
-  const mapHeight = Math.min(bandHeight, (inner * map.height) / map.width);
-  const mapTop = bandTop + (bandHeight - mapHeight) / 2;
+  drawMapBlock(ctx, map, y, p);
+  y += MAP_H + gap;
 
-  ctx.save();
-  roundedRect(ctx, pad, mapTop, inner, mapHeight, 44);
-  ctx.clip();
-  ctx.fillStyle = p.mapBg;
-  ctx.fillRect(pad, mapTop, inner, mapHeight);
-  drawMapContain(ctx, map, pad, mapTop, inner, mapHeight);
-  ctx.restore();
-
-  const heroSize = fitFont(ctx, content.hero.value, inner, 150, display);
   ctx.font = display(heroSize);
   ctx.fillStyle = p.text;
-  ctx.fillText(content.hero.value, pad, heroTop);
+  ctx.fillText(content.hero.value, pad, y);
 
   ctx.fillStyle = p.muted;
-  const capSize = fitFont(ctx, content.hero.caption, inner, 30, (s) => body(s, '600'));
   ctx.font = body(capSize, '600');
-  ctx.fillText(content.hero.caption.toUpperCase(), pad, heroTop + heroSize * 1.02);
+  ctx.fillText(content.hero.caption.toUpperCase(), pad, y + heroSize * 1.02);
 }
 
 function drawEditorial(
