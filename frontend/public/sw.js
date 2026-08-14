@@ -54,6 +54,13 @@ self.addEventListener('fetch', (event) => {
   // from last week, shown as if current would be a correctness bug.
   if (url.pathname.startsWith('/api/')) return;
 
+  // A request that opts out of caching (version.json above all) must reach
+  // the network: `cache: 'no-store'` only bypasses the HTTP cache, not this
+  // worker, and the cache-first branch below would otherwise freeze the
+  // deploy stamp at whatever build first cached it — making every newer
+  // build think it is stale and re-prompt for a reload that fixes nothing.
+  if (request.cache === 'no-store') return;
+
   // Navigations: network first so a deploy is picked up immediately, with the
   // cached shell as the offline fallback.
   if (request.mode === 'navigate') {
