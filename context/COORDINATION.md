@@ -675,6 +675,24 @@ subscribe → VAPID → push-service → device path is proven on a real
 browser. Anniversaries ride the identical pipeline; only the cron's
 timing remains untested by nature. Other M3/M4 checks still open.
 
+### D10 — Search v2 (2026-08-16): FULL FUNNEL BUILT on `feat/search-v2`
+The 2026-08-11 smart-trip-search plan, all four milestones, one commit
+each (tip `ad1c768`, pushed; logs
+`context/implement/2026-08-16_search-v2-m{1..4}_implement.md`).
+M1 providers (Travelpayouts/SerpApi/Kiwi behind one interface,
+price_observations + api_spend_ledger, affiliate marker on kiwi.com
+links). M2 orchestrator (cache→free→paid, K=8 one-per-week candidates,
+Kiwi batches of 3 under a 25-call cap, Pareto on TOTAL duration,
+median-anchored judgement). M3 SSE (ReplaySubject registry,
+owner-checked; /search/trips streaming UI: month heat-map, judged result
+cards). M4 watches (nightly 03:00 free-provider sweep, threshold or 10%
+under trailing-min-excluding-24h, 24h debounce, push-first + verified
+email, 10 per user). Backend 87 jest / frontend 93 vitest green.
+**NOT merged, NOT deployed. Merge gates: user design review; provider
+signups (Travelpayouts token+marker, Kiwi RapidAPI Pro $5/mo, SerpApi);
+deploy needs run_migrations=true (two new migrations).** Everything
+degrades honestly with no keys — the branch is safe to review locally.
+
 ## Open questions
 
 Ask here instead of guessing. Format:
