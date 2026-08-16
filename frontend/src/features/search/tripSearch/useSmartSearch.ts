@@ -28,12 +28,20 @@ export interface SearchMeta {
   degraded: boolean;
 }
 
+export type CabinClass =
+  | 'economy'
+  | 'premium_economy'
+  | 'business'
+  | 'first';
+
 export interface SmartSearchParams {
   origin: string;
   destination: string;
   month: string; // YYYY-MM
   minNights?: number;
   maxNights?: number;
+  passengers?: number;
+  cabinClass?: CabinClass;
 }
 
 interface SmartSearchState {

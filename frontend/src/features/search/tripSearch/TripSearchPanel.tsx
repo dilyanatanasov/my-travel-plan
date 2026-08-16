@@ -7,7 +7,12 @@ import { defaultMonth } from '../months';
 import SurfaceCalendar from './SurfaceCalendar';
 import TripResultCard from './TripResultCard';
 import WatchList from './WatchList';
-import { useSmartSearch } from './useSmartSearch';
+import {
+  DEFAULT_VIEW,
+  sortAndFilterResults,
+  type ResultSort,
+} from './resultsView';
+import { useSmartSearch, type CabinClass } from './useSmartSearch';
 import { useCreateWatchMutation } from './watchesApi';
 import { useToast } from '../../../components/Toast/ToastProvider';
 
@@ -23,6 +28,9 @@ function TripSearchPanel() {
   const [month, setMonth] = useState(defaultMonth());
   const [minNights, setMinNights] = useState('');
   const [maxNights, setMaxNights] = useState('');
+  const [passengers, setPassengers] = useState(1);
+  const [cabinClass, setCabinClass] = useState<CabinClass>('economy');
+  const [view, setView] = useState(DEFAULT_VIEW);
   const {
     phase,
     surface,
@@ -61,20 +69,9 @@ function TripSearchPanel() {
     () => new Map(judgements.map((judgement) => [judgement.itineraryId, judgement])),
     [judgements],
   );
-  const sortedResults = useMemo(
-    () =>
-      // Judged results first (in role order), then cheapest-first.
-      [...results].sort((a, b) => {
-        const rank = (id: string) => {
-          const role = judgementById.get(id)?.role;
-          return role === 'recommended' ? 0 : role ? 1 : 2;
-        };
-        return (
-          rank(a.itineraryId) - rank(b.itineraryId) ||
-          a.lowestPrice - b.lowestPrice
-        );
-      }),
-    [results, judgementById],
+  const visibleResults = useMemo(
+    () => sortAndFilterResults(results, judgementById, view),
+    [results, judgementById, view],
   );
 
   const canSearch =
@@ -82,12 +79,15 @@ function TripSearchPanel() {
 
   const handleSearch = () => {
     if (!origin || !destination) return;
+    setView(DEFAULT_VIEW);
     void search({
       origin: origin.iataCode,
       destination: destination.iataCode,
       month,
       minNights: minNights ? Number(minNights) : undefined,
       maxNights: maxNights ? Number(maxNights) : undefined,
+      passengers,
+      cabinClass,
     });
   };
 
@@ -134,6 +134,31 @@ function TripSearchPanel() {
             onChange={(event) => setMaxNights(event.target.value)}
             className="w-20 min-h-10 px-2 border border-line rounded-lg bg-surface text-ink text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
           />
+          <select
+            aria-label="Passengers"
+            value={passengers}
+            onChange={(event) => setPassengers(Number(event.target.value))}
+            className="select-field min-h-10 pl-2 pr-6 border border-line rounded-lg bg-surface text-ink text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+          >
+            {Array.from({ length: 9 }, (_, index) => (
+              <option key={index + 1} value={index + 1}>
+                {index + 1} {index === 0 ? 'traveller' : 'travellers'}
+              </option>
+            ))}
+          </select>
+          <select
+            aria-label="Cabin class"
+            value={cabinClass}
+            onChange={(event) =>
+              setCabinClass(event.target.value as CabinClass)
+            }
+            className="select-field min-h-10 pl-2 pr-6 border border-line rounded-lg bg-surface text-ink text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+          >
+            <option value="economy">Economy</option>
+            <option value="premium_economy">Premium economy</option>
+            <option value="business">Business</option>
+            <option value="first">First</option>
+          </select>
           <div className="flex-1" />
           {/* Watching needs only the route+month — no search required. */}
           <Button
@@ -186,16 +211,89 @@ function TripSearchPanel() {
         </div>
       )}
 
-      {sortedResults.length > 0 && (
-        <div className="space-y-2.5">
-          {sortedResults.map((flight) => (
-            <TripResultCard
-              key={flight.itineraryId}
-              flight={flight}
-              judgement={judgementById.get(flight.itineraryId)}
-            />
-          ))}
-        </div>
+      {results.length > 0 && (
+        <>
+          {/* The view toolbar: how to order, what to hide. */}
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            <div
+              role="radiogroup"
+              aria-label="Sort results"
+              className="flex rounded-lg border border-line overflow-hidden"
+            >
+              {(
+                [
+                  ['best', 'Best'],
+                  ['price', 'Cheapest'],
+                  ['duration', 'Fastest'],
+                ] as [ResultSort, string][]
+              ).map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  role="radio"
+                  aria-checked={view.sort === value}
+                  onClick={() => setView((v) => ({ ...v, sort: value }))}
+                  className={`min-h-9 px-3 text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 ${
+                    view.sort === value
+                      ? 'bg-brand-600 text-white'
+                      : 'bg-surface text-ink-muted hover:text-ink'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <select
+              aria-label="Maximum stops per direction"
+              value={view.maxStops === null ? 'any' : String(view.maxStops)}
+              onChange={(event) =>
+                setView((v) => ({
+                  ...v,
+                  maxStops:
+                    event.target.value === 'any'
+                      ? null
+                      : Number(event.target.value),
+                }))
+              }
+              className="select-field min-h-9 pl-2 pr-6 border border-line rounded-lg bg-surface text-ink text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+            >
+              <option value="any">Any stops</option>
+              <option value="0">Direct only</option>
+              <option value="1">Up to 1 stop</option>
+              <option value="2">Up to 2 stops</option>
+            </select>
+            <label className="flex items-center gap-1.5 cursor-pointer text-ink-muted">
+              <input
+                type="checkbox"
+                checked={view.protectedOnly}
+                onChange={(event) =>
+                  setView((v) => ({
+                    ...v,
+                    protectedOnly: event.target.checked,
+                  }))
+                }
+                className="w-4 h-4 text-brand-text rounded focus:ring-brand-500"
+              />
+              Protected tickets only
+            </label>
+          </div>
+
+          <div className="space-y-2.5">
+            {visibleResults.map((flight) => (
+              <TripResultCard
+                key={flight.itineraryId}
+                flight={flight}
+                judgement={judgementById.get(flight.itineraryId)}
+              />
+            ))}
+            {visibleResults.length === 0 && (
+              <p className="text-sm text-ink-muted">
+                Every result is hidden by the current filters — loosen the
+                stops or protection filter to see them again.
+              </p>
+            )}
+          </div>
+        </>
       )}
 
       {phase === 'done' && surface.length > 0 && results.length === 0 && (

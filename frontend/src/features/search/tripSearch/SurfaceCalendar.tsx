@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import type { Candidate, SurfacePoint } from './useSmartSearch';
 
 interface SurfaceCalendarProps {
@@ -7,22 +7,38 @@ interface SurfaceCalendarProps {
   candidates: Candidate[];
 }
 
+function formatDay(date: string): string {
+  return new Date(`${date}T00:00:00Z`).toLocaleDateString(undefined, {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    timeZone: 'UTC',
+  });
+}
+
 /**
  * The month as a price heat-map: one cell per departure day, tinted by
  * where its cheapest observed price sits in the month's terciles. Ringed
- * days are the candidates the funnel chose to price precisely. Estimates
- * only — the cards below carry the bookable numbers.
+ * days are the candidates the funnel chose to price precisely.
+ *
+ * A cell's price quietly belongs to a date PAIR — tapping the day says the
+ * whole sentence: "out Wed 7 Oct → back Wed 14 Oct · 7 nights · ~$489"
+ * (the invisible-return-date finding from the design review).
  */
 function SurfaceCalendar({ month, surface, candidates }: SurfaceCalendarProps) {
-  const { cells, low, high } = useMemo(() => {
-    const cheapestByDay = new Map<string, number>();
+  const [selectedDay, setSelectedDay] = useState<string | null>(null);
+
+  const { cells, low, high, cheapestByDay } = useMemo(() => {
+    const byDay = new Map<string, SurfacePoint>();
     for (const point of surface) {
-      const existing = cheapestByDay.get(point.departureDate);
-      if (existing === undefined || point.price < existing) {
-        cheapestByDay.set(point.departureDate, point.price);
+      const existing = byDay.get(point.departureDate);
+      if (!existing || point.price < existing.price) {
+        byDay.set(point.departureDate, point);
       }
     }
-    const prices = [...cheapestByDay.values()].sort((a, b) => a - b);
+    const prices = [...byDay.values()]
+      .map((point) => point.price)
+      .sort((a, b) => a - b);
     const tercile = (fraction: number) =>
       prices.length
         ? prices[Math.min(prices.length - 1, Math.floor(prices.length * fraction))]
@@ -39,19 +55,19 @@ function SurfaceCalendar({ month, surface, candidates }: SurfaceCalendarProps) {
 
     const dayCells = Array.from({ length: daysInMonth }, (_, index) => {
       const date = `${month}-${String(index + 1).padStart(2, '0')}`;
-      const price = cheapestByDay.get(date);
+      const point = byDay.get(date);
       const bucket =
-        price === undefined
+        point === undefined
           ? null
-          : price <= lowCut
+          : point.price <= lowCut
             ? 'low'
-            : price <= midCut
+            : point.price <= midCut
               ? 'mid'
               : 'high';
       return {
         date,
         day: index + 1,
-        price,
+        price: point?.price,
         bucket,
         isCandidate: candidateDays.has(date),
       };
@@ -60,6 +76,7 @@ function SurfaceCalendar({ month, surface, candidates }: SurfaceCalendarProps) {
       cells: { firstWeekday, dayCells },
       low: prices[0],
       high: prices[prices.length - 1],
+      cheapestByDay: byDay,
     };
   }, [month, surface, candidates]);
 
@@ -73,6 +90,16 @@ function SurfaceCalendar({ month, surface, candidates }: SurfaceCalendarProps) {
         : bucket === 'high'
           ? 'bg-brand-600 text-white'
           : 'bg-surface-sunken text-ink-subtle';
+
+  const selected = selectedDay ? cheapestByDay.get(selectedDay) : undefined;
+  const selectedNights =
+    selected?.returnDate != null
+      ? Math.round(
+          (Date.parse(selected.returnDate) -
+            Date.parse(selected.departureDate)) /
+            86_400_000,
+        )
+      : null;
 
   return (
     <div className="bg-surface border border-line rounded-2xl p-4">
@@ -95,27 +122,54 @@ function SurfaceCalendar({ month, surface, candidates }: SurfaceCalendarProps) {
           <div key={`pad-${index}`} />
         ))}
         {cells.dayCells.map((cell) => (
-          <div
+          <button
             key={cell.date}
-            title={
-              cell.price !== undefined
-                ? `${cell.date}: ~$${Math.round(cell.price)}`
-                : `${cell.date}: no recent price`
+            type="button"
+            disabled={cell.price === undefined}
+            onClick={() =>
+              setSelectedDay((current) =>
+                current === cell.date ? null : cell.date,
+              )
             }
-            className={`rounded-md min-h-10 flex flex-col items-center justify-center text-[11px] leading-tight ${bucketClass(
+            aria-pressed={selectedDay === cell.date}
+            aria-label={
+              cell.price !== undefined
+                ? `${formatDay(cell.date)}, about $${Math.round(cell.price)}`
+                : `${formatDay(cell.date)}, no recent price`
+            }
+            className={`rounded-md min-h-10 flex flex-col items-center justify-center text-[11px] leading-tight transition-shadow focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 ${bucketClass(
               cell.bucket,
-            )} ${cell.isCandidate ? 'ring-2 ring-ink/60' : ''}`}
+            )} ${cell.isCandidate ? 'ring-2 ring-ink/60' : ''} ${
+              selectedDay === cell.date ? 'ring-2 ring-brand-700' : ''
+            } ${cell.price === undefined ? 'cursor-default' : 'cursor-pointer'}`}
           >
             <span className="font-medium">{cell.day}</span>
             {cell.price !== undefined && (
               <span className="tabular-nums">${Math.round(cell.price)}</span>
             )}
-          </div>
+          </button>
         ))}
       </div>
-      <p className="text-[11px] text-ink-subtle mt-2">
-        Ringed days are being priced precisely below.
-      </p>
+      {selected ? (
+        <p className="text-xs text-ink mt-2">
+          <span className="font-medium">
+            out {formatDay(selected.departureDate)}
+            {selected.returnDate && ` → back ${formatDay(selected.returnDate)}`}
+          </span>
+          {selectedNights !== null && (
+            <span className="text-ink-muted"> · {selectedNights} nights</span>
+          )}
+          <span className="text-ink-muted">
+            {' '}
+            · ~${Math.round(selected.price)} estimated
+          </span>
+        </p>
+      ) : (
+        <p className="text-[11px] text-ink-subtle mt-2">
+          Tap a day for its dates · ringed days are being priced precisely
+          below.
+        </p>
+      )}
     </div>
   );
 }
