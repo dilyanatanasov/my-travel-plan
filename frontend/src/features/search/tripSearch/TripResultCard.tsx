@@ -34,13 +34,18 @@ function formatTime(iso: string): string {
   });
 }
 
+/**
+ * Route stays on one unbreakable line; the day/duration detail wraps
+ * underneath on narrow screens instead of shattering the route text —
+ * the mobile breakage from the 2026-08-16 design review.
+ */
 function LegRow({ leg, label }: { leg: FlightLegDto; label: string }) {
   return (
-    <div className="flex items-center gap-3 text-sm">
-      <span className="w-14 flex-shrink-0 text-[11px] uppercase tracking-wide text-ink-subtle">
+    <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 text-sm">
+      <span className="w-10 flex-shrink-0 text-[11px] uppercase tracking-wide text-ink-subtle">
         {label}
       </span>
-      <span className="font-mono font-semibold text-ink">
+      <span className="font-mono font-semibold text-ink whitespace-nowrap">
         {leg.departureAirport} {formatTime(leg.departureTime)} →{' '}
         {leg.arrivalAirport} {formatTime(leg.arrivalTime)}
       </span>
@@ -55,11 +60,13 @@ function LegRow({ leg, label }: { leg: FlightLegDto; label: string }) {
 }
 
 /**
- * One streamed itinerary, in the app's own design language (the legacy
- * FlightCard predates the token system). The judgement badge and its
- * "why" line come from the funnel — real deltas, not marketing.
+ * One streamed itinerary. A split-ticket result is a first-class route —
+ * same badges, same front — but it says what it is: separate bookings via
+ * a positioning hub, no missed-connection protection, one Book button per
+ * ticket.
  */
 function TripResultCard({ flight, judgement }: TripResultCardProps) {
+  const split = flight.selfTransfer;
   const booking = flight.pricingOptions[0];
   const carriers = [
     ...new Set(
@@ -77,45 +84,78 @@ function TripResultCard({ flight, judgement }: TripResultCardProps) {
           : 'border-line'
       }`}
     >
-      {judgement && (
-        <div className="flex items-center gap-2 mb-2">
-          <span className="px-2 py-0.5 rounded-full bg-brand-600 text-white text-[10px] font-semibold uppercase tracking-wide">
-            {ROLE_LABEL[judgement.role]}
-          </span>
-          <span className="text-xs text-ink-muted">
-            {judgement.whyRecommended}
-          </span>
+      {(judgement || split) && (
+        <div className="flex flex-wrap items-baseline gap-2 mb-2">
+          {judgement && (
+            <span className="px-2 py-0.5 rounded-full bg-brand-600 text-white text-[10px] font-semibold uppercase tracking-wide">
+              {ROLE_LABEL[judgement.role]}
+            </span>
+          )}
+          {split && (
+            <span className="px-2 py-0.5 rounded-full bg-surface-sunken text-ink-muted text-[10px] font-semibold uppercase tracking-wide">
+              Self-transfer via {split.hub}
+            </span>
+          )}
+          {judgement && (
+            <span className="text-xs text-ink-muted">
+              {judgement.whyRecommended}
+            </span>
+          )}
         </div>
       )}
-      <div className="flex items-start justify-between gap-4">
+
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
         <div className="space-y-1.5 min-w-0">
           <LegRow leg={flight.outboundLeg} label="Out" />
           {flight.returnLeg && <LegRow leg={flight.returnLeg} label="Back" />}
-          <p className="text-xs text-ink-subtle truncate">
-            {carriers.join(', ')}
-          </p>
+          <p className="text-xs text-ink-subtle">{carriers.join(', ')}</p>
+          {split && (
+            <p className="text-xs text-ink-muted">
+              Two separate tickets — a delay on the first isn&rsquo;t
+              protected on the second. Book both, in this order.
+            </p>
+          )}
           {flight.safetyWarnings?.hasBannedCarrier && (
             <p className="text-xs text-danger">
               Includes a carrier on the EU air-safety list.
             </p>
           )}
         </div>
-        <div className="text-right flex-shrink-0">
-          <p className="text-2xl font-bold text-ink tabular-nums">
-            ${Math.round(flight.lowestPrice)}
-          </p>
-          <p className="text-[11px] text-ink-subtle mb-2">
-            {formatDuration(flight.totalDurationMinutes)} total
-          </p>
-          {booking && (
-            <a
-              href={booking.deepLink}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center min-h-9 px-3 rounded-lg bg-brand-600 text-white text-sm font-medium hover:bg-brand-700"
-            >
-              Book on {booking.agentName}
-            </a>
+
+        <div className="flex-shrink-0 sm:text-right">
+          <div className="flex items-baseline justify-between sm:justify-end gap-2">
+            <p className="text-2xl font-bold text-ink tabular-nums">
+              ${Math.round(flight.lowestPrice)}
+            </p>
+            <p className="text-[11px] text-ink-subtle">
+              {formatDuration(flight.totalDurationMinutes)} total
+            </p>
+          </div>
+          {split ? (
+            <div className="mt-2 flex flex-col gap-1.5">
+              {split.bookings.map((ticket) => (
+                <a
+                  key={ticket.label}
+                  href={ticket.deepLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center min-h-9 px-3 rounded-lg bg-brand-600 text-white text-sm font-medium hover:bg-brand-700 whitespace-nowrap"
+                >
+                  {ticket.label} · ${Math.round(ticket.price)}
+                </a>
+              ))}
+            </div>
+          ) : (
+            booking && (
+              <a
+                href={booking.deepLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-2 inline-flex items-center justify-center min-h-9 px-3 rounded-lg bg-brand-600 text-white text-sm font-medium hover:bg-brand-700 whitespace-nowrap"
+              >
+                Book on {booking.agentName}
+              </a>
+            )
           )}
         </div>
       </div>

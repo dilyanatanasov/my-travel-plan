@@ -208,11 +208,16 @@ function TripSearchPanel() {
 
       {phase === 'done' && meta && (
         <p className="text-[11px] text-ink-subtle">
-          {meta.cacheHits > 0
-            ? `${meta.cacheHits} cached prices`
-            : 'fresh prices'}{' '}
-          · {meta.upstreamCalls} live lookups ·{' '}
-          {(meta.durationMs / 1000).toFixed(1)}s
+          {/* Say what happened: "fresh prices · 0 lookups" was a lie in
+              the degraded state (design review, 2026-08-16). */}
+          {meta.upstreamCalls === 0 && meta.cacheHits === 0
+            ? 'nothing cached, live providers unavailable'
+            : `${
+                meta.cacheHits > 0
+                  ? `${meta.cacheHits} cached prices`
+                  : 'fresh prices'
+              } · ${meta.upstreamCalls} live lookups`}{' '}
+          · {(meta.durationMs / 1000).toFixed(1)}s
         </p>
       )}
     </div>

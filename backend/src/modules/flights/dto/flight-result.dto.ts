@@ -73,6 +73,16 @@ export interface FlightResultDto {
     isEcoContender: boolean;
     co2Emission?: number;
   };
+  /**
+   * Present when this itinerary is COMPOSED from separate bookings via a
+   * positioning hub (split-ticket tier). Separate tickets carry no
+   * missed-connection protection — the UI must say so, and each booking
+   * gets its own link.
+   */
+  selfTransfer?: {
+    hub: string;
+    bookings: { label: string; price: number; deepLink: string }[];
+  };
 }
 
 export interface FlightSearchResultDto {

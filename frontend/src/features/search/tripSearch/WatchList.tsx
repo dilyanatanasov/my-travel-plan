@@ -47,7 +47,9 @@ function WatchList() {
             key={watch.id}
             className="flex items-center justify-between gap-3 text-sm"
           >
-            <span className="text-ink min-w-0 truncate">
+            {/* Wraps, never truncates: "last alert $489" is the one number
+                that matters, and it was the part getting cut on phones. */}
+            <span className="text-ink min-w-0">
               <span className="font-mono font-semibold">
                 {watch.origin} → {watch.destination}
               </span>{' '}

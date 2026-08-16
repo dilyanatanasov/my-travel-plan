@@ -1,14 +1,15 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { In, Repository } from 'typeorm';
+import { Airport } from '../../airports/entities/airport.entity';
+import { KNOWN_HUBS } from '../data/hubs';
 import { CabinClass } from '../dto/search-flights.dto';
 import {
   SmartSearchDto,
   SmartSearchResultDto,
 } from '../dto/smart-search.dto';
 import { FlightResultDto } from '../dto/flight-result.dto';
-import {
-  PricePoint,
-  SurfaceQuery,
-} from '../providers/flight-provider.interface';
+import { PricePoint } from '../providers/flight-provider.interface';
 import { KiwiProvider } from '../providers/kiwi.provider';
 import { SerpapiProvider } from '../providers/serpapi.provider';
 import { TravelpayoutsProvider } from '../providers/travelpayouts.provider';
@@ -22,6 +23,11 @@ import {
   paretoFront,
   selectCandidates,
 } from './search-funnel.util';
+import {
+  composeSplitResults,
+  composeSurfaceCombos,
+  nearestHubCodes,
+} from './split-search.util';
 
 /** Streaming seam for M3: the SSE layer subscribes, M2 callers ignore it. */
 export type SearchEvent =
@@ -35,6 +41,8 @@ const MAX_CONCURRENT = 3;
 const HARD_CALL_CAP = 25;
 /** Response weight: per-candidate result cap after price sort. */
 const RESULTS_PER_CANDIDATE = 10;
+/** Positioning hubs tried for the split-ticket tier. */
+const SPLIT_HUBS = 3;
 
 /**
  * The funnel (M2): surface → candidates → precise → judgement.
@@ -59,7 +67,81 @@ export class SearchOrchestratorService {
     private readonly kiwi: KiwiProvider,
     private readonly budget: BudgetService,
     private readonly observations: PriceObservationsService,
+    @InjectRepository(Airport)
+    private readonly airportRepository: Repository<Airport>,
   ) {}
+
+  /**
+   * A route's surface for a month: history first, then the providers in
+   * order of cheapness, each budget-gated. Shared by the direct tier and
+   * every split leg; returns the points plus what the fetch cost.
+   */
+  private async ensureSurface(
+    origin: string,
+    destination: string,
+    month: string,
+    remainingCalls: number,
+  ): Promise<{ points: PricePoint[]; calls: number; refused: boolean }> {
+    const cached = await this.observations.freshSurface(
+      origin,
+      destination,
+      month,
+    );
+    if (cached.length > 0) return { points: cached, calls: 0, refused: false };
+
+    let calls = 0;
+    let refused = false;
+    for (const provider of [this.travelpayouts, this.serpapi]) {
+      if (!provider.isConfigured()) continue;
+      if (calls >= remainingCalls) break;
+      if (!(await this.budget.canSpend(provider.name))) {
+        refused = true;
+        continue;
+      }
+      const points = await provider.getPriceSurface({
+        origin,
+        destination,
+        month,
+        roundTrip: true,
+      });
+      calls += 1;
+      await this.budget.record(provider.name, 1, provider.costPerCall);
+      if (points.length > 0) {
+        await this.observations.append(points);
+        return { points, calls, refused };
+      }
+    }
+    return { points: [], calls, refused };
+  }
+
+  /** The origin's positioning hubs, by geography, from the airports table. */
+  private async positioningHubs(
+    origin: string,
+    destination: string,
+  ): Promise<string[]> {
+    const hubCodes = KNOWN_HUBS.map((hub) => hub.code);
+    const airports = await this.airportRepository.find({
+      where: { iataCode: In([origin, ...hubCodes]) },
+    });
+    const originAirport = airports.find((a) => a.iataCode === origin);
+    if (!originAirport) return [];
+    return nearestHubCodes(
+      {
+        iataCode: origin,
+        latitude: Number(originAirport.latitude),
+        longitude: Number(originAirport.longitude),
+      },
+      airports
+        .filter((a) => a.iataCode !== origin)
+        .map((a) => ({
+          iataCode: a.iataCode,
+          latitude: Number(a.latitude),
+          longitude: Number(a.longitude),
+        })),
+      destination,
+      SPLIT_HUBS,
+    );
+  }
 
   async runSearch(
     dto: SmartSearchDto,
@@ -74,37 +156,16 @@ export class SearchOrchestratorService {
     let degraded = false;
 
     // L1 — the surface. History first; providers only for what it lacks.
-    let surface = await this.observations.freshSurface(
+    const direct = await this.ensureSurface(
       origin,
       destination,
       month,
+      HARD_CALL_CAP,
     );
-    cacheHits = surface.length;
-
-    if (surface.length === 0) {
-      const surfaceQuery: SurfaceQuery = {
-        origin,
-        destination,
-        month,
-        roundTrip: true,
-      };
-      for (const provider of [this.travelpayouts, this.serpapi]) {
-        if (surface.length > 0) break;
-        if (!provider.isConfigured()) continue;
-        if (upstreamCalls >= HARD_CALL_CAP) break;
-        if (!(await this.budget.canSpend(provider.name))) {
-          degraded = true;
-          continue;
-        }
-        const points = await provider.getPriceSurface(surfaceQuery);
-        upstreamCalls += 1;
-        await this.budget.record(provider.name, 1, provider.costPerCall);
-        if (points.length > 0) {
-          surface = points;
-          await this.observations.append(points);
-        }
-      }
-    }
+    const surface = direct.points;
+    cacheHits = direct.calls === 0 ? surface.length : 0;
+    upstreamCalls += direct.calls;
+    if (direct.refused) degraded = true;
 
     const candidates = selectCandidates(surface, {
       minNights: dto.minNights,
@@ -181,6 +242,102 @@ export class SearchOrchestratorService {
       }
     } else if (candidates.length > 0) {
       degraded = true; // surface exists but nothing bookable can be fetched
+    }
+
+    /*
+      L2.5 — split tickets via positioning hubs (user decision 2026-08-16):
+      a separate-booking combination IS a route — Varna⇄Sofia on one ticket
+      plus Sofia⇄Reykjavík on another — so it is priced end-to-end and
+      judged on the same front as any through-ticket. Leg surfaces are the
+      free tier (and double as the seasonality check: a month a hub route
+      does not fly contributes no combos); only the best combo per hub
+      spends Kiwi calls.
+    */
+    if (this.kiwi.isConfigured() && upstreamCalls + 2 <= HARD_CALL_CAP) {
+      try {
+        const hubs = await this.positioningHubs(origin, destination);
+        for (const hub of hubs) {
+          if (upstreamCalls + 2 > HARD_CALL_CAP) break;
+          const legA = await this.ensureSurface(
+            origin,
+            hub,
+            month,
+            HARD_CALL_CAP - upstreamCalls,
+          );
+          upstreamCalls += legA.calls;
+          const legB = await this.ensureSurface(
+            hub,
+            destination,
+            month,
+            HARD_CALL_CAP - upstreamCalls,
+          );
+          upstreamCalls += legB.calls;
+          if (legA.refused || legB.refused) degraded = true;
+
+          const combos = composeSurfaceCombos(hub, legA.points, legB.points, {
+            minNights: dto.minNights,
+            maxNights: dto.maxNights,
+            k: 1,
+          });
+          for (const combo of combos) {
+            if (upstreamCalls + 2 > HARD_CALL_CAP) break;
+            if (!(await this.budget.canSpend('kiwi', 2))) {
+              degraded = true;
+              break;
+            }
+            upstreamCalls += 2;
+            await this.budget.record('kiwi', 2, this.kiwi.costPerCall);
+
+            const settled = await Promise.allSettled([
+              this.kiwi.searchPrecise({
+                origin,
+                destination: hub,
+                departureDate: combo.legA.departureDate,
+                returnDate: combo.legA.returnDate,
+                passengers: dto.passengers ?? 1,
+                cabinClass: dto.cabinClass ?? CabinClass.ECONOMY,
+              }),
+              this.kiwi.searchPrecise({
+                origin: hub,
+                destination,
+                departureDate: combo.legB.departureDate,
+                returnDate: combo.legB.returnDate,
+                passengers: dto.passengers ?? 1,
+                cabinClass: dto.cabinClass ?? CabinClass.ECONOMY,
+              }),
+            ]);
+            const [aResults, bResults] = settled.map((outcome) =>
+              outcome.status === 'fulfilled' ? outcome.value : [],
+            );
+
+            const composed = composeSplitResults(hub, aResults, bResults);
+            for (const result of composed) {
+              results.push(result);
+              onEvent?.({ type: 'result', result });
+            }
+            // The composed total is a real, bookable end-to-end price for
+            // the full route; future medians should know it.
+            if (composed[0]) {
+              await this.observations.append([
+                {
+                  origin,
+                  destination,
+                  departureDate: combo.legA.departureDate,
+                  returnDate: combo.legA.returnDate,
+                  price: composed[0].lowestPrice,
+                  currency: composed[0].currency,
+                  provider: 'kiwi',
+                  observedAt: new Date().toISOString(),
+                  isEstimate: false,
+                },
+              ]);
+            }
+          }
+        }
+      } catch (error) {
+        // The split tier is an upgrade, never a point of failure.
+        this.logger.warn(`Split tier failed: ${(error as Error).message}`);
+      }
     }
 
     // L3 — judgement over the Pareto front, anchored to route history.

@@ -200,12 +200,16 @@ describe('SearchOrchestratorService.runSearch', () => {
       canSpend: jest.fn().mockResolvedValue(options.canSpend ?? true),
       record: jest.fn().mockResolvedValue(undefined),
     };
+    // No airports found → no positioning hubs → the split tier stays
+    // inert; its own logic is covered in split-search.spec.ts.
+    const airports = { find: jest.fn().mockResolvedValue([]) };
     const service = new SearchOrchestratorService(
       travelpayouts as never,
       serpapi as never,
       kiwi as never,
       budget as never,
       observations as never,
+      airports as never,
     );
     return { service, observations, travelpayouts, kiwi, budget, appended };
   }
