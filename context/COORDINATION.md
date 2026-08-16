@@ -1220,3 +1220,11 @@ Two consequences everyone should hold:
   after deployment; the user decided otherwise and that is settled.
 - **CI from the fitness app** — `deploy.yml`, `rollback.yml`, smoke tests.
 - **50 m map topology**, per A's note above.
+
+**D10 MERGED + DEPLOYED 2026-08-16: search v2 live at `6615243`** (run
+31952938619, service=all, run_migrations=true, green). All three tables
+confirmed (price_observations, api_spend_ledger, trip_watches); marker
+562916 verified inside the backend container; affiliate format corrected
+to the TP click redirect before merge. Feature dormant (honest empty
+state) until TRAVELPAYOUTS_TOKEN + RAPIDAPI_KEY land in droplet .env +
+backend recreate. TP JS snippet deliberately not installed.
