@@ -11,6 +11,7 @@ import { UsersModule } from './modules/users/users.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { ShareModule } from './modules/share/share.module';
 import { DailyModule } from './modules/daily/daily.module';
+import { PushModule } from './modules/push/push.module';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 
 @Module({
@@ -55,6 +56,7 @@ import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
     AuthModule,
     ShareModule,
     DailyModule,
+    PushModule,
   ],
   providers: [
     // Deny by default: every endpoint requires auth unless marked @Public().

@@ -600,6 +600,25 @@ globe search (`d08c6e3`, D7), globe country selection (`be78740`, D8) and
 the daily-puzzle fixes. Live `sw.js` and `version.json` both confirmed on
 mycontrail.com.
 
+### D9 — Push notifications wave (2026-08-16): M1 infra BUILT, on main
+**User re-sequenced the queue: anniversary notifications ship as PUSH, not
+email** (supersedes the memory-emails plan part 2). Approved plan:
+`context/plan/2026-08-16_push-completion-daily-nudge_plan.md` — M1 push
+infra → M2 anniversary cron → M3 daily-puzzle nudge (streak-at-risk only)
+→ M4 completion stats (frontend-only; continent mapping already lives in
+continentUtils.ts). **M1 is built and verified** (log:
+`context/implement/2026-08-16_push-infra_implement.md`): push_subscriptions
+migration + PushModule (subscribe/unsubscribe owner-scoped, guests refused
+server-side), sw.js push+notificationclick handlers with **CACHE bumped to
+mycontrail-v3**, Settings "Notifications" toggle w/ iOS install hint.
+Deviation: VAPID public key served via GET /push/public-key, NOT a VITE_
+build arg — keys stay paired, no CI surface. Bar green (backend 50 jest,
+frontend 81 vitest, tsc/lint/build clean). web-push installed host + dev
+container, lockfile host-canonical, npm ci --dry-run validated. **Deploy
+needs user prework: generate VAPID keys, add to droplet .env + recreate**
+(details in the implement log). Note for reviewers: until M2, enabling the
+toggle stores a subscription but nothing sends.
+
 ## Open questions
 
 Ask here instead of guessing. Format:

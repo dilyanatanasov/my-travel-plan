@@ -18,6 +18,7 @@ import {
 import { useToast } from '../components/Toast/ToastProvider';
 import Button from '../components/ui/Button';
 import TextInput from '../components/ui/TextInput';
+import NotificationSettings from '../features/push/NotificationSettings';
 
 const OPTIONS: { value: ThemePreference; label: string; hint: string }[] = [
   { value: 'light', label: 'Light', hint: 'Always light' },
@@ -345,6 +346,8 @@ function SettingsPage() {
             </>
           )}
         </section>
+
+        {!isGuest && <NotificationSettings />}
 
         {/* GDPR rights, as features: portability and erasure. */}
         <section

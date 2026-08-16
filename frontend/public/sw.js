@@ -12,7 +12,7 @@
 // consulted before the network, so a shell change without a version bump is
 // invisible to every browser that has visited before — that is exactly how
 // the myContrail rename failed to reach installed/returning visitors.
-const CACHE = 'mycontrail-v2';
+const CACHE = 'mycontrail-v3';
 
 const APP_SHELL = [
   '/',
@@ -41,6 +41,45 @@ self.addEventListener('activate', (event) => {
         Promise.all(keys.filter((key) => key !== CACHE).map((key) => caches.delete(key)))
       )
       .then(() => self.clients.claim())
+  );
+});
+
+// Web push (2026-08-16). The payload is JSON from PushService:
+// { title, body, url } — url is the in-app path a click opens.
+self.addEventListener('push', (event) => {
+  let payload = { title: 'myContrail', body: '', url: '/' };
+  try {
+    payload = { ...payload, ...event.data.json() };
+  } catch {
+    /* an unparsable push still shows something rather than nothing */
+  }
+  event.waitUntil(
+    self.registration.showNotification(payload.title, {
+      body: payload.body,
+      icon: '/icon-192.png',
+      badge: '/icon-192.png',
+      data: { url: payload.url },
+    })
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const url = (event.notification.data && event.notification.data.url) || '/';
+  event.waitUntil(
+    clients
+      .matchAll({ type: 'window', includeUncontrolled: true })
+      .then((windows) => {
+        // Reuse an open tab if there is one; the app is a map, and two of
+        // them fighting over one set of cookies helps nobody.
+        for (const client of windows) {
+          if ('focus' in client) {
+            client.navigate(url);
+            return client.focus();
+          }
+        }
+        return clients.openWindow(url);
+      })
   );
 });
 
