@@ -117,6 +117,7 @@ export const apiSlice = createApi({
     'Share',
     'LegPhoto',
     'Daily',
+    'Watch',
   ],
   endpoints: () => ({}),
 });

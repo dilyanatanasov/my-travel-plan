@@ -87,6 +87,12 @@ export interface FlightLeg {
   distanceKm: number;
 }
 
+/** Present on composed split-ticket results (separate bookings via a hub). */
+export interface SelfTransferInfo {
+  hub: string;
+  bookings: { label: string; price: number; deepLink: string }[];
+}
+
 export interface FlightJourney {
   id: number;
   journeyDate: string | null;
@@ -308,6 +314,7 @@ export interface FlightResultDto {
     isEcoContender: boolean;
     co2Emission?: number;
   };
+  selfTransfer?: SelfTransferInfo;
 }
 
 export interface FilterStatsDto {
