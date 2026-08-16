@@ -1,4 +1,9 @@
-import { useGetFlightStatsQuery } from '../../features/flights/flightsApi';
+import { useMemo } from 'react';
+import {
+  useGetFlightsQuery,
+  useGetFlightStatsQuery,
+} from '../../features/flights/flightsApi';
+import { computeTravelRecords } from '../../features/stats/records';
 import YearBarChart from './YearBarChart';
 import StatsCard from './StatsCard';
 
@@ -26,6 +31,19 @@ function EmptyState({ title, body }: { title: string; body: string }) {
 
 function FlightStats() {
   const { data: stats, isLoading, error } = useGetFlightStatsQuery();
+  // Personal records derive from the journey list the Flights tab already
+  // caches; a one-entry "streak" is just a trip, so records only render
+  // once they say something.
+  const { data: journeys = [] } = useGetFlightsQuery();
+  const records = useMemo(() => computeTravelRecords(journeys), [journeys]);
+  const newCountryStreak =
+    records.newCountryStreak && records.newCountryStreak.years >= 2
+      ? records.newCountryStreak
+      : null;
+  const maxContinents =
+    records.maxContinentsInYear && records.maxContinentsInYear.continents >= 2
+      ? records.maxContinentsInYear
+      : null;
 
   if (isLoading) {
     return (
@@ -198,6 +216,39 @@ function FlightStats() {
               <p className="text-sm text-ink-muted">
                 {stats.strongestMonth.flights} flights ·{' '}
                 {formatNumber(Math.round(stats.strongestMonth.distanceKm))} km
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Personal records: you against your own map, nobody else's. */}
+      {(newCountryStreak || maxContinents) && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {newCountryStreak && (
+            <div className="bg-surface rounded-xl border border-line p-4">
+              <h4 className="text-sm text-ink-muted mb-2">
+                New-Country Streak
+              </h4>
+              <p className="text-2xl font-bold text-ink">
+                {newCountryStreak.years} years in a row
+              </p>
+              <p className="text-sm text-ink-muted">
+                somewhere new every year, {newCountryStreak.start}–
+                {newCountryStreak.end}
+              </p>
+            </div>
+          )}
+          {maxContinents && (
+            <div className="bg-surface rounded-xl border border-line p-4">
+              <h4 className="text-sm text-ink-muted mb-2">
+                Most Continents in a Year
+              </h4>
+              <p className="text-2xl font-bold text-ink">
+                {maxContinents.continents} continents
+              </p>
+              <p className="text-sm text-ink-muted">
+                all inside {maxContinents.year}
               </p>
             </div>
           )}

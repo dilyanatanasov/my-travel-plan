@@ -1,20 +1,10 @@
 import { useMemo } from 'react';
 import type { Country, Visit } from '../../types';
-import {
-  ALL_CONTINENTS,
-  getContinent,
-  type Continent,
-} from '../FlightMap/continentUtils';
+import { continentProgress } from '../../features/stats/continentProgress';
 
 interface RegionProgressProps {
   countries: Country[];
   visits: Visit[];
-}
-
-interface Row {
-  continent: Continent;
-  visited: number;
-  total: number;
 }
 
 /**
@@ -25,41 +15,14 @@ interface Row {
  * "3 of 5 in Oceania" suggests a next trip in a way that "7% of the world"
  * never does.
  *
- * Transit does not count. Changing planes in a country is not visiting it,
- * and counting it would inflate the only number here that means anything.
+ * The row computation (including the transit-doesn't-count rule) lives in
+ * features/stats/continentProgress, shared with the milestone celebrations.
  */
 function RegionProgress({ countries, visits }: RegionProgressProps) {
-  const rows = useMemo<Row[]>(() => {
-    const visitedIso = new Set(
-      visits
-        .filter((visit) => (visit.visitType || 'trip') !== 'transit')
-        .map((visit) => visit.country?.isoCode2)
-        .filter(Boolean),
-    );
-
-    const totals = new Map<Continent, { visited: number; total: number }>();
-    for (const continent of ALL_CONTINENTS) {
-      totals.set(continent, { visited: 0, total: 0 });
-    }
-
-    for (const country of countries) {
-      const continent = getContinent(country.isoCode2);
-      // Unmapped territories would otherwise form a meaningless seventh row.
-      const bucket = totals.get(continent);
-      if (!bucket) continue;
-      bucket.total += 1;
-      if (visitedIso.has(country.isoCode2)) bucket.visited += 1;
-    }
-
-    return ALL_CONTINENTS.map((continent) => ({
-      continent,
-      ...totals.get(continent)!,
-    }))
-      .filter((row) => row.total > 0)
-      // Most-complete first: the regions you are closest to finishing are the
-      // ones worth showing at the top.
-      .sort((a, b) => b.visited / b.total - a.visited / a.total);
-  }, [countries, visits]);
+  const rows = useMemo(
+    () => continentProgress(countries, visits),
+    [countries, visits],
+  );
 
   if (rows.length === 0) return null;
 
@@ -81,6 +44,11 @@ function RegionProgress({ countries, visits }: RegionProgressProps) {
       <ul className="space-y-2.5">
         {rows.map((row) => {
           const percent = Math.round((row.visited / row.total) * 100);
+          const remaining = row.total - row.visited;
+          // "2 to go" only when the finish line is genuinely near: a short
+          // count on a mostly-full bar is a plan, on an empty one it's noise.
+          const nearlyDone =
+            remaining > 0 && remaining <= 3 && row.visited / row.total >= 0.5;
           return (
             <li key={row.continent}>
               <div className="flex items-baseline justify-between gap-2 text-xs">
@@ -89,6 +57,12 @@ function RegionProgress({ countries, visits }: RegionProgressProps) {
                 </span>
                 <span className="text-ink-muted tabular-nums flex-shrink-0">
                   {row.visited} of {row.total}
+                  {nearlyDone && (
+                    <span className="text-brand-text font-medium">
+                      {' '}
+                      · {remaining} to go
+                    </span>
+                  )}
                 </span>
               </div>
               <div

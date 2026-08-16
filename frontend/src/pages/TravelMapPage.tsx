@@ -15,6 +15,8 @@ import MapPeekBar from '../components/AppShell/MapPeekBar';
 import MapFirstRunHint from '../components/TravelMap/MapFirstRunHint';
 import { useGetFlightSummaryQuery } from '../features/flights/flightsApi';
 import { useMilestones } from '../features/milestones/useMilestones';
+import { useDailyNudge } from '../features/daily/useDailyNudge';
+import { continentProgress } from '../features/stats/continentProgress';
 import { getSection, type SectionId } from '../components/AppShell/sections';
 import {
   useGetCountriesQuery,
@@ -162,12 +164,21 @@ function TravelMapPage() {
     only component that already holds every total, and because the share
     screen it offers is a sibling section rather than a route.
   */
+  const continentRows = useMemo(
+    () => continentProgress(countries, visits),
+    [countries, visits],
+  );
+
   useMilestones({
     countries: overviewStatsCountForMilestones(visits),
     distanceKm: flightSummary?.totalDistanceKm ?? 0,
     flights: flightSummary?.totalFlights ?? 0,
+    continents: continentRows,
     onShare: () => setActiveSection('share'),
   });
+
+  // A streak-holder who has not played today gets one gentle reminder.
+  useDailyNudge();
 
   const overviewStats = useMemo(() => {
     const tripCount = visits.filter((v) => {

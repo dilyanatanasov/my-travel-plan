@@ -1,10 +1,13 @@
 import { useEffect, useRef } from 'react';
 import { useToast } from '../../components/Toast/ToastProvider';
+import type { ContinentRow } from '../stats/continentProgress';
 
 interface MilestoneInput {
   countries: number;
   distanceKm: number;
   flights: number;
+  /** Per-continent progress; a full row is a milestone of its own. */
+  continents?: ContinentRow[];
   /** Opens the share screen. Sections are shell state, not routes. */
   onShare: () => void;
 }
@@ -76,6 +79,7 @@ export function useMilestones({
   countries,
   distanceKm,
   flights,
+  continents,
   onShare,
 }: MilestoneInput) {
   const { showToast } = useToast();
@@ -108,6 +112,19 @@ export function useMilestones({
       if (message) hits.push({ key, message });
     }
 
+    // A finished continent is a milestone regardless of the count it lands
+    // on. Same seen-set, same primed rule: history is recorded quietly.
+    for (const row of continents ?? []) {
+      if (row.total === 0 || row.visited < row.total) continue;
+      const key = `continent:${row.continent}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      hits.push({
+        key,
+        message: `${row.continent}, complete — every country on the map.`,
+      });
+    }
+
     if (hits.length === 0) return;
     persistSeen(seen);
 
@@ -127,5 +144,5 @@ export function useMilestones({
         onAction: onShare,
       },
     });
-  }, [countries, distanceKm, flights, showToast, onShare]);
+  }, [countries, distanceKm, flights, continents, showToast, onShare]);
 }

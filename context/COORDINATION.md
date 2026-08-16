@@ -649,6 +649,20 @@ scheduler. D9 build phase closed for M1+M2; M3 (daily nudge) and M4
 (completion stats) remain, frontend-only. User still to browser-test:
 Settings toggle + "Send a test notification".
 
+**M3+M4 BUILT 2026-08-16 (same session), frontend-only:** daily nudge
+(streak-at-risk gate in features/daily/dailyNudge.ts, hook mounted in
+TravelMapPage — fired-flag set INSIDE the timeout so landing server stats
+reschedule instead of cancel), continentProgress extracted from
+RegionProgress (shared with useMilestones' new continent-complete
+celebrations, `continent:Europe` seen-keys), "· N to go" near-complete
+framing (≤3 remaining AND ≥half full), personal records
+(features/stats/records.ts: new-country year streak + max continents/year,
+rendered in FlightStats off the cached getFlights query; busiest year
+dropped — Strongest Year already is it). Bar green: vitest 93 (12 new),
+tsc/build/lint. Log:
+`context/implement/2026-08-16_daily-nudge-completion-stats_implement.md`.
+The push plan (D9) is now fully built: M1–M4.
+
 ## Open questions
 
 Ask here instead of guessing. Format:
