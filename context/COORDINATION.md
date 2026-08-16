@@ -631,6 +631,17 @@ stored git credential — this machine has no `gh` CLI. User still to
 browser-test the Settings toggle; M2 (anniversary sweep) is next, then
 nothing sends until it lands.
 
+**M2 BUILT 2026-08-16 (same session), riding the next deploy:**
+@nestjs/schedule adopted (guest cleanup migrated off setInterval per its
+own comment), anniversary_sends migration + claim-then-send dedup
+(INSERT … ON CONFLICT DO NOTHING is the lock), @Cron 08:00 UTC sweep
+(day-precision only, EXISTS push-subscription gate, round-trip destination
+= stop before the return leg). Plus a **test doorbell**: POST /push/test +
+a Settings "Send a test notification" button once enabled — E2E verifiable
+without waiting for a real anniversary. Bar green (backend 57 jest / 7 new,
+frontend 81 vitest, tsc/lint/build). Log:
+`context/implement/2026-08-16_anniversary-sweep_implement.md`.
+
 ## Open questions
 
 Ask here instead of guessing. Format:

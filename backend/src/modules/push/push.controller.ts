@@ -90,4 +90,21 @@ export class PushController {
   ): Promise<void> {
     await this.pushService.unsubscribe(userId, dto.endpoint);
   }
+
+  /**
+   * Fires a real notification through the real pipeline, to the caller's
+   * own devices only — the way to see that the toggle did something before
+   * an anniversary ever comes around. Tightly throttled; it is a doorbell,
+   * not a megaphone.
+   */
+  @Throttle({ default: { limit: 3, ttl: 60_000 } })
+  @Post('test')
+  @HttpCode(204)
+  async test(@CurrentUser('id') userId: number): Promise<void> {
+    await this.pushService.sendToUser(userId, {
+      title: '✈️ myContrail',
+      body: 'Notifications are working on this device.',
+      url: '/',
+    });
+  }
 }

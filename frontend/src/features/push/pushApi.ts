@@ -25,7 +25,18 @@ export const pushApi = apiSlice.injectEndpoints({
         body,
       }),
     }),
+
+    testPush: builder.mutation<void, void>({
+      query: () => ({
+        url: '/push/test',
+        method: 'POST',
+      }),
+    }),
   }),
 });
 
-export const { useSubscribePushMutation, useUnsubscribePushMutation } = pushApi;
+export const {
+  useSubscribePushMutation,
+  useUnsubscribePushMutation,
+  useTestPushMutation,
+} = pushApi;

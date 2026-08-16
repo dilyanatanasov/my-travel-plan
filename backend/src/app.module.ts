@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { ScheduleModule } from '@nestjs/schedule';
 import { CountriesModule } from './modules/countries/countries.module';
 import { VisitsModule } from './modules/visits/visits.module';
 import { AirportsModule } from './modules/airports/airports.module';
@@ -48,6 +49,8 @@ import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
       { name: 'default', ttl: 60_000, limit: 300 },
       { name: 'burst', ttl: 10_000, limit: 100 },
     ]),
+    // Drives the guest-cleanup interval and the anniversary cron.
+    ScheduleModule.forRoot(),
     CountriesModule,
     VisitsModule,
     AirportsModule,

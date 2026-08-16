@@ -1,5 +1,6 @@
 import { useToast } from '../../components/Toast/ToastProvider';
 import Button from '../../components/ui/Button';
+import { useTestPushMutation } from './pushApi';
 import { usePushNotifications } from './usePushNotifications';
 
 /**
@@ -10,6 +11,18 @@ import { usePushNotifications } from './usePushNotifications';
 function NotificationSettings() {
   const { support, enabled, busy, enable, disable } = usePushNotifications();
   const { showToast } = useToast();
+  const [testPush, { isLoading: isTesting }] = useTestPushMutation();
+
+  const handleTest = async () => {
+    try {
+      await testPush().unwrap();
+      showToast('Test sent — it should pop up in a moment', {
+        tone: 'success',
+      });
+    } catch {
+      showToast('Could not send the test — try again', { tone: 'error' });
+    }
+  };
 
   const handleToggle = async () => {
     if (enabled) {
@@ -60,20 +73,34 @@ function NotificationSettings() {
       )}
 
       {support === 'ready' && (
-        <Button
-          variant={enabled ? 'neutral' : 'outline'}
-          fullWidth
-          className="mt-3"
-          onClick={handleToggle}
-          disabled={busy}
-          aria-pressed={enabled}
-        >
-          {busy
-            ? 'One moment…'
-            : enabled
-              ? 'Turn off on this device'
-              : 'Turn on notifications'}
-        </Button>
+        <>
+          <Button
+            variant={enabled ? 'neutral' : 'outline'}
+            fullWidth
+            className="mt-3"
+            onClick={handleToggle}
+            disabled={busy}
+            aria-pressed={enabled}
+          >
+            {busy
+              ? 'One moment…'
+              : enabled
+                ? 'Turn off on this device'
+                : 'Turn on notifications'}
+          </Button>
+          {enabled && (
+            <Button
+              variant="ghost"
+              size="sm"
+              fullWidth
+              className="mt-2"
+              onClick={handleTest}
+              disabled={isTesting}
+            >
+              {isTesting ? 'Sending…' : 'Send a test notification'}
+            </Button>
+          )}
+        </>
       )}
     </section>
   );

@@ -1,9 +1,5 @@
-import {
-  Injectable,
-  Logger,
-  OnModuleDestroy,
-  OnModuleInit,
-} from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
+import { Interval, Timeout } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { LessThan, Repository } from 'typeorm';
 import { User } from '../users/entities/user.entity';
@@ -28,15 +24,13 @@ const FIRST_SWEEP_DELAY_MS = 60 * 1000;
  * `visits` and `flight_journeys` both cascade on user_id, so deleting the row
  * takes its data with it; there is nothing to clean up by hand.
  *
- * setInterval rather than @nestjs/schedule: this is the only scheduled job in
- * the app, and it is not worth a dependency and a module registration. If a
- * second one ever appears, switch to the real scheduler.
+ * On @nestjs/schedule since 2026-08-16: this was the app's only scheduled
+ * job and ran on a raw setInterval, with a note to switch to the real
+ * scheduler when a second job appeared. The anniversary sweep is that job.
  */
 @Injectable()
-export class GuestCleanupService implements OnModuleInit, OnModuleDestroy {
+export class GuestCleanupService {
   private readonly logger = new Logger(GuestCleanupService.name);
-  private timer: NodeJS.Timeout | null = null;
-  private firstRun: NodeJS.Timeout | null = null;
   private running = false;
 
   constructor(
@@ -44,19 +38,14 @@ export class GuestCleanupService implements OnModuleInit, OnModuleDestroy {
     private readonly userRepository: Repository<User>,
   ) {}
 
-  onModuleInit(): void {
-    this.firstRun = setTimeout(() => {
-      void this.sweep();
-      this.timer = setInterval(() => void this.sweep(), SWEEP_INTERVAL_MS);
-      // Do not hold the process open for a housekeeping timer.
-      this.timer.unref?.();
-    }, FIRST_SWEEP_DELAY_MS);
-    this.firstRun.unref?.();
+  @Timeout(FIRST_SWEEP_DELAY_MS)
+  firstSweep(): void {
+    void this.sweep();
   }
 
-  onModuleDestroy(): void {
-    if (this.firstRun) clearTimeout(this.firstRun);
-    if (this.timer) clearInterval(this.timer);
+  @Interval(SWEEP_INTERVAL_MS)
+  scheduledSweep(): void {
+    void this.sweep();
   }
 
   /** Exposed for tests and for running it by hand. */
