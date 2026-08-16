@@ -16,8 +16,11 @@ import { LegPhoto } from './entities/leg-photo.entity';
 import { BannedAirline } from './entities/banned-airline.entity';
 import { PriceObservation } from './entities/price-observation.entity';
 import { ApiSpend } from './entities/api-spend.entity';
+import { TripWatch } from './entities/trip-watch.entity';
 import { Airport } from '../airports/entities/airport.entity';
 import { VisitsModule } from '../visits/visits.module';
+import { PushModule } from '../push/push.module';
+import { MailModule } from '../mail/mail.module';
 import { LegPhotosService } from './leg-photos.service';
 import { ImageProcessingService } from '../../common/services/image-processing.service';
 import { BudgetService } from './services/budget.service';
@@ -27,6 +30,7 @@ import { KiwiProvider } from './providers/kiwi.provider';
 import { PriceObservationsService } from './services/price-observations.service';
 import { SearchOrchestratorService } from './services/search-orchestrator.service';
 import { SearchStreamRegistry } from './services/search-stream.registry';
+import { WatchesService } from './services/watches.service';
 
 @Module({
   imports: [
@@ -37,9 +41,12 @@ import { SearchStreamRegistry } from './services/search-stream.registry';
       BannedAirline,
       PriceObservation,
       ApiSpend,
+      TripWatch,
       Airport,
     ]),
     VisitsModule,
+    PushModule,
+    MailModule,
   ],
   controllers: [FlightsController],
   providers: [
@@ -61,6 +68,7 @@ import { SearchStreamRegistry } from './services/search-stream.registry';
     PriceObservationsService,
     SearchOrchestratorService,
     SearchStreamRegistry,
+    WatchesService,
   ],
   exports: [
     FlightsService,

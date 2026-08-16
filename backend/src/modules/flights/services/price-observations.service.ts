@@ -88,6 +88,37 @@ export class PriceObservationsService {
       }));
   }
 
+  /**
+   * The 30-day trailing minimum for a route+month, deliberately excluding
+   * the last 24h: it is the floor a NEW price must undercut, so it must
+   * not include the refresh that is about to be judged against it.
+   */
+  async trailingMin(
+    origin: string,
+    destination: string,
+    month: string,
+    now = new Date(),
+  ): Promise<number | null> {
+    const result: { min: string | null } | undefined =
+      await this.observationRepository
+        .createQueryBuilder('obs')
+        .select('MIN(obs.total_price)', 'min')
+        .where('obs.origin = :origin AND obs.destination = :destination', {
+          origin,
+          destination,
+        })
+        .andWhere("to_char(obs.departure_date, 'YYYY-MM') = :monthPrefix", {
+          monthPrefix: month.slice(0, 7),
+        })
+        .andWhere('obs.observed_at BETWEEN :from AND :to', {
+          from: new Date(now.getTime() - 30 * 86_400_000),
+          to: new Date(now.getTime() - 86_400_000),
+        })
+        .getRawOne();
+    const value = Number(result?.min);
+    return Number.isFinite(value) ? value : null;
+  }
+
   /** Median observed price for a route+month over a trailing window. */
   async periodMedian(
     origin: string,

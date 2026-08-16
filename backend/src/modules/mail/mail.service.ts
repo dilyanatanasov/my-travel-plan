@@ -67,6 +67,26 @@ export class MailService {
     );
   }
 
+  /** Price-drop alert for a trip watch (search v2 M4). */
+  async sendPriceAlertEmail(
+    to: string,
+    title: string,
+    body: string,
+  ): Promise<void> {
+    const link = `${this.appUrl()}/search/trips`;
+    await this.send(
+      to,
+      `${title} — myContrail`,
+      this.branded({
+        paragraphs: [title, body],
+        cta: { label: 'See the dates', link },
+        fineprint:
+          'You get at most one alert per watch per day. Manage your watches on the trip search page.',
+      }),
+      `${title}\n\n${body}\n\n${link}\n\nYou get at most one alert per watch per day.`,
+    );
+  }
+
   /**
    * Shared branded shell: logo, two-tone wordmark, one CTA button.
    *

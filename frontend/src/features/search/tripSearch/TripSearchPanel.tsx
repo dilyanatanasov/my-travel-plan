@@ -6,7 +6,10 @@ import MonthPills from '../components/MonthPills';
 import { defaultMonth } from '../months';
 import SurfaceCalendar from './SurfaceCalendar';
 import TripResultCard from './TripResultCard';
+import WatchList from './WatchList';
 import { useSmartSearch } from './useSmartSearch';
+import { useCreateWatchMutation } from './watchesApi';
+import { useToast } from '../../../components/Toast/ToastProvider';
 
 /**
  * The v2 funnel's face: "May, Sofia to Tokyo, at least 5 nights" as a
@@ -30,6 +33,29 @@ function TripSearchPanel() {
     error,
     search,
   } = useSmartSearch();
+  const [createWatch, { isLoading: isWatching }] = useCreateWatchMutation();
+  const { showToast } = useToast();
+
+  const handleWatch = async () => {
+    if (!origin || !destination) return;
+    try {
+      await createWatch({
+        origin: origin.iataCode,
+        destination: destination.iataCode,
+        month,
+        minNights: minNights ? Number(minNights) : undefined,
+        maxNights: maxNights ? Number(maxNights) : undefined,
+      }).unwrap();
+      showToast('Watching this route — you’ll hear when it drops', {
+        tone: 'success',
+      });
+    } catch (watchError) {
+      const message =
+        (watchError as { data?: { message?: string } })?.data?.message ??
+        'Could not create the watch';
+      showToast(message, { tone: 'error' });
+    }
+  };
 
   const judgementById = useMemo(
     () => new Map(judgements.map((judgement) => [judgement.itineraryId, judgement])),
@@ -109,11 +135,21 @@ function TripSearchPanel() {
             className="w-20 min-h-10 px-2 border border-line rounded-lg bg-surface text-ink text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
           />
           <div className="flex-1" />
+          {/* Watching needs only the route+month — no search required. */}
+          <Button
+            variant="outline"
+            onClick={handleWatch}
+            disabled={!origin || !destination || isWatching}
+          >
+            {isWatching ? 'Saving…' : 'Watch prices'}
+          </Button>
           <Button onClick={handleSearch} disabled={!canSearch}>
             {phase === 'starting' ? 'Starting…' : 'Find the right dates'}
           </Button>
         </div>
       </div>
+
+      <WatchList />
 
       {error && (
         <p className="text-sm text-danger bg-danger-soft border border-danger/30 rounded-xl px-4 py-3">

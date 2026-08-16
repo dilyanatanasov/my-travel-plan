@@ -35,8 +35,10 @@ import { UpdateFlightDto } from './dto/update-flight.dto';
 import { SearchFlightsDto } from './dto/search-flights.dto';
 import { FlexibleSearchDto } from './dto/flexible-search.dto';
 import { SmartSearchDto, SmartSearchResultDto } from './dto/smart-search.dto';
+import { CreateWatchDto } from './dto/create-watch.dto';
 import { SearchOrchestratorService } from './services/search-orchestrator.service';
 import { SearchStreamRegistry } from './services/search-stream.registry';
+import { WatchesService } from './services/watches.service';
 import { FlightSearchResultDto } from './dto/flight-result.dto';
 import { FlightExplorationResultDto } from './dto/flight-exploration-result.dto';
 import { ImportFlightsDto, type ImportResultDto } from './dto/import-flights.dto';
@@ -85,6 +87,7 @@ export class FlightsController {
     private readonly legPhotosService: LegPhotosService,
     private readonly searchOrchestrator: SearchOrchestratorService,
     private readonly searchStreams: SearchStreamRegistry,
+    private readonly watchesService: WatchesService,
   ) {}
 
   /**
@@ -218,6 +221,29 @@ export class FlightsController {
             }) as MessageEvent,
         ),
       );
+  }
+
+  /** Trip watches (M4): registered accounts, owner-scoped end to end. */
+  @UseGuards(NonGuestGuard)
+  @Post('watches')
+  async createWatch(
+    @CurrentUser('id') userId: number,
+    @Body() dto: CreateWatchDto,
+  ) {
+    return this.watchesService.create(userId, dto);
+  }
+
+  @Get('watches')
+  async listWatches(@CurrentUser('id') userId: number) {
+    return this.watchesService.list(userId);
+  }
+
+  @Delete('watches/:id')
+  async removeWatch(
+    @CurrentUser('id') userId: number,
+    @Param('id', ParseIntPipe) watchId: number,
+  ): Promise<void> {
+    return this.watchesService.remove(userId, watchId);
   }
 
   /**
