@@ -24,6 +24,8 @@ import { BudgetService } from './services/budget.service';
 import { TravelpayoutsProvider } from './providers/travelpayouts.provider';
 import { SerpapiProvider } from './providers/serpapi.provider';
 import { KiwiProvider } from './providers/kiwi.provider';
+import { PriceObservationsService } from './services/price-observations.service';
+import { SearchOrchestratorService } from './services/search-orchestrator.service';
 
 @Module({
   imports: [
@@ -55,6 +57,8 @@ import { KiwiProvider } from './providers/kiwi.provider';
     TravelpayoutsProvider,
     SerpapiProvider,
     KiwiProvider,
+    PriceObservationsService,
+    SearchOrchestratorService,
   ],
   exports: [
     FlightsService,

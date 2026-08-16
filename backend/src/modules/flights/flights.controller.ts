@@ -30,6 +30,8 @@ import { CreateFlightDto } from './dto/create-flight.dto';
 import { UpdateFlightDto } from './dto/update-flight.dto';
 import { SearchFlightsDto } from './dto/search-flights.dto';
 import { FlexibleSearchDto } from './dto/flexible-search.dto';
+import { SmartSearchDto, SmartSearchResultDto } from './dto/smart-search.dto';
+import { SearchOrchestratorService } from './services/search-orchestrator.service';
 import { FlightSearchResultDto } from './dto/flight-result.dto';
 import { FlightExplorationResultDto } from './dto/flight-exploration-result.dto';
 import { ImportFlightsDto, type ImportResultDto } from './dto/import-flights.dto';
@@ -76,6 +78,7 @@ export class FlightsController {
     private readonly flightExplorationService: FlightExplorationService,
     private readonly filterService: FilterService,
     private readonly legPhotosService: LegPhotosService,
+    private readonly searchOrchestrator: SearchOrchestratorService,
   ) {}
 
   /**
@@ -151,6 +154,21 @@ export class FlightsController {
     }
 
     return results;
+  }
+
+  /**
+   * The v2 funnel (M2, non-streaming — M3 adds the SSE variant): surface →
+   * candidates → precise → judgement, budget-gated and capped at 25
+   * upstream calls per search. Same gate as explore: registered accounts,
+   * a few per minute — this endpoint can spend real money.
+   */
+  @UseGuards(NonGuestGuard)
+  @Throttle({ default: { limit: 3, ttl: 60_000 } })
+  @Post('smart-search')
+  async smartSearch(
+    @Body() dto: SmartSearchDto,
+  ): Promise<SmartSearchResultDto> {
+    return this.searchOrchestrator.runSearch(dto);
   }
 
   /**
