@@ -663,6 +663,13 @@ tsc/build/lint. Log:
 `context/implement/2026-08-16_daily-nudge-completion-stats_implement.md`.
 The push plan (D9) is now fully built: M1–M4.
 
+**M3+M4 DEPLOYED 2026-08-16: live at `3a93bf4`** (run 31942681351,
+service=frontend, no migrations — per-service tags kept the backend on its
+7fa52a4 image, API verified alive). Site 200, version.json = 3a93bf4.
+**D9 is fully shipped.** Outstanding user checks: Settings toggle + test
+notification, nudge appears for a streak-holder, "· N to go" in By region,
+records cards in Stats.
+
 ## Open questions
 
 Ask here instead of guessing. Format:
