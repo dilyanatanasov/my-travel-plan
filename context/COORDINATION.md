@@ -619,6 +619,18 @@ needs user prework: generate VAPID keys, add to droplet .env + recreate**
 (details in the implement log). Note for reviewers: until M2, enabling the
 toggle stores a subscription but nothing sends.
 
+**DEPLOYED 2026-08-16: M1 live at `b513a53`** (run 31940417715,
+service=all, run_migrations=true, green including smoke tests). VAPID keys
+were placed in the droplet `.env` BEFORE dispatch (backup `.env.bak-vapid`;
+local mirror `~/.ssh/contrail-server.env` updated) so the deploy's own
+recreate applied them — no separate recreate. Verified live: site 200,
+version.json = b513a53, GET /api/push/public-key returns the key, live
+sw.js carries mycontrail-v3 + the push handler, `\d push_subscriptions`
+confirms the table. Deploy was dispatched via the GitHub REST API with the
+stored git credential — this machine has no `gh` CLI. User still to
+browser-test the Settings toggle; M2 (anniversary sweep) is next, then
+nothing sends until it lands.
+
 ## Open questions
 
 Ask here instead of guessing. Format:
