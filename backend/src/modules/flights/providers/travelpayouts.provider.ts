@@ -70,6 +70,11 @@ export class TravelpayoutsProvider implements FlightProvider {
       origin: query.origin,
       destination: query.destination,
       month: query.month,
+      // Verified against the live API 2026-08-16: without an explicit
+      // one_way=false the matrix returns one-way fares with an empty
+      // return_date, which a round-trip surface must discard — i.e. an
+      // empty calendar on routes that actually have prices.
+      one_way: query.roundTrip ? 'false' : 'true',
       show_to_affiliates: 'false',
       token: this.token!,
     });
