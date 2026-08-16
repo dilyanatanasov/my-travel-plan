@@ -14,7 +14,11 @@ import {
   StreamableFile,
   Header,
   BadRequestException,
+  Sse,
+  MessageEvent,
 } from '@nestjs/common';
+import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { randomBytes } from 'crypto';
@@ -32,6 +36,7 @@ import { SearchFlightsDto } from './dto/search-flights.dto';
 import { FlexibleSearchDto } from './dto/flexible-search.dto';
 import { SmartSearchDto, SmartSearchResultDto } from './dto/smart-search.dto';
 import { SearchOrchestratorService } from './services/search-orchestrator.service';
+import { SearchStreamRegistry } from './services/search-stream.registry';
 import { FlightSearchResultDto } from './dto/flight-result.dto';
 import { FlightExplorationResultDto } from './dto/flight-exploration-result.dto';
 import { ImportFlightsDto, type ImportResultDto } from './dto/import-flights.dto';
@@ -79,6 +84,7 @@ export class FlightsController {
     private readonly filterService: FilterService,
     private readonly legPhotosService: LegPhotosService,
     private readonly searchOrchestrator: SearchOrchestratorService,
+    private readonly searchStreams: SearchStreamRegistry,
   ) {}
 
   /**
@@ -169,6 +175,49 @@ export class FlightsController {
     @Body() dto: SmartSearchDto,
   ): Promise<SmartSearchResultDto> {
     return this.searchOrchestrator.runSearch(dto);
+  }
+
+  /**
+   * Streaming variant (M3): starts the funnel and hands back a searchId;
+   * the browser opens the SSE stream below and watches results land.
+   */
+  @UseGuards(NonGuestGuard)
+  @Throttle({ default: { limit: 3, ttl: 60_000 } })
+  @Post('smart-search/stream')
+  startSmartSearchStream(
+    @CurrentUser('id') userId: number,
+    @Body() dto: SmartSearchDto,
+  ): { searchId: string } {
+    const { searchId, emit, close } = this.searchStreams.open(userId);
+    // Fire and let the stream carry the outcome; the ReplaySubject buffers
+    // for subscribers who connect after early events.
+    void this.searchOrchestrator
+      .runSearch(dto, (event) => emit({ event: event.type, data: event }))
+      .then((result) => emit({ event: 'done', data: { meta: result.meta } }))
+      .catch((error: Error) =>
+        emit({ event: 'error', data: { message: error.message } }),
+      )
+      .finally(close);
+    return { searchId };
+  }
+
+  /** The SSE feed for one running search. Cookie-authed; owner-only. */
+  @Sse('smart-search/:searchId/stream')
+  smartSearchStream(
+    @CurrentUser('id') userId: number,
+    @Param('searchId') searchId: string,
+  ): Observable<MessageEvent> {
+    return this.searchStreams
+      .subscribe(searchId, userId)
+      .pipe(
+        map(
+          (envelope) =>
+            ({
+              type: envelope.event,
+              data: envelope.data,
+            }) as MessageEvent,
+        ),
+      );
   }
 
   /**

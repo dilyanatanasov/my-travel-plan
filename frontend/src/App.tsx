@@ -21,6 +21,7 @@ const SettingsPage = lazy(() => import('./pages/SettingsPage'));
 const PrivacyPage = lazy(() => import('./pages/PrivacyPage'));
 const TermsPage = lazy(() => import('./pages/TermsPage'));
 const DailyPage = lazy(() => import('./pages/DailyPage'));
+const TripSearchPage = lazy(() => import('./pages/TripSearchPage'));
 
 function App() {
   // Stale open tabs get a "new version — reload" toast after deploys.
@@ -60,6 +61,8 @@ function App() {
           <Route path="/settings" element={<SettingsPage />} />
           {/* Destination discovery — "where haven't I been that's cheap" */}
           <Route path="/search" element={<WhereNextPage />} />
+          {/* The v2 funnel — destination known, dates unknown */}
+          <Route path="/search/trips" element={<TripSearchPage />} />
         </Route>
 
         {/* Catch-all redirect */}

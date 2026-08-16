@@ -26,6 +26,7 @@ import { SerpapiProvider } from './providers/serpapi.provider';
 import { KiwiProvider } from './providers/kiwi.provider';
 import { PriceObservationsService } from './services/price-observations.service';
 import { SearchOrchestratorService } from './services/search-orchestrator.service';
+import { SearchStreamRegistry } from './services/search-stream.registry';
 
 @Module({
   imports: [
@@ -59,6 +60,7 @@ import { SearchOrchestratorService } from './services/search-orchestrator.servic
     KiwiProvider,
     PriceObservationsService,
     SearchOrchestratorService,
+    SearchStreamRegistry,
   ],
   exports: [
     FlightsService,
