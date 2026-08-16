@@ -86,12 +86,23 @@ describe('monthDateRange', () => {
 });
 
 describe('withAffiliate', () => {
-  it('marks kiwi.com links and only kiwi.com links', () => {
-    expect(withAffiliate('https://www.kiwi.com/deep?flightsId=1', 'ctr123')).toContain(
-      'affilid=ctr123',
+  it('wraps kiwi.com links in the Travelpayouts click redirect', () => {
+    const tagged = withAffiliate(
+      'https://www.kiwi.com/deep?flightsId=1',
+      '562916',
     );
+    const parsed = new URL(tagged);
+    expect(parsed.hostname).toBe('c111.travelpayouts.com');
+    expect(parsed.searchParams.get('shmarker')).toBe('562916');
+    expect(parsed.searchParams.get('promo_id')).toBe('3791');
+    expect(parsed.searchParams.get('custom_url')).toBe(
+      'https://www.kiwi.com/deep?flightsId=1',
+    );
+  });
+
+  it('non-kiwi links pass through untouched', () => {
     expect(
-      withAffiliate('https://www.airline.example/book', 'ctr123'),
+      withAffiliate('https://www.airline.example/book', '562916'),
     ).toBe('https://www.airline.example/book');
   });
 
@@ -99,7 +110,7 @@ describe('withAffiliate', () => {
     expect(withAffiliate('https://www.kiwi.com/deep', undefined)).toBe(
       'https://www.kiwi.com/deep',
     );
-    expect(withAffiliate('not a url', 'ctr123')).toBe('not a url');
+    expect(withAffiliate('not a url', '562916')).toBe('not a url');
   });
 });
 
