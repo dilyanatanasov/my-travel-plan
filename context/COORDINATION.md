@@ -670,6 +670,11 @@ service=frontend, no migrations — per-service tags kept the backend on its
 notification, nudge appears for a streak-holder, "· N to go" in By region,
 records cards in Stats.
 
+**2026-08-16 user-verified: test notification ARRIVED** — the full
+subscribe → VAPID → push-service → device path is proven on a real
+browser. Anniversaries ride the identical pipeline; only the cron's
+timing remains untested by nature. Other M3/M4 checks still open.
+
 ## Open questions
 
 Ask here instead of guessing. Format:
