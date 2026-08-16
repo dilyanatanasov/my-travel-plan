@@ -47,6 +47,12 @@ function result(
   } as unknown as FlightResultDto;
 }
 
+describe('nightsBetween', () => {
+  it('counts nights, not milliseconds', () => {
+    expect(nightsBetween('2026-10-10', '2026-10-17')).toBe(7);
+  });
+});
+
 describe('surfaceTtlHours', () => {
   it('fresher requirements as departure approaches', () => {
     expect(surfaceTtlHours('2026-12-01', '2026-08-16')).toBe(48);
