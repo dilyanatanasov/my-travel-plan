@@ -14,10 +14,16 @@ import { FlightJourney } from './entities/flight-journey.entity';
 import { FlightLeg } from './entities/flight-leg.entity';
 import { LegPhoto } from './entities/leg-photo.entity';
 import { BannedAirline } from './entities/banned-airline.entity';
+import { PriceObservation } from './entities/price-observation.entity';
+import { ApiSpend } from './entities/api-spend.entity';
 import { Airport } from '../airports/entities/airport.entity';
 import { VisitsModule } from '../visits/visits.module';
 import { LegPhotosService } from './leg-photos.service';
 import { ImageProcessingService } from '../../common/services/image-processing.service';
+import { BudgetService } from './services/budget.service';
+import { TravelpayoutsProvider } from './providers/travelpayouts.provider';
+import { SerpapiProvider } from './providers/serpapi.provider';
+import { KiwiProvider } from './providers/kiwi.provider';
 
 @Module({
   imports: [
@@ -26,6 +32,8 @@ import { ImageProcessingService } from '../../common/services/image-processing.s
       FlightLeg,
       LegPhoto,
       BannedAirline,
+      PriceObservation,
+      ApiSpend,
       Airport,
     ]),
     VisitsModule,
@@ -43,6 +51,10 @@ import { ImageProcessingService } from '../../common/services/image-processing.s
     SafetyService,
     LegPhotosService,
     ImageProcessingService,
+    BudgetService,
+    TravelpayoutsProvider,
+    SerpapiProvider,
+    KiwiProvider,
   ],
   exports: [
     FlightsService,

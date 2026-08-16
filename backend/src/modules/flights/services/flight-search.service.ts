@@ -1,5 +1,7 @@
 import { Injectable, Logger, HttpException, HttpStatus } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { SearchFlightsDto, CabinClass } from '../dto/search-flights.dto';
+import { withAffiliate } from '../providers/affiliate.util';
 import {
   FlightSearchResultDto,
   FlightResultDto,
@@ -27,7 +29,16 @@ export class FlightSearchService {
   constructor(
     private readonly safetyService: SafetyService,
     private readonly apiKeyManager: ApiKeyManagerService,
+    private readonly configService: ConfigService,
   ) {}
+
+  /** Kiwi booking links carry the Travelpayouts marker when one is set. */
+  private branded(url: string): string {
+    return withAffiliate(
+      url,
+      this.configService.get<string>('TRAVELPAYOUTS_MARKER'),
+    );
+  }
 
   async searchFlights(dto: SearchFlightsDto): Promise<FlightSearchResultDto> {
     if (!this.apiKeyManager.hasAvailableKey()) {
@@ -363,9 +374,11 @@ export class FlightSearchService {
       // Get booking URL from booking options
       const bookingUrl =
         itinerary.bookingOptions?.edges?.[0]?.node?.bookingUrl || '';
-      const deepLink = bookingUrl.startsWith('http')
-        ? bookingUrl
-        : `https://www.kiwi.com${bookingUrl}`;
+      const deepLink = this.branded(
+        bookingUrl.startsWith('http')
+          ? bookingUrl
+          : `https://www.kiwi.com${bookingUrl}`,
+      );
 
       options.push({
         price: mainPrice,
@@ -384,9 +397,11 @@ export class FlightSearchService {
         const node = edge.node;
         const price = parseFloat(node.price.amount);
         if (!isNaN(price) && price !== mainPrice) {
-          const deepLink = node.bookingUrl.startsWith('http')
-            ? node.bookingUrl
-            : `https://www.kiwi.com${node.bookingUrl}`;
+          const deepLink = this.branded(
+            node.bookingUrl.startsWith('http')
+              ? node.bookingUrl
+              : `https://www.kiwi.com${node.bookingUrl}`,
+          );
 
           options.push({
             price,
