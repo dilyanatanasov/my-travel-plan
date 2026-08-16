@@ -642,6 +642,13 @@ without waiting for a real anniversary. Bar green (backend 57 jest / 7 new,
 frontend 81 vitest, tsc/lint/build). Log:
 `context/implement/2026-08-16_anniversary-sweep_implement.md`.
 
+**M2 DEPLOYED 2026-08-16: live at `7fa52a4`** (run 31941192467,
+service=all, run_migrations=true, green). Verified: site 200, version.json
+= 7fa52a4, `\dt anniversary_sends` exists, backend booted clean with the
+scheduler. D9 build phase closed for M1+M2; M3 (daily nudge) and M4
+(completion stats) remain, frontend-only. User still to browser-test:
+Settings toggle + "Send a test notification".
+
 ## Open questions
 
 Ask here instead of guessing. Format:
