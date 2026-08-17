@@ -29,6 +29,7 @@ function TripSearchPanel() {
   const [minNights, setMinNights] = useState('');
   const [maxNights, setMaxNights] = useState('');
   const [passengers, setPassengers] = useState(1);
+  const [thresholdPrice, setThresholdPrice] = useState('');
   const [cabinClass, setCabinClass] = useState<CabinClass>('economy');
   const [view, setView] = useState(DEFAULT_VIEW);
   const {
@@ -53,6 +54,7 @@ function TripSearchPanel() {
         month,
         minNights: minNights ? Number(minNights) : undefined,
         maxNights: maxNights ? Number(maxNights) : undefined,
+        thresholdPrice: thresholdPrice ? Number(thresholdPrice) : undefined,
       }).unwrap();
       showToast('Watching this route - you’ll hear when it drops', {
         tone: 'success',
@@ -160,7 +162,20 @@ function TripSearchPanel() {
             <option value="first">First</option>
           </select>
           <div className="flex-1" />
-          {/* Watching needs only the route+month - no search required. */}
+          {/* Watching needs only the route+month - no search required. The
+              threshold is the "alert me under $X" rule; empty = trend-only
+              alerts (10% under the 30-day floor). */}
+          <input
+            type="number"
+            inputMode="numeric"
+            min={1}
+            max={100000}
+            placeholder="alert under $"
+            aria-label="Alert me when the price drops under this amount (optional)"
+            value={thresholdPrice}
+            onChange={(event) => setThresholdPrice(event.target.value)}
+            className="w-28 min-h-10 px-2 border border-line rounded-lg bg-surface text-ink text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+          />
           <Button
             variant="outline"
             onClick={handleWatch}

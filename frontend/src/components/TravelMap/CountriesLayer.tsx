@@ -11,7 +11,10 @@ import {
 import { useMapColors } from '../../theme/mapColors';
 
 export const GEO_URL =
-  'https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json';
+  // Self-hosted (2026-08-17): the most important pixel on the site must
+  // not depend on a third-party CDN being reachable. Source:
+  // world-atlas@2/countries-110m.json, vendored into public/geo.
+  '/geo/countries-110m.json';
 
 /*
   Fetch the world once per page, not once per mount.

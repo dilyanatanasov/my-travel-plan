@@ -5,10 +5,10 @@ import { geoDistance } from 'd3-geo';
  * coarse tier silently drops microstates - Malta, Andorra, Liechtenstein —
  * which is unacceptable in a guessing game (typing "Malta" and finding
  * nothing reads as broken). ~240KB gzipped, fetched only on /daily, cached
- * per session like the map's own loader.
+ * per session like the map's own loader. Self-hosted since 2026-08-17
+ * (vendored from world-atlas@2): the puzzle must not break with a CDN.
  */
-const GEO_50M_URL =
-  'https://cdn.jsdelivr.net/npm/world-atlas@2/countries-50m.json';
+const GEO_50M_URL = '/geo/countries-50m.json';
 let dailyGeographyPromise: Promise<unknown> | null = null;
 
 export function loadDailyGeography(): Promise<unknown> {

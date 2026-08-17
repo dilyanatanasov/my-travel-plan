@@ -1,6 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
+import { Cron } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { LessThan, Repository } from 'typeorm';
 import { PriceObservation } from '../entities/price-observation.entity';
 import { PricePoint } from '../providers/flight-provider.interface';
 import { nightsBetween, surfaceTtlHours } from './search-funnel.util';
@@ -10,12 +11,46 @@ import { nightsBetween, surfaceTtlHours } from './search-funnel.util';
  * reads back only what is still fresh for its lead time (48h beyond 60
  * days out, 12h at 14–60, 4h inside two weeks).
  */
+/** Cached guesses go stale fast; real quotes are history worth keeping. */
+const ESTIMATE_RETENTION_DAYS = 120;
+const QUOTE_RETENTION_DAYS = 730;
+
 @Injectable()
 export class PriceObservationsService {
+  private readonly logger = new Logger(PriceObservationsService.name);
+
   constructor(
     @InjectRepository(PriceObservation)
     private readonly observationRepository: Repository<PriceObservation>,
   ) {}
+
+  // 03:30 UTC, after the watch sweep has read what it needs. Append-only
+  // tables need a janitor or they become the biggest thing in the database.
+  @Cron('30 3 * * *', { timeZone: 'UTC' })
+  scheduledPrune(): void {
+    void this.prune().catch((error) =>
+      this.logger.error('Observation prune failed', error as Error),
+    );
+  }
+
+  /** Exposed for tests and manual runs. Returns rows removed. */
+  async prune(now = new Date()): Promise<number> {
+    const cutoff = (days: number) =>
+      new Date(now.getTime() - days * 86_400_000);
+    const estimates = await this.observationRepository.delete({
+      isEstimate: true,
+      observedAt: LessThan(cutoff(ESTIMATE_RETENTION_DAYS)),
+    });
+    const quotes = await this.observationRepository.delete({
+      isEstimate: false,
+      observedAt: LessThan(cutoff(QUOTE_RETENTION_DAYS)),
+    });
+    const removed = (estimates.affected ?? 0) + (quotes.affected ?? 0);
+    if (removed > 0) {
+      this.logger.log(`Pruned ${removed} stale price observation(s)`);
+    }
+    return removed;
+  }
 
   async append(points: PricePoint[]): Promise<void> {
     if (points.length === 0) return;
