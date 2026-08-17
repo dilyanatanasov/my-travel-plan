@@ -149,7 +149,30 @@ function MapExportCanvasInner({
     }
     return map;
   }, [journey, fullDisplayMap, countries]);
-  const routes = useMemo(() => aggregateRoutes(shownFlights), [shownFlights]);
+  /*
+    Journey mode keeps one DIRECTED route per leg, in leg order.
+    Aggregation is direction-agnostic - built so an out-and-back draws as
+    one thicker line - which collapsed Burgas→London→Burgas to a single
+    path and the trip video flew only half the trip, backwards (owner
+    report, 2026-08-17). The video samples these paths in DOM order, so
+    leg order here IS the flight plan.
+  */
+  const routes = useMemo(() => {
+    if (journey) {
+      return [...(journey.legs ?? [])]
+        .sort((a, b) => a.legOrder - b.legOrder)
+        .filter((leg) => leg.departureAirport && leg.arrivalAirport)
+        .map((leg, index) => ({
+          key: `leg-${leg.id ?? index}`,
+          departure: leg.departureAirport,
+          arrival: leg.arrivalAirport,
+          count: 1,
+          totalDistance: Number(leg.distanceKm) || 0,
+          flights: [journey],
+        }));
+    }
+    return aggregateRoutes(shownFlights);
+  }, [journey, shownFlights]);
   const airports = useMemo(
     () => extractUniqueAirports(shownFlights),
     [shownFlights],
