@@ -286,8 +286,9 @@ function TravelMapPage() {
             {/* "Past or future?" was a real question (friend feedback,
                 2026-08-17) - answer it before the form does. */}
             <p className="text-xs text-ink-muted -mb-3">
-              Your flight log - trips you&rsquo;ve taken. A future date is
-              kept as a plan and stays out of your stats until it happens.
+              Your travel log - flights, trains and drives you&rsquo;ve
+              taken. A future date is kept as a plan and stays out of your
+              stats until it happens.
             </p>
             <FlightForm />
             <ImportFlights />

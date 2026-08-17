@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, ILike } from 'typeorm';
+import { Repository } from 'typeorm';
 import { City } from './entities/city.entity';
 
 @Injectable()
@@ -16,16 +16,23 @@ export class CitiesService {
    * only signal the dataset carries that matches what people mean.
    * Prefix match, not substring - "sof" means Sofia, not Isofjorden -
    * against both the native and diacritic-free spellings.
+   *
+   * lower(...) LIKE, not ILIKE: the migration indexes
+   * lower(ascii_name) with text_pattern_ops precisely so this prefix
+   * scan is an index range, not 130k row comparisons per keystroke.
    */
   async search(query: string, limit = 10): Promise<City[]> {
     const trimmed = query.trim();
     if (trimmed.length < 2) return [];
-    const prefix = `${trimmed}%`;
-    return this.cityRepository.find({
-      where: [{ name: ILike(prefix) }, { asciiName: ILike(prefix) }],
-      order: { population: 'DESC' },
-      take: limit,
-    });
+    // % and _ are LIKE operators, not typo material.
+    const prefix = `${trimmed.toLowerCase().replace(/[\\%_]/g, '\\$&')}%`;
+    return this.cityRepository
+      .createQueryBuilder('city')
+      .where('lower(city.ascii_name) LIKE :prefix', { prefix })
+      .orWhere('lower(city.name) LIKE :prefix', { prefix })
+      .orderBy('city.population', 'DESC')
+      .take(limit)
+      .getMany();
   }
 
   async findByIds(ids: number[]): Promise<City[]> {

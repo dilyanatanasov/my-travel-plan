@@ -1,8 +1,16 @@
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import AirportSearch from '../AirportSearch';
 import CitySearch from '../CitySearch/CitySearch';
-import type { Airport, CityRef, CreateFlightDto, TravelMode } from '../../types';
-import { TRAVEL_MODE_EMOJI } from '../FlightMap/routeUtils';
+import type { CreateFlightDto, TravelMode } from '../../types';
+import ModeIcon, { CityIcon } from '../ui/ModeIcon';
+import {
+  type EditableStop,
+  emptyStop,
+  stopFilled,
+  stopLabel,
+  HOP_MODES,
+  MODE_LABEL,
+} from '../FlightList/stopChain';
 import { MONTH_NAMES } from '../../utils/journeyDate';
 
 interface RouteBuilderProps {
@@ -15,42 +23,11 @@ interface RouteBuilderProps {
   cities - with a travel mode per hop. The default walk-through is
   identical to the old flight-only form (airport stops, plane hops); the
   mode chips between stops unlock "Varna ✈ Geneva 🚆 Basel 🚗 Colmar" as
-  one journey.
+  one journey. The stop model is shared with FlightCard's edit form
+  (stopChain.ts) so add and edit cannot drift apart.
 */
-interface StopState {
-  kind: 'airport' | 'city';
-  airport: Airport | null;
-  city: CityRef | null;
-}
-
-const emptyStop = (): StopState => ({
-  kind: 'airport',
-  airport: null,
-  city: null,
-});
-
-/** The modes the UI offers; ferry is schema-ready but not surfaced yet. */
-const HOP_MODES: TravelMode[] = ['flight', 'train', 'car', 'bus'];
-
-const MODE_LABEL: Record<TravelMode, string> = {
-  flight: 'Flight',
-  train: 'Train',
-  car: 'Car',
-  bus: 'Bus',
-  ferry: 'Ferry',
-};
-
-function stopLabel(stop: StopState): string | null {
-  if (stop.kind === 'airport') return stop.airport?.iataCode ?? null;
-  return stop.city?.name ?? null;
-}
-
-function stopFilled(stop: StopState): boolean {
-  return stop.kind === 'airport' ? stop.airport !== null : stop.city !== null;
-}
-
 function RouteBuilder({ onSubmit, isLoading }: RouteBuilderProps) {
-  const [stops, setStops] = useState<StopState[]>([emptyStop(), emptyStop()]);
+  const [stops, setStops] = useState<EditableStop[]>([emptyStop(), emptyStop()]);
   const [modes, setModes] = useState<TravelMode[]>(['flight']);
   const [dateYear, setDateYear] = useState('');
   const [dateMonth, setDateMonth] = useState('');
@@ -58,7 +35,7 @@ function RouteBuilder({ onSubmit, isLoading }: RouteBuilderProps) {
   const [isRoundTrip, setIsRoundTrip] = useState(false);
   const [notes, setNotes] = useState('');
 
-  const setStop = (index: number, patch: Partial<StopState>) => {
+  const setStop = (index: number, patch: Partial<EditableStop>) => {
     setStops((current) =>
       current.map((stop, i) => (i === index ? { ...stop, ...patch } : stop)),
     );
@@ -144,24 +121,21 @@ function RouteBuilder({ onSubmit, isLoading }: RouteBuilderProps) {
   };
 
   const labels = stops.map(stopLabel);
-  const routePreview = labels.every(Boolean)
-    ? labels
-        .map((label, i) =>
-          i === 0 ? label : `${TRAVEL_MODE_EMOJI[modes[i - 1]]} ${label}`,
-        )
-        .join(' ')
-    : labels.filter(Boolean).join(' → ');
-  const returnPreview =
-    isRoundTrip && labels.every(Boolean) && labels.length >= 2
-      ? [...labels]
-          .reverse()
-          .map((label, i, arr) =>
-            i === 0
-              ? label
-              : `${TRAVEL_MODE_EMOJI[modes[arr.length - 1 - i]]} ${label}`,
-          )
-          .join(' ')
-      : null;
+  const previewReady = labels.every(Boolean) && labels.length >= 2;
+
+  /** Labels interleaved with each hop's mode icon. */
+  const previewRow = (rowLabels: (string | null)[], rowModes: TravelMode[]) => (
+    <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 font-mono text-lg">
+      {rowLabels.map((label, i) => (
+        <Fragment key={i}>
+          {i > 0 && (
+            <ModeIcon mode={rowModes[i - 1]} className="w-4 h-4 opacity-60" />
+          )}
+          <span>{label}</span>
+        </Fragment>
+      ))}
+    </div>
+  );
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -177,13 +151,14 @@ function RouteBuilder({ onSubmit, isLoading }: RouteBuilderProps) {
                     type="button"
                     aria-pressed={modes[index - 1] === mode}
                     onClick={() => setMode(index - 1, mode)}
-                    className={`min-h-8 px-2.5 rounded-full text-xs font-medium transition-colors ${
+                    className={`min-h-8 px-2.5 rounded-full text-xs font-medium transition-colors inline-flex items-center gap-1.5 ${
                       modes[index - 1] === mode
                         ? 'bg-brand-600 text-white'
                         : 'bg-surface-sunken text-ink-muted hover:text-ink'
                     }`}
                   >
-                    {TRAVEL_MODE_EMOJI[mode]} {MODE_LABEL[mode]}
+                    <ModeIcon mode={mode} className="w-4 h-4" />
+                    {MODE_LABEL[mode]}
                   </button>
                 ))}
               </div>
@@ -224,9 +199,13 @@ function RouteBuilder({ onSubmit, isLoading }: RouteBuilderProps) {
                     ? 'This stop is an airport - switch to a city'
                     : 'This stop is a city - switch to an airport'
                 }
-                className="flex-shrink-0 min-h-8 px-2 rounded-lg text-sm bg-surface-sunken text-ink-muted hover:text-ink"
+                className="flex-shrink-0 min-h-8 px-2 rounded-lg bg-surface-sunken text-ink-muted hover:text-ink"
               >
-                {stop.kind === 'airport' ? '✈️' : '🏙️'}
+                {stop.kind === 'airport' ? (
+                  <ModeIcon mode="flight" className="w-4 h-4" />
+                ) : (
+                  <CityIcon className="w-4 h-4" />
+                )}
               </button>
               {stops.length > 2 && (
                 <button
@@ -282,13 +261,19 @@ function RouteBuilder({ onSubmit, isLoading }: RouteBuilderProps) {
         </p>
       )}
 
-      {routePreview && (
+      {labels.some(Boolean) && (
         <div className="p-3 bg-surface-sunken rounded-lg">
           <div className="text-sm text-ink-muted">Route preview:</div>
-          <div className="font-mono text-lg text-ink">{routePreview}</div>
-          {returnPreview && (
-            <div className="font-mono text-lg text-ink-muted mt-1">
-              + {returnPreview}
+          {previewReady ? (
+            <div className="text-ink">{previewRow(labels, modes)}</div>
+          ) : (
+            <div className="font-mono text-lg text-ink">
+              {labels.filter(Boolean).join(' → ')}
+            </div>
+          )}
+          {isRoundTrip && previewReady && (
+            <div className="text-ink-muted mt-1">
+              {previewRow([...labels].reverse(), [...modes].reverse())}
             </div>
           )}
         </div>

@@ -60,7 +60,10 @@ export const SECTIONS: SectionDef[] = [
   },
   {
     id: 'flights',
-    label: 'Flights',
+    // "Journeys", not "Flights", since land travel (2026-08-17): the
+    // section holds trains and road trips too. The id stays 'flights' -
+    // it is shell state, and renaming it would orphan saved UI state.
+    label: 'Journeys',
     icon: (
       <svg {...iconProps}>
         <path

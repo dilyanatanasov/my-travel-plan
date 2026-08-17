@@ -4,7 +4,7 @@ import {
   useGetFlightStatsQuery,
 } from '../../features/flights/flightsApi';
 import { computeTravelRecords } from '../../features/stats/records';
-import { TRAVEL_MODE_EMOJI } from '../FlightMap/routeUtils';
+import ModeIcon from '../ui/ModeIcon';
 import YearBarChart from './YearBarChart';
 import StatsCard from './StatsCard';
 
@@ -170,8 +170,8 @@ function FlightStats() {
           <h4 className="text-sm text-ink-muted mb-2">Overland</h4>
           <div className="flex flex-wrap gap-x-6 gap-y-2">
             {stats.overlandByMode.map((row) => (
-              <div key={row.mode} className="flex items-baseline gap-2">
-                <span aria-hidden="true">{TRAVEL_MODE_EMOJI[row.mode]}</span>
+              <div key={row.mode} className="flex items-center gap-2">
+                <ModeIcon mode={row.mode} className="w-4 h-4 text-ink-muted" />
                 <span className="font-semibold text-ink tabular-nums">
                   {formatNumber(Math.round(row.distanceKm))} km
                 </span>

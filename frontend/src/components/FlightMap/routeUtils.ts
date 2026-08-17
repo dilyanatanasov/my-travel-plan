@@ -41,14 +41,6 @@ export function legMode(leg: FlightLeg): TravelMode {
   return leg.travelMode ?? 'flight';
 }
 
-/** The vehicle, at emoji size - list rows and chips, not the map. */
-export const TRAVEL_MODE_EMOJI: Record<TravelMode, string> = {
-  flight: '✈️',
-  train: '🚆',
-  car: '🚗',
-  bus: '🚌',
-  ferry: '⛴️',
-};
 
 /**
  * "SOF → Plovdiv → KEF" - endpoint labels from the leg chain. IATA for

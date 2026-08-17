@@ -14,4 +14,4 @@ export const citiesApi = apiSlice.injectEndpoints({
   }),
 });
 
-export const { useLazySearchCitiesQuery } = citiesApi;
+export const { useLazySearchCitiesQuery, useSearchCitiesQuery } = citiesApi;

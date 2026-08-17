@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Alpha2, Alpha3, Country, LonLatTuple } from '../../types';
 import { useSearchAirportsQuery } from '../../features/flights/flightsApi';
+import { useSearchCitiesQuery } from '../../features/cities/citiesApi';
 import { matchesGeoName } from '../../lib/geoNames';
 import { fallbackCentroids } from './isoCodes';
 import CountryFlag from '../ui/CountryFlag';
@@ -71,6 +72,13 @@ function MapSearch({ countries, countryCentroids, onGo }: MapSearchProps) {
     skip: debounced.length < 2,
   });
 
+  // Cities too (land travel, 2026-08-17): "plovdiv" should land the map
+  // on Plovdiv whether or not an airport lives there. Same server-side
+  // population ranking the journey form uses.
+  const { data: cities = [] } = useSearchCitiesQuery(debounced, {
+    skip: debounced.length < 2,
+  });
+
   const hits = useMemo<Hit[]>(() => {
     const term = query.trim().toLowerCase();
     if (term.length < 2) return [];
@@ -122,8 +130,27 @@ function MapSearch({ countries, countryCentroids, onGo }: MapSearchProps) {
       });
     }
 
+    // Cities last: an airport hit usually IS the city people mean, so
+    // cities fill the remaining rows rather than crowd airports out.
+    for (const cityHit of cities) {
+      if (results.length >= MAX_HITS) break;
+      results.push({
+        key: `c-${cityHit.id}`,
+        label: cityHit.name,
+        detail: 'City',
+        iso2: cityHit.countryIso,
+        target: {
+          center: [Number(cityHit.longitude), Number(cityHit.latitude)],
+          zoom: 6,
+          // The same landing ping airports get - a searched city often
+          // has no marker of its own to point at.
+          airportLabel: cityHit.name,
+        },
+      });
+    }
+
     return results;
-  }, [query, countries, airports, countryCentroids]);
+  }, [query, countries, airports, cities, countryCentroids]);
 
 
 
@@ -178,8 +205,8 @@ function MapSearch({ countries, countryCentroids, onGo }: MapSearchProps) {
           }}
           onFocus={() => setIsOpen(true)}
           onKeyDown={onKeyDown}
-          placeholder="Find a country or airport"
-          aria-label="Find a country or airport"
+          placeholder="Find a country, city or airport"
+          aria-label="Find a country, city or airport"
           role="combobox"
           aria-expanded={isOpen && hits.length > 0}
           aria-controls="map-search-results"
@@ -197,7 +224,7 @@ function MapSearch({ countries, countryCentroids, onGo }: MapSearchProps) {
         <div className="map-glass absolute z-30 left-0 right-0 mt-1 rounded-xl border shadow-xl px-3 py-3">
           <p className="text-sm">No match for &ldquo;{query.trim()}&rdquo;</p>
           <p className="text-xs map-glass-muted mt-0.5">
-            Try a country name, a city, or a three-letter airport code.
+            Try a country, a city name, or a three-letter airport code.
           </p>
         </div>
       )}

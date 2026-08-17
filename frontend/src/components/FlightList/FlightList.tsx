@@ -186,7 +186,7 @@ function FlightList() {
     <div className="space-y-3">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <h2 className="text-lg font-semibold text-ink">
-          Your Flights
+          Your Journeys
           <span className="ml-2 text-sm font-normal text-ink-muted">
             ({journeys.length} {journeys.length === 1 ? 'journey' : 'journeys'})
           </span>

@@ -80,7 +80,7 @@ function JourneyHighlightCard({
 
       <p className="text-xs text-ink-muted mt-1">
         {date} · {Math.round(total).toLocaleString()} km ·{' '}
-        {journey.legs.length} {journey.legs.length === 1 ? 'flight' : 'flights'}
+        {journey.legs.length} {journey.legs.length === 1 ? 'leg' : 'legs'}
         {journey.isRoundTrip && ' · return'}
       </p>
 

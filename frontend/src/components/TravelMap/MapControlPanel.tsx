@@ -265,7 +265,7 @@ function MapControlPanel({
                     <option value="">All origins</option>
                     {airports.map((airport) => (
                       <option key={`o-${airport.iataCode}`} value={airport.iataCode}>
-                        {airport.iataCode} – {airport.city}
+                        {airport.city ? `${airport.iataCode} – ${airport.city}` : airport.iataCode}
                       </option>
                     ))}
                   </select>
@@ -289,7 +289,7 @@ function MapControlPanel({
                     <option value="">All destinations</option>
                     {airports.map((airport) => (
                       <option key={`d-${airport.iataCode}`} value={airport.iataCode}>
-                        {airport.iataCode} – {airport.city}
+                        {airport.city ? `${airport.iataCode} – ${airport.city}` : airport.iataCode}
                       </option>
                     ))}
                   </select>

@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import type { Airport, FlightJourney } from '../../types';
+import type { FlightJourney, TravelMode } from '../../types';
 import AirportSearch from '../AirportSearch';
+import CitySearch from '../CitySearch/CitySearch';
 import {
   formatJourneyDate,
   journeyDateParts,
@@ -9,13 +10,19 @@ import {
 } from '../../utils/journeyDate';
 import { useUpdateFlightMutation } from '../../features/flights/flightsApi';
 import { useToast } from '../../components/Toast/ToastProvider';
-import { moveStop, loopStatus } from './stopChain';
 import {
-  journeyRouteLabel,
-  legEndpoints,
-  legMode,
-  TRAVEL_MODE_EMOJI,
-} from '../FlightMap/routeUtils';
+  type EditableStop,
+  emptyStop,
+  journeyToStops,
+  moveStop,
+  stopFilled,
+  stopIdentity,
+  stopLoopStatus,
+  HOP_MODES,
+  MODE_LABEL,
+} from './stopChain';
+import { journeyRouteLabel, legEndpoints, legMode } from '../FlightMap/routeUtils';
+import ModeIcon, { CityIcon } from '../ui/ModeIcon';
 import StopPhotoControl from '../../features/flights/StopPhotoControl';
 
 interface FlightCardProps {
@@ -59,16 +66,17 @@ function FlightCard({
   const [editNotes, setEditNotes] = useState(journey.notes ?? '');
   const [editRoundTrip, setEditRoundTrip] = useState(journey.isRoundTrip);
 
-  /** The journey as a stop chain: leg 1's departure, then every arrival. */
-  const chainFromLegs = (): (Airport | null)[] => {
-    const sorted = [...journey.legs].sort((a, b) => a.legOrder - b.legOrder);
-    if (sorted.length === 0) return [null, null];
-    return [
-      sorted[0].departureAirport,
-      ...sorted.map((leg) => leg.arrivalAirport),
-    ];
-  };
-  const [editStops, setEditStops] = useState<(Airport | null)[]>(chainFromLegs);
+  /*
+    The journey as an editable chain: stops (airports or cities) plus a
+    mode per hop - the same model the add form builds with, so a mixed
+    journey round-trips through edit without losing its land legs.
+  */
+  const [editStops, setEditStops] = useState<EditableStop[]>(
+    () => journeyToStops(journey).stops,
+  );
+  const [editModes, setEditModes] = useState<TravelMode[]>(
+    () => journeyToStops(journey).modes,
+  );
   /** Set when the honesty rule unchecked Round trip, so the form says why. */
   const [roundTripAutoCleared, setRoundTripAutoCleared] = useState(false);
 
@@ -80,12 +88,32 @@ function FlightCard({
     a label that lies. It never re-checks itself: "round trip" is the
     user's claim to make.
   */
-  const applyStops = (next: (Airport | null)[]) => {
+  const applyStops = (next: EditableStop[]) => {
     setEditStops(next);
-    if (editRoundTrip && loopStatus(next) === 'broken') {
+    if (editRoundTrip && stopLoopStatus(next) === 'broken') {
       setEditRoundTrip(false);
       setRoundTripAutoCleared(true);
     }
+  };
+
+  const patchStop = (index: number, patch: Partial<EditableStop>) => {
+    applyStops(
+      editStops.map((stop, i) => (i === index ? { ...stop, ...patch } : stop)),
+    );
+  };
+
+  const addStop = () => {
+    applyStops([...editStops, emptyStop()]);
+    setEditModes((current) => [...current, 'flight']);
+  };
+
+  const removeStop = (index: number) => {
+    if (editStops.length <= 2) return;
+    applyStops(editStops.filter((_, i) => i !== index));
+    // Removing stop i removes the hop before it (or the first hop for
+    // i=0), keeping modes exactly one shorter than stops.
+    const modeIndex = Math.max(index - 1, 0);
+    setEditModes((current) => current.filter((_, i) => i !== modeIndex));
   };
 
   const startEdit = () => {
@@ -95,22 +123,54 @@ function FlightCard({
     setEditDay(parts.day);
     setEditNotes(journey.notes ?? '');
     setEditRoundTrip(journey.isRoundTrip);
-    setEditStops(chainFromLegs());
+    const chain = journeyToStops(journey);
+    setEditStops(chain.stops);
+    setEditModes(chain.modes);
     setRoundTripAutoCleared(false);
     setIsEditing(true);
   };
 
+  // A plane cannot land in a city centre: flight hops need airports.
+  const flightHopViolation = editModes.some(
+    (mode, i) =>
+      mode === 'flight' &&
+      (editStops[i]?.kind !== 'airport' || editStops[i + 1]?.kind !== 'airport'),
+  );
+
   const saveEdit = async () => {
-    const stops = editStops.filter((a): a is Airport => a !== null);
-    if (stops.length !== editStops.length || stops.length < 2) {
-      showToast('Every stop needs an airport', { tone: 'error' });
+    if (!editStops.every(stopFilled) || editStops.length < 2) {
+      showToast('Every stop needs an airport or a city', { tone: 'error' });
       return;
     }
-    const newChain = stops.map((a) => a.id);
-    const oldChain = chainFromLegs().map((a) => a?.id);
+    if (flightHopViolation) {
+      showToast(
+        'A flight needs airports at both ends - change that hop to train, car or bus',
+        { tone: 'error' },
+      );
+      return;
+    }
+    const original = journeyToStops(journey);
+    const identity = (stops: EditableStop[], modes: TravelMode[]) =>
+      stops.map(stopIdentity).join('>') + '|' + modes.join(',');
     const routeChanged =
-      newChain.length !== oldChain.length ||
-      newChain.some((idValue, i) => idValue !== oldChain[i]);
+      identity(editStops, editModes) !==
+      identity(original.stops, original.modes);
+    // The legacy shape keeps the server's ground-transfer typo guard.
+    const allFlightAirports =
+      editModes.every((mode) => mode === 'flight') &&
+      editStops.every((stop) => stop.kind === 'airport');
+    const routePayload = routeChanged
+      ? allFlightAirports
+        ? { airportIds: editStops.map((stop) => stop.airport!.id) }
+        : {
+            stops: editStops.map((stop) =>
+              stop.kind === 'airport'
+                ? { airportId: stop.airport!.id }
+                : { cityId: stop.city!.id },
+            ),
+            modes: editModes,
+          }
+      : {};
     try {
       await updateFlight({
         id: journey.id,
@@ -120,7 +180,7 @@ function FlightCard({
           isRoundTrip: editRoundTrip,
           // Only when actually changed: a rebuild resets leg rows for nothing
           // otherwise.
-          ...(routeChanged ? { airportIds: newChain } : {}),
+          ...routePayload,
         },
       }).unwrap();
       setIsEditing(false);
@@ -162,7 +222,7 @@ function FlightCard({
             <span>{formatDate()}</span>
             <span>{Math.round(totalDistance).toLocaleString()} km</span>
             <span>
-              {journey.legs.length} {journey.legs.length === 1 ? 'flight' : 'flights'}
+              {journey.legs.length} {journey.legs.length === 1 ? 'leg' : 'legs'}
             </span>
           </div>
           {journey.notes && !isEditing && (
@@ -342,62 +402,123 @@ function FlightCard({
           </p>
           <div className="space-y-1.5">
             {editStops.map((stop, index) => (
-              <div key={index} className="flex items-center gap-1.5">
-                {/* Reorder the chain without retyping airports. */}
-                <div className="flex flex-col flex-shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => applyStops(moveStop(editStops, index, -1))}
-                    disabled={index === 0}
-                    aria-label="Move this stop earlier"
-                    title="Move earlier"
-                    className="p-0.5 text-ink-subtle hover:text-brand-700 rounded disabled:opacity-30"
-                  >
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-                    </svg>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => applyStops(moveStop(editStops, index, 1))}
-                    disabled={index === editStops.length - 1}
-                    aria-label="Move this stop later"
-                    title="Move later"
-                    className="p-0.5 text-ink-subtle hover:text-brand-700 rounded disabled:opacity-30"
-                  >
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </button>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <AirportSearch
-                    value={stop}
-                    onChange={(airport) => {
-                      const next = [...editStops];
-                      next[index] = airport;
-                      applyStops(next);
-                    }}
-                    placeholder={index === 0 ? 'From airport' : 'To airport'}
-                  />
-                </div>
-                {editStops.length > 2 && (
+              <div key={index}>
+                {/* The hop's mode, between its two stops. */}
+                {index > 0 && (
+                  <div className="flex items-center gap-1 ml-8 mb-1.5">
+                    {HOP_MODES.map((mode) => (
+                      <button
+                        key={mode}
+                        type="button"
+                        aria-pressed={editModes[index - 1] === mode}
+                        title={MODE_LABEL[mode]}
+                        aria-label={MODE_LABEL[mode]}
+                        onClick={() =>
+                          setEditModes((current) =>
+                            current.map((m, i) => (i === index - 1 ? mode : m)),
+                          )
+                        }
+                        className={`min-h-7 px-2 rounded-full transition-colors ${
+                          editModes[index - 1] === mode
+                            ? 'bg-brand-600 text-white'
+                            : 'bg-surface-sunken text-ink-muted hover:text-ink'
+                        }`}
+                      >
+                        <ModeIcon mode={mode} className="w-4 h-4" />
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <div className="flex items-center gap-1.5">
+                  {/* Reorder the chain without retyping stops. */}
+                  <div className="flex flex-col flex-shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => applyStops(moveStop(editStops, index, -1))}
+                      disabled={index === 0}
+                      aria-label="Move this stop earlier"
+                      title="Move earlier"
+                      className="p-0.5 text-ink-subtle hover:text-brand-700 rounded disabled:opacity-30"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                      </svg>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => applyStops(moveStop(editStops, index, 1))}
+                      disabled={index === editStops.length - 1}
+                      aria-label="Move this stop later"
+                      title="Move later"
+                      className="p-0.5 text-ink-subtle hover:text-brand-700 rounded disabled:opacity-30"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    {stop.kind === 'airport' ? (
+                      <AirportSearch
+                        value={stop.airport}
+                        onChange={(airport) => patchStop(index, { airport })}
+                        placeholder={index === 0 ? 'From airport' : 'To airport'}
+                      />
+                    ) : (
+                      <CitySearch
+                        value={stop.city}
+                        onChange={(cityValue) =>
+                          patchStop(index, { city: cityValue })
+                        }
+                        placeholder={index === 0 ? 'From city' : 'To city'}
+                      />
+                    )}
+                  </div>
+                  {/* Airport or city, per stop: a train can leave from either. */}
                   <button
                     type="button"
                     onClick={() =>
-                      applyStops(editStops.filter((_, i) => i !== index))
+                      patchStop(index, {
+                        kind: stop.kind === 'airport' ? 'city' : 'airport',
+                        airport: null,
+                        city: null,
+                      })
                     }
-                    aria-label="Remove this stop"
-                    className="flex-shrink-0 p-1.5 text-ink-subtle hover:text-red-500 rounded"
+                    title={
+                      stop.kind === 'airport'
+                        ? 'This stop is an airport - switch to a city'
+                        : 'This stop is a city - switch to an airport'
+                    }
+                    className="flex-shrink-0 min-h-7 px-1.5 rounded-lg bg-surface-sunken text-ink-muted hover:text-ink"
                   >
-                    ✕
+                    {stop.kind === 'airport' ? (
+                      <ModeIcon mode="flight" className="w-4 h-4" />
+                    ) : (
+                      <CityIcon className="w-4 h-4" />
+                    )}
                   </button>
-                )}
+                  {editStops.length > 2 && (
+                    <button
+                      type="button"
+                      onClick={() => removeStop(index)}
+                      aria-label="Remove this stop"
+                      className="flex-shrink-0 p-1.5 text-ink-subtle hover:text-red-500 rounded"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
+            {flightHopViolation && (
+              <p className="text-xs text-danger">
+                A flight needs airports at both ends - pick the nearest
+                airport or change that hop to train, car or bus.
+              </p>
+            )}
             <button
               type="button"
-              onClick={() => applyStops([...editStops, null])}
+              onClick={addStop}
               className="text-xs font-medium text-brand-text hover:text-brand-700 underline min-h-8"
             >
               + Add a stop
@@ -510,8 +631,8 @@ function FlightCard({
               {/* Land legs announce their vehicle; flights stay quiet -
                   a plane on every row would be noise on a flight app. */}
               {legMode(leg) !== 'flight' && (
-                <span aria-label={legMode(leg)}>
-                  {TRAVEL_MODE_EMOJI[legMode(leg)]}
+                <span aria-label={legMode(leg)} title={legMode(leg)}>
+                  <ModeIcon mode={legMode(leg)} className="w-3.5 h-3.5" />
                 </span>
               )}
               <span className="font-mono">
