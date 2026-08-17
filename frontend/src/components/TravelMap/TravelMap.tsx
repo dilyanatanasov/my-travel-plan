@@ -955,6 +955,7 @@ function TravelMap() {
       )}
 
       <MapZoomControls
+        yieldOnMobile={Boolean(countryDetailCard)}
         extraTool={!replay.isActive ? <ReplayControl replay={replayForUi} compact /> : null}
         bottomTool={
           /* The mode toggle lives with the map tools, not the filters (the

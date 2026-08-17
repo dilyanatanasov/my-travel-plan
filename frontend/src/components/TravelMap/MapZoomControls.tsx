@@ -19,6 +19,13 @@ interface MapZoomControlsProps {
   onZoomOut: () => void;
   onReset: () => void;
   /**
+   * Below sm the country card is a full-width sheet in this same berth
+   * (bottom-20), and the stack half-overlapped it (owner report,
+   * 2026-08-17). While the card is open the stack steps aside on phones -
+   * hiding beats z-fighting: no half-covered buttons, nothing to mis-tap.
+   */
+  yieldOnMobile?: boolean;
+  /**
    * Whether the view has moved away from the one the map opened with.
    *
    * Not the same as "zoomed in past the minimum": the map now opens framed on
@@ -49,6 +56,7 @@ function MapZoomControls({
   extraTool,
   bottomTool,
   canReset,
+  yieldOnMobile = false,
   zoom,
   minZoom,
   maxZoom,
@@ -61,7 +69,11 @@ function MapZoomControls({
 
   return (
     // bottom-20 on mobile clears the peek bar pinned to the canvas floor.
-    <div className="absolute bottom-20 lg:bottom-4 right-3 z-20 flex flex-col rounded-lg overflow-hidden shadow-lg border border-current/15 divide-y divide-current/15">
+    <div
+      className={`absolute bottom-20 lg:bottom-4 right-3 z-20 flex-col rounded-lg overflow-hidden shadow-lg border border-current/15 divide-y divide-current/15 ${
+        yieldOnMobile ? 'hidden sm:flex' : 'flex'
+      }`}
+    >
       {extraTool}
 
       {/*

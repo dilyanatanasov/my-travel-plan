@@ -963,6 +963,7 @@ function GlobeView({
       )}
 
       <MapZoomControls
+        yieldOnMobile={Boolean(detailCard) && !replay.isActive}
         extraTool={!replay.isActive ? <ReplayControl replay={replay} compact /> : null}
         bottomTool={
           /* Back to flat, mirrored from the flat map's globe button. */
