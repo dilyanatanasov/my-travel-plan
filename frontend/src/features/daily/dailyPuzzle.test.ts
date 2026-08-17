@@ -7,6 +7,7 @@ import {
   guessSquares,
   shareText,
   applyResult,
+  matchesGeoName,
   EMPTY_STATS,
 } from './dailyPuzzle';
 
@@ -85,6 +86,27 @@ describe('shareText', () => {
     expect(lines).toHaveLength(4);
     expect(lines[2]).toBe('🟩🟩🟩🟩🟩 🎯');
     expect(lines[3]).toContain('/daily');
+  });
+});
+
+describe('matchesGeoName', () => {
+  it('finds abbreviated dataset names by their spoken forms', () => {
+    expect(matchesGeoName('N. Mariana Is.', 'northern mariana islands')).toBe(true);
+    expect(matchesGeoName('N. Mariana Is.', 'north mariana')).toBe(true);
+    expect(matchesGeoName('N. Mariana Is.', 'mariana')).toBe(true);
+    expect(matchesGeoName('Dominican Rep.', 'dominican republic')).toBe(true);
+    expect(matchesGeoName('St. Vincent and Gren.', 'saint vincent')).toBe(true);
+    expect(matchesGeoName('Bosnia and Herz.', 'herzegovina')).toBe(true);
+    expect(matchesGeoName('Eq. Guinea', 'equatorial guinea')).toBe(true);
+  });
+
+  it('still rejects what genuinely does not match', () => {
+    expect(matchesGeoName('N. Mariana Is.', 'iceland')).toBe(false);
+    expect(matchesGeoName('N. Mariana Is.', '')).toBe(false);
+  });
+
+  it('ignores diacritics both ways', () => {
+    expect(matchesGeoName("Côte d'Ivoire", 'cote')).toBe(true);
   });
 });
 

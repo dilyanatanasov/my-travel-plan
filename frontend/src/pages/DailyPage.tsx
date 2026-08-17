@@ -22,6 +22,7 @@ import {
   loadStats,
   saveStats,
   loadDailyGeography,
+  matchesGeoName,
   type DayState,
   type GuessResult,
   type LonLat,
@@ -186,7 +187,7 @@ function DailyPage() {
     return candidates
       .filter(
         (candidate) =>
-          candidate.name.toLowerCase().includes(trimmed) &&
+          matchesGeoName(candidate.name, trimmed) &&
           !guessedNames.has(candidate.name),
       )
       .slice(0, 8);
