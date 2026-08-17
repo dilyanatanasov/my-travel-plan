@@ -10,7 +10,7 @@ import {
 } from '../../utils/shareCard';
 import { downloadBlob } from '../../utils/exportMapImage';
 import {
-  renderMapVideo,
+  renderTripVideo,
   isVideoExportSupported,
   videoFileExtension,
 } from '../../utils/exportMapVideo';
@@ -143,9 +143,9 @@ function TripShareDialog({
 
   /*
     The replay, portable (owner ask, 2026-08-17): the plane flies this
-    journey's legs in order over the same journey-framed map the boarding
-    pass uses. Short - a trip is a moment, not a feature film - and MP4
-    where the browser can, which is what stories accept.
+    journey's legs in order INSIDE the boarding pass - the still and the
+    video are the same passport, one of them just moves. MP4 where the
+    browser can, which is what stories accept.
   */
   const handleVideo = useCallback(async () => {
     const svg = await findExportSvg(TRIP_SVG_ID, () => false);
@@ -161,23 +161,19 @@ function TripShareDialog({
         (sum, leg) => sum + (Number(leg.distanceKm) || 0),
         0,
       );
-      const stats = [
-        `${legs.length} ${legs.length === 1 ? 'flight' : 'flights'}`,
-        `${Math.round(km).toLocaleString()} km`,
-      ];
-      const dateLabel = formatJourneyDate(journey);
-      if (dateLabel) stats.unshift(dateLabel);
-
-      const blob = await renderMapVideo(
+      const blob = await renderTripVideo(
         svg,
-        { title: routeCodes.join(' → '), stats },
-        setVideoProgress,
         {
-          mode: 'sequential',
-          // ~2.6s per leg, clamped: one hop stays snappy, a five-leg epic
-          // does not drone on.
-          durationMs: Math.min(Math.max(legs.length * 2600, 4000), 10000),
+          routeCodes,
+          dateLabel: formatJourneyDate(journey),
+          flights: legs.length,
+          km,
+          passenger: user?.displayName ?? null,
         },
+        setVideoProgress,
+        // ~2.6s per leg, clamped: one hop stays snappy, a five-leg epic
+        // does not drone on.
+        Math.min(Math.max(legs.length * 2600, 4000), 10000),
       );
       track('share_render', { style: 'trip-video' });
       const extension = videoFileExtension(blob.type);
@@ -209,7 +205,7 @@ function TripShareDialog({
     } finally {
       setVideoProgress(null);
     }
-  }, [legs, journey, routeCodes, filename, showToast]);
+  }, [legs, journey, routeCodes, filename, showToast, user?.displayName]);
 
   return (
     <div

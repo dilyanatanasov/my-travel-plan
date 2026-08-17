@@ -8,6 +8,12 @@
  * staying in place as the fallback rather than being replaced.
  */
 import { MapExportError } from './exportMapImage';
+import {
+  renderTripCardTemplate,
+  CARD_WIDTH,
+  CARD_HEIGHT,
+  type TripContent,
+} from './shareCard';
 
 const FPS = 30;
 const DURATION_MS = 9000;
@@ -273,6 +279,150 @@ export async function renderMapVideo(
       });
 
       drawCaption(ctx, caption, width, height, captionHeight);
+
+      if (elapsed < durationMs + HOLD_MS) {
+        requestAnimationFrame(frame);
+      } else {
+        resolve();
+      }
+    };
+    requestAnimationFrame(frame);
+  });
+
+  recorder.stop();
+  stream.getTracks().forEach((track) => track.stop());
+  return finished;
+}
+
+/*
+  The trip video wears the boarding pass (owner, 2026-08-17: the plain
+  flythrough "lost my passport design"). The whole ticket - route, date,
+  stub, perforations - is drawn once as a template; every frame repaints
+  it and animates the plane inside the map strip alone, clipped to the
+  same rounded rect the still card uses. Ticket ink for trail and plane,
+  so the film and the still are one artifact.
+*/
+const TICKET_TRAIL = '#8c491a';
+const TICKET_PLANE = '#a82d26';
+
+export async function renderTripVideo(
+  svg: SVGSVGElement,
+  trip: TripContent,
+  onProgress?: (fraction: number) => void,
+  durationMs = 6000
+): Promise<Blob> {
+  const mimeType = pickMimeType();
+  if (!mimeType) {
+    throw new MapExportError('Your browser cannot record video');
+  }
+  const width = Number(svg.getAttribute('width')) || svg.getBoundingClientRect().width;
+  const height = Number(svg.getAttribute('height')) || svg.getBoundingClientRect().height;
+  if (!width || !height || !svg.querySelector('path')) {
+    throw new MapExportError('The map is not ready yet - try again in a moment');
+  }
+
+  const routes = sampleRoutes(svg);
+  const backdrop = await loadImage(
+    `data:image/svg+xml;charset=utf-8,${encodeURIComponent(
+      serializeWithoutRoutes(svg, width, height)
+    )}`
+  );
+  const { canvas: template, placement } = await renderTripCardTemplate(
+    trip,
+    backdrop
+  );
+
+  // Source-space route points, pre-mapped into the strip once.
+  const cardRoutes = routes.map((route) => ({
+    points: route.points.map((p) => ({
+      x: placement.dx + p.x * placement.scale,
+      y: placement.dy + p.y * placement.scale,
+    })),
+  }));
+
+  const canvas = document.createElement('canvas');
+  canvas.width = CARD_WIDTH;
+  canvas.height = CARD_HEIGHT;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new MapExportError('Your browser could not create the video');
+
+  const stream = canvas.captureStream(FPS);
+  const recorder = new MediaRecorder(stream, {
+    mimeType,
+    videoBitsPerSecond: 6_000_000,
+  });
+  const chunks: BlobPart[] = [];
+  recorder.ondataavailable = (e) => {
+    if (e.data.size > 0) chunks.push(e.data);
+  };
+  const finished = new Promise<Blob>((resolve, reject) => {
+    recorder.onstop = () => resolve(new Blob(chunks, { type: mimeType }));
+    recorder.onerror = () => reject(new MapExportError('Recording failed'));
+  });
+
+  const plane = new Path2D(PLANE_PATH_2D);
+  const start = performance.now();
+  recorder.start();
+
+  await new Promise<void>((resolve) => {
+    const frame = (now: number) => {
+      const elapsed = now - start;
+      const t = Math.min(elapsed / durationMs, 1);
+      onProgress?.(t);
+
+      ctx.drawImage(template, 0, 0);
+
+      ctx.save();
+      // Clip to the strip so nothing ever paints over the ticket chrome.
+      // (Manual arcs, not ctx.roundRect - same compat stance as shareCard.)
+      const { x, y, w, h, r } = placement;
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.arcTo(x + w, y, x + w, y + h, r);
+      ctx.arcTo(x + w, y + h, x, y + h, r);
+      ctx.arcTo(x, y + h, x, y, r);
+      ctx.arcTo(x, y, x + w, y, r);
+      ctx.closePath();
+      ctx.clip();
+
+      cardRoutes.forEach((route, index) => {
+        // Replay-style: leg i owns its slice, the next waits for touchdown.
+        const local = t * cardRoutes.length - index;
+        if (local <= 0) return;
+        const progress = easeInOut(Math.min(local, 1));
+        const lastIndex = Math.floor(progress * (route.points.length - 1));
+        if (lastIndex < 1) return;
+
+        ctx.beginPath();
+        ctx.moveTo(route.points[0].x, route.points[0].y);
+        for (let i = 1; i <= lastIndex; i++) {
+          ctx.lineTo(route.points[i].x, route.points[i].y);
+        }
+        ctx.strokeStyle = TICKET_TRAIL;
+        ctx.lineWidth = 3;
+        ctx.lineCap = 'round';
+        ctx.globalAlpha = 0.9;
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+
+        if (progress < 1) {
+          const head = route.points[lastIndex];
+          const prev = route.points[Math.max(lastIndex - 1, 0)];
+          const angle = Math.atan2(head.y - prev.y, head.x - prev.x);
+          ctx.save();
+          ctx.translate(head.x, head.y);
+          ctx.rotate(angle);
+          ctx.scale(1.3, 1.3);
+          ctx.translate(-12, -12);
+          ctx.fillStyle = TICKET_PLANE;
+          ctx.strokeStyle = '#f8f0e1';
+          ctx.lineWidth = 0.9;
+          ctx.fill(plane);
+          ctx.stroke(plane);
+          ctx.restore();
+        }
+      });
+      ctx.restore();
 
       if (elapsed < durationMs + HOLD_MS) {
         requestAnimationFrame(frame);

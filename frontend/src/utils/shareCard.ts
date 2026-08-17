@@ -514,37 +514,31 @@ function drawTicket(
     drawTicketPair(ctx, fourth.label.toUpperCase(), fourth.value, CARD_WIDTH - P, y, true);
 }
 
-export async function renderTripCard(
-  svg: SVGSVGElement,
+/** Where the trip ticket put its map strip, and how the source fits in it. */
+export interface TripMapPlacement {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  r: number;
+  /** The contain transform: source px → card px. */
+  scale: number;
+  dx: number;
+  dy: number;
+}
+
+/**
+ * The whole boarding pass drawn onto a context; the map strip takes
+ * whatever image it is given. Returns the strip's placement so the video
+ * renderer can animate inside the same frame the still card uses -
+ * "I lose my passport design" (owner, 2026-08-17) was the still and the
+ * video wearing different clothes.
+ */
+function drawTripTicket(
+  ctx: CanvasRenderingContext2D,
+  mapImage: HTMLImageElement,
   trip: TripContent,
-): Promise<Blob> {
-  const srcWidth =
-    Number(svg.getAttribute('width')) || svg.getBoundingClientRect().width;
-  const srcHeight =
-    Number(svg.getAttribute('height')) || svg.getBoundingClientRect().height;
-  if (!srcWidth || !srcHeight) {
-    throw new ShareCardError('The map is not ready yet - try again in a moment');
-  }
-  await waitForGeography(svg);
-  if (document.fonts?.ready) {
-    try {
-      await document.fonts.ready;
-    } catch {
-      /* fall back to whatever is loaded */
-    }
-  }
-
-  const mapImage = await loadImage(
-    `data:image/svg+xml;charset=utf-8,${encodeURIComponent(
-      serializeSvg(svg, srcWidth, srcHeight),
-    )}`,
-  );
-
-  const canvas = document.createElement('canvas');
-  canvas.width = CARD_WIDTH;
-  canvas.height = CARD_HEIGHT;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) throw new ShareCardError('Your browser could not create the image');
+): TripMapPlacement {
   ctx.textBaseline = 'top';
 
   /* The ticket: a rounded paper card inset on a darker ground, so the
@@ -585,13 +579,14 @@ export async function renderTripCard(
   drawTicketPair(ctx, 'FLIGHTS', String(trip.flights), CARD_WIDTH - P, y, true);
   y += rowH + gap;
 
+  const mapY = y;
   ctx.save();
-  roundedRect(ctx, mapX, y, mapW, mapH, 36);
+  roundedRect(ctx, mapX, mapY, mapW, mapH, 36);
   ctx.clip();
   // Backdrop first: any contain slack must read as paper, not a white bar.
   ctx.fillStyle = TICKET.paper;
-  ctx.fillRect(mapX, y, mapW, mapH);
-  drawMapContain(ctx, mapImage, mapX, y, mapW, mapH);
+  ctx.fillRect(mapX, mapY, mapW, mapH);
+  drawMapContain(ctx, mapImage, mapX, mapY, mapW, mapH);
   ctx.restore();
   y += mapH + gap;
 
@@ -612,6 +607,79 @@ export async function renderTripCard(
   );
 
   drawTicketStub(ctx, stubTop, trip.passenger);
+
+  const scale = Math.min(mapW / mapImage.width, mapH / mapImage.height);
+  return {
+    x: mapX,
+    y: mapY,
+    w: mapW,
+    h: mapH,
+    r: 36,
+    scale,
+    dx: mapX + (mapW - mapImage.width * scale) / 2,
+    dy: mapY + (mapH - mapImage.height * scale) / 2,
+  };
+}
+
+/**
+ * The boarding pass with a given map image already fitted in its strip -
+ * the video's per-frame backdrop. The caller supplies a ROUTELESS map so
+ * the animation owns the trails; placement maps source pixels into the
+ * strip for exactly that.
+ */
+export async function renderTripCardTemplate(
+  trip: TripContent,
+  routelessMap: HTMLImageElement,
+): Promise<{ canvas: HTMLCanvasElement; placement: TripMapPlacement }> {
+  if (document.fonts?.ready) {
+    try {
+      await document.fonts.ready;
+    } catch {
+      /* fall back to whatever is loaded */
+    }
+  }
+  const canvas = document.createElement('canvas');
+  canvas.width = CARD_WIDTH;
+  canvas.height = CARD_HEIGHT;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new ShareCardError('Your browser could not create the image');
+  const placement = drawTripTicket(ctx, routelessMap, trip);
+  return { canvas, placement };
+}
+
+export async function renderTripCard(
+  svg: SVGSVGElement,
+  trip: TripContent,
+): Promise<Blob> {
+  const srcWidth =
+    Number(svg.getAttribute('width')) || svg.getBoundingClientRect().width;
+  const srcHeight =
+    Number(svg.getAttribute('height')) || svg.getBoundingClientRect().height;
+  if (!srcWidth || !srcHeight) {
+    throw new ShareCardError('The map is not ready yet - try again in a moment');
+  }
+  await waitForGeography(svg);
+  if (document.fonts?.ready) {
+    try {
+      await document.fonts.ready;
+    } catch {
+      /* fall back to whatever is loaded */
+    }
+  }
+
+  const mapImage = await loadImage(
+    `data:image/svg+xml;charset=utf-8,${encodeURIComponent(
+      serializeSvg(svg, srcWidth, srcHeight),
+    )}`,
+  );
+
+  const canvas = document.createElement('canvas');
+  canvas.width = CARD_WIDTH;
+  canvas.height = CARD_HEIGHT;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new ShareCardError('Your browser could not create the image');
+
+  drawTripTicket(ctx, mapImage, trip);
 
   return new Promise((resolve, reject) => {
     canvas.toBlob((blob) => {
