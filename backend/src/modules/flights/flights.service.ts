@@ -6,9 +6,10 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { FlightJourney } from './entities/flight-journey.entity';
-import { FlightLeg } from './entities/flight-leg.entity';
+import { FlightLeg, type TravelMode } from './entities/flight-leg.entity';
 import { Airport } from '../airports/entities/airport.entity';
-import { CreateFlightDto } from './dto/create-flight.dto';
+import { City } from '../cities/entities/city.entity';
+import { CreateFlightDto, type TravelStopDto } from './dto/create-flight.dto';
 import { UpdateFlightDto } from './dto/update-flight.dto';
 import type { ImportJourneyDto, ImportResultDto } from './dto/import-flights.dto';
 import { calculateAirportDistance } from '../../common/utils/haversine';
@@ -25,6 +26,8 @@ export class FlightsService {
     private readonly legRepository: Repository<FlightLeg>,
     @InjectRepository(Airport)
     private readonly airportRepository: Repository<Airport>,
+    @InjectRepository(City)
+    private readonly cityRepository: Repository<City>,
     private readonly visitsService: VisitsService,
   ) {}
 
@@ -54,6 +57,13 @@ export class FlightsService {
     userId: number,
     createFlightDto: CreateFlightDto,
   ): Promise<FlightJourney> {
+    // Mixed-mode chain (land travel): its own path - endpoints may be
+    // cities and the ground-transfer splitter does not apply, because the
+    // user declared what each hop was.
+    if (createFlightDto.stops && createFlightDto.stops.length >= 2) {
+      return this.createMixed(userId, createFlightDto);
+    }
+
     // Build legs from either explicit legs or airportIds chain
     let legData: { departureAirportId: number; arrivalAirportId: number }[] = [];
 
@@ -175,6 +185,158 @@ export class FlightsService {
     return Object.assign(first, {
       splitInto: segments.length > 1 ? segments.length : undefined,
     });
+  }
+
+  /**
+   * Resolve a stops chain to its airports and cities, validating shape:
+   * each stop exactly one endpoint kind, every id real, every flight hop
+   * between airports (planes do not land in city centres), no zero-length
+   * hops. Returns everything the leg builder and the visits pass need.
+   */
+  private async resolveStops(
+    stops: TravelStopDto[],
+    modes: TravelMode[],
+  ): Promise<{
+    airportById: Map<number, Airport>;
+    cityById: Map<number, City>;
+    pointOf: (stop: TravelStopDto) => {
+      latitude: number;
+      longitude: number;
+      countryIso: string | null;
+    };
+  }> {
+    for (const stop of stops) {
+      const kinds =
+        Number(stop.airportId != null) + Number(stop.cityId != null);
+      if (kinds !== 1) {
+        throw new BadRequestException(
+          'Each stop must be exactly one of: an airport or a city',
+        );
+      }
+    }
+    if (modes.length !== stops.length - 1) {
+      throw new BadRequestException('Provide one travel mode per hop');
+    }
+    for (let i = 0; i < stops.length - 1; i++) {
+      if (
+        modes[i] === 'flight' &&
+        (stops[i].airportId == null || stops[i + 1].airportId == null)
+      ) {
+        throw new BadRequestException(
+          'A flight hop needs airports at both ends - pick the nearest airport or change the mode',
+        );
+      }
+      const sameAirport =
+        stops[i].airportId != null &&
+        stops[i].airportId === stops[i + 1].airportId;
+      const sameCity =
+        stops[i].cityId != null && stops[i].cityId === stops[i + 1].cityId;
+      if (sameAirport || sameCity) {
+        throw new BadRequestException('A hop needs two different places');
+      }
+    }
+
+    const airportIds = [
+      ...new Set(
+        stops.flatMap((s) => (s.airportId != null ? [s.airportId] : [])),
+      ),
+    ];
+    const cityIds = [
+      ...new Set(stops.flatMap((s) => (s.cityId != null ? [s.cityId] : []))),
+    ];
+    const [airports, cities] = await Promise.all([
+      airportIds.length
+        ? this.airportRepository.findByIds(airportIds)
+        : Promise.resolve<Airport[]>([]),
+      cityIds.length
+        ? this.cityRepository.findByIds(cityIds)
+        : Promise.resolve<City[]>([]),
+    ]);
+    const airportById = new Map(airports.map((a) => [a.id, a]));
+    const cityById = new Map(cities.map((c) => [c.id, c]));
+    if (airportById.size !== airportIds.length) {
+      throw new BadRequestException('One or more airports not found');
+    }
+    if (cityById.size !== cityIds.length) {
+      throw new BadRequestException('One or more cities not found');
+    }
+
+    const pointOf = (stop: TravelStopDto) => {
+      const place =
+        stop.airportId != null
+          ? airportById.get(stop.airportId)!
+          : cityById.get(stop.cityId!)!;
+      return {
+        latitude: Number(place.latitude),
+        longitude: Number(place.longitude),
+        countryIso: place.countryIso ?? null,
+      };
+    };
+    return { airportById, cityById, pointOf };
+  }
+
+  /**
+   * The mixed-mode create (land travel, 2026-08-17): Varna -> Geneva by
+   * plane, Geneva -> Basel by train, on to Colmar by car - one journey,
+   * one leg per hop, each carrying its own mode. No ground-transfer
+   * splitting here: that rule guards against typos in all-flight chains,
+   * and a short hop the user labelled 'train' is the feature itself.
+   */
+  private async createMixed(
+    userId: number,
+    dto: CreateFlightDto,
+  ): Promise<FlightJourney> {
+    let chain = dto.stops!;
+    let modes: TravelMode[] =
+      dto.modes && dto.modes.length > 0
+        ? [...dto.modes]
+        : Array<TravelMode>(chain.length - 1).fill('flight');
+
+    if (dto.isRoundTrip) {
+      chain = [...chain, ...[...chain].reverse().slice(1)];
+      modes = [...modes, ...[...modes].reverse()];
+    }
+
+    const { pointOf } = await this.resolveStops(chain, modes);
+
+    const journey = this.journeyRepository.create({
+      userId,
+      journeyDate: dto.journeyDate ? new Date(dto.journeyDate) : null,
+      datePrecision: dto.journeyDate ? (dto.datePrecision ?? 'day') : 'day',
+      isRoundTrip: dto.isRoundTrip || false,
+      notes: dto.notes || null,
+    });
+    const saved = await this.journeyRepository.save(journey);
+    await this.journeyRepository.update(saved.id, { sortIndex: saved.id });
+
+    const legs: FlightLeg[] = [];
+    const countries = new Set<string>();
+    for (let i = 0; i < chain.length - 1; i++) {
+      const from = pointOf(chain[i]);
+      const to = pointOf(chain[i + 1]);
+      if (from.countryIso) countries.add(from.countryIso);
+      if (to.countryIso) countries.add(to.countryIso);
+      legs.push(
+        this.legRepository.create({
+          journeyId: saved.id,
+          legOrder: i + 1,
+          travelMode: modes[i],
+          departureAirportId: chain[i].airportId ?? null,
+          departureCityId: chain[i].cityId ?? null,
+          arrivalAirportId: chain[i + 1].airportId ?? null,
+          arrivalCityId: chain[i + 1].cityId ?? null,
+          distanceKm: calculateAirportDistance(from, to),
+        }),
+      );
+    }
+    await this.legRepository.save(legs);
+    await this.createVisitsForCountries(
+      userId,
+      countries,
+      saved.id,
+      dto.journeyDate,
+    );
+    return this.findOne(userId, saved.id);
   }
 
   /**
@@ -335,26 +497,36 @@ export class FlightsService {
     journeyId: number,
     journeyDate?: string,
   ): Promise<void> {
-    // Collect all countries from legs
-    const countriesInFlight = new Map<string, VisitType>();
-
+    const countries = new Set<string>();
     for (const leg of legs) {
-      const departureAirport = airportMap.get(leg.departureAirportId);
-      const arrivalAirport = airportMap.get(leg.arrivalAirportId);
-      if (departureAirport?.countryIso) {
-        countriesInFlight.set(departureAirport.countryIso, 'trip');
-      }
-      if (arrivalAirport?.countryIso) {
-        countriesInFlight.set(arrivalAirport.countryIso, 'trip');
+      for (const airportId of [leg.departureAirportId, leg.arrivalAirportId]) {
+        const iso = airportId != null
+          ? airportMap.get(airportId)?.countryIso
+          : null;
+        if (iso) countries.add(iso);
       }
     }
+    await this.createVisitsForCountries(
+      userId,
+      countries,
+      journeyId,
+      journeyDate,
+    );
+  }
 
-    // Create visits for each country
-    for (const [countryIso, visitType] of countriesInFlight) {
+  /** Being there counts, however you arrived: every touched country
+      becomes a 'trip' visit, land legs the same as flights. */
+  private async createVisitsForCountries(
+    userId: number,
+    countries: Set<string>,
+    journeyId: number,
+    journeyDate?: string,
+  ): Promise<void> {
+    for (const countryIso of countries) {
       await this.visitsService.createOrUpdateFromFlight(
         userId,
         countryIso,
-        visitType,
+        'trip' as VisitType,
         journeyId,
         journeyDate,
       );
@@ -394,7 +566,43 @@ export class FlightsService {
       silently split: splitting an existing journey in place would have to
       invent a second journey mid-edit.
     */
-    if (updateFlightDto.airportIds && updateFlightDto.airportIds.length >= 2) {
+    // Mixed-mode replacement chain, mirroring create's option 3. The two
+    // shapes are exclusive; stops wins when both are somehow present.
+    if (updateFlightDto.stops && updateFlightDto.stops.length >= 2) {
+      const chain = updateFlightDto.stops;
+      const modes: TravelMode[] =
+        updateFlightDto.modes && updateFlightDto.modes.length > 0
+          ? [...updateFlightDto.modes]
+          : Array<TravelMode>(chain.length - 1).fill('flight');
+      const { pointOf } = await this.resolveStops(chain, modes);
+
+      const legs: FlightLeg[] = [];
+      const countries = new Set<string>();
+      for (let i = 0; i < chain.length - 1; i++) {
+        const from = pointOf(chain[i]);
+        const to = pointOf(chain[i + 1]);
+        if (from.countryIso) countries.add(from.countryIso);
+        if (to.countryIso) countries.add(to.countryIso);
+        legs.push(
+          this.legRepository.create({
+            journeyId: id,
+            legOrder: i + 1,
+            travelMode: modes[i],
+            departureAirportId: chain[i].airportId ?? null,
+            departureCityId: chain[i].cityId ?? null,
+            arrivalAirportId: chain[i + 1].airportId ?? null,
+            arrivalCityId: chain[i + 1].cityId ?? null,
+            distanceKm: calculateAirportDistance(from, to),
+          }),
+        );
+      }
+      await this.legRepository.delete({ journeyId: id });
+      await this.legRepository.save(legs);
+      await this.createVisitsForCountries(userId, countries, id, undefined);
+    } else if (
+      updateFlightDto.airportIds &&
+      updateFlightDto.airportIds.length >= 2
+    ) {
       const chain = updateFlightDto.airportIds;
       const airports = await this.airportRepository.findByIds([
         ...new Set(chain),

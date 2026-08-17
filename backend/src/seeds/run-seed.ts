@@ -2,10 +2,12 @@ import { DataSource } from 'typeorm';
 import { Country } from '../modules/countries/entities/country.entity';
 import { Visit } from '../modules/visits/entities/visit.entity';
 import { Airport } from '../modules/airports/entities/airport.entity';
+import { City } from '../modules/cities/entities/city.entity';
 import { FlightJourney } from '../modules/flights/entities/flight-journey.entity';
 import { FlightLeg } from '../modules/flights/entities/flight-leg.entity';
 import { seedCountries } from './countries.seed';
 import { seedAirports } from './airports.seed';
+import { seedCities } from './cities.seed';
 
 const dataSource = new DataSource({
   type: 'postgres',
@@ -14,7 +16,7 @@ const dataSource = new DataSource({
   username: process.env.DB_USERNAME || 'postgres',
   password: process.env.DB_PASSWORD || 'postgres',
   database: process.env.DB_DATABASE || 'travel_tracker',
-  entities: [Country, Visit, Airport, FlightJourney, FlightLeg],
+  entities: [Country, Visit, Airport, City, FlightJourney, FlightLeg],
   synchronize: true,
 });
 
@@ -25,6 +27,7 @@ async function runSeeds() {
 
     await seedCountries(dataSource);
     await seedAirports(dataSource);
+    await seedCities(dataSource);
 
     console.log('Seeding completed successfully!');
   } catch (error) {

@@ -2,7 +2,22 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { FlightJourney } from './entities/flight-journey.entity';
-import { FlightLeg } from './entities/flight-leg.entity';
+import { FlightLeg, type TravelMode } from './entities/flight-leg.entity';
+import type { Airport } from '../airports/entities/airport.entity';
+
+/** A leg whose endpoints are airports - what every flight aggregate needs. */
+type AirLeg = FlightLeg & { departureAirport: Airport; arrivalAirport: Airport };
+
+/*
+  The standing stats rule (owner decision, 2026-08-17): every existing
+  number keeps meaning FLIGHTS ONLY - "distance flown" cannot quietly
+  absorb a road trip, and flight-hours math at 800 km/h would lie about a
+  train. Land travel gets its own additive tally instead.
+*/
+const isFlightLeg = (leg: FlightLeg): leg is AirLeg =>
+  (leg.travelMode ?? 'flight') === 'flight' &&
+  Boolean(leg.departureAirport) &&
+  Boolean(leg.arrivalAirport);
 
 export interface YearStats {
   year: number;
@@ -77,6 +92,11 @@ export interface FlightStats {
   moonDistancePercent: number;
   estimatedFlightHours: number;
   walkingYears: number;
+
+  // Land travel - the overland tally, separate by decision.
+  overlandDistanceKm: number;
+  overlandLegs: number;
+  overlandByMode: { mode: TravelMode; legs: number; distanceKm: number }[];
 }
 
 @Injectable()
@@ -103,9 +123,12 @@ export class FlightsStatsService {
    * database, touching no airport rows, so the heaviest query in the app stops
    * running on every map load.
    */
-  async getSummary(
-    userId: number,
-  ): Promise<{ totalFlights: number; totalJourneys: number; totalDistanceKm: number }> {
+  async getSummary(userId: number): Promise<{
+    totalFlights: number;
+    totalJourneys: number;
+    totalDistanceKm: number;
+    overlandDistanceKm: number;
+  }> {
     /*
       Future-dated journeys are plans, not history (friend feedback,
       2026-08-17): they stay visible in the list but must not inflate the
@@ -120,23 +143,35 @@ export class FlightsStatsService {
       )
       .getCount();
 
-    // Legs (i.e. individual flights) and their distance, scoped to this user's
-    // journeys via the join rather than loading the journeys themselves.
-    const { flights, distance } = await this.legRepository
+    // Legs and their distance, scoped to this user's journeys via the join
+    // rather than loading the journeys themselves. FILTER splits flights
+    // from overland in the same single pass.
+    const { flights, distance, overland } = await this.legRepository
       .createQueryBuilder('leg')
       .innerJoin('leg.journey', 'journey')
       .where('journey.user_id = :userId', { userId })
       .andWhere(
         '(journey.journey_date IS NULL OR journey.journey_date <= CURRENT_DATE)',
       )
-      .select('COUNT(leg.id)', 'flights')
-      .addSelect('COALESCE(SUM(leg.distance_km), 0)', 'distance')
-      .getRawOne<{ flights: string; distance: string }>();
+      .select(
+        `COUNT(leg.id) FILTER (WHERE leg.travel_mode = 'flight')`,
+        'flights',
+      )
+      .addSelect(
+        `COALESCE(SUM(leg.distance_km) FILTER (WHERE leg.travel_mode = 'flight'), 0)`,
+        'distance',
+      )
+      .addSelect(
+        `COALESCE(SUM(leg.distance_km) FILTER (WHERE leg.travel_mode <> 'flight'), 0)`,
+        'overland',
+      )
+      .getRawOne<{ flights: string; distance: string; overland: string }>();
 
     return {
       totalFlights: Number(flights) || 0,
       totalJourneys: journeyCount,
       totalDistanceKm: Math.round(Number(distance) * 100) / 100 || 0,
+      overlandDistanceKm: Math.round(Number(overland) * 100) / 100 || 0,
     };
   }
 
@@ -155,8 +190,13 @@ export class FlightsStatsService {
         new Date(journey.journeyDate).toISOString().slice(0, 10) <= today,
     );
 
-    // Flatten all legs
-    const allLegs = journeys.flatMap((j) => j.legs);
+    // Flatten all legs; flight aggregates see only flight legs, and the
+    // land legs feed the overland tally alone.
+    const everyLeg = journeys.flatMap((j) => j.legs);
+    const allLegs = everyLeg.filter(isFlightLeg);
+    const landLegs: FlightLeg[] = everyLeg.filter(
+      (leg) => (leg.travelMode ?? 'flight') !== 'flight',
+    );
 
     // Core stats
     const totalJourneys = journeys.length;
@@ -165,6 +205,26 @@ export class FlightsStatsService {
       (sum, leg) => sum + Number(leg.distanceKm || 0),
       0,
     );
+
+    const overlandDistanceKm = landLegs.reduce(
+      (sum, leg) => sum + Number(leg.distanceKm || 0),
+      0,
+    );
+    const byModeMap = new Map<TravelMode, { legs: number; distanceKm: number }>();
+    for (const leg of landLegs) {
+      const mode = leg.travelMode ?? 'train';
+      const bucket = byModeMap.get(mode) ?? { legs: 0, distanceKm: 0 };
+      bucket.legs += 1;
+      bucket.distanceKm += Number(leg.distanceKm || 0);
+      byModeMap.set(mode, bucket);
+    }
+    const overlandByMode = [...byModeMap.entries()]
+      .map(([mode, bucket]) => ({
+        mode,
+        legs: bucket.legs,
+        distanceKm: Math.round(bucket.distanceKm * 100) / 100,
+      }))
+      .sort((a, b) => b.distanceKm - a.distanceKm);
 
     // Time-based stats
     const byYear = this.calculateByYear(journeys);
@@ -210,6 +270,9 @@ export class FlightsStatsService {
       moonDistancePercent,
       estimatedFlightHours,
       walkingYears,
+      overlandDistanceKm: Math.round(overlandDistanceKm * 100) / 100,
+      overlandLegs: landLegs.length,
+      overlandByMode,
     };
   }
 
@@ -220,9 +283,10 @@ export class FlightsStatsService {
       if (!journey.journeyDate) continue;
       const year = new Date(journey.journeyDate).getFullYear();
 
+      const flightLegs = journey.legs.filter(isFlightLeg);
       const existing = yearMap.get(year) || { flights: 0, distanceKm: 0 };
-      existing.flights += journey.legs.length;
-      existing.distanceKm += journey.legs.reduce(
+      existing.flights += flightLegs.length;
+      existing.distanceKm += flightLegs.reduce(
         (sum, leg) => sum + Number(leg.distanceKm || 0),
         0,
       );
@@ -248,9 +312,10 @@ export class FlightsStatsService {
       const month = date.getMonth() + 1;
       const key = `${year}-${month}`;
 
+      const flightLegs = journey.legs.filter(isFlightLeg);
       const existing = monthMap.get(key) || { year, month, flights: 0, distanceKm: 0 };
-      existing.flights += journey.legs.length;
-      existing.distanceKm += journey.legs.reduce(
+      existing.flights += flightLegs.length;
+      existing.distanceKm += flightLegs.reduce(
         (sum, leg) => sum + Number(leg.distanceKm || 0),
         0,
       );
@@ -282,7 +347,7 @@ export class FlightsStatsService {
     );
   }
 
-  private findLongestFlight(legs: FlightLeg[]) {
+  private findLongestFlight(legs: AirLeg[]) {
     if (legs.length === 0) return null;
     const longest = legs.reduce((max, leg) =>
       Number(leg.distanceKm) > Number(max.distanceKm) ? leg : max,
@@ -296,7 +361,7 @@ export class FlightsStatsService {
     };
   }
 
-  private findShortestFlight(legs: FlightLeg[]) {
+  private findShortestFlight(legs: AirLeg[]) {
     if (legs.length === 0) return null;
     const shortest = legs.reduce((min, leg) =>
       Number(leg.distanceKm) < Number(min.distanceKm) ? leg : min,
@@ -310,7 +375,7 @@ export class FlightsStatsService {
     };
   }
 
-  private calculateMostVisitedAirports(legs: FlightLeg[]): AirportVisitCount[] {
+  private calculateMostVisitedAirports(legs: AirLeg[]): AirportVisitCount[] {
     const airportCounts = new Map<number, AirportVisitCount>();
 
     for (const leg of legs) {
@@ -352,7 +417,7 @@ export class FlightsStatsService {
       .slice(0, 10);
   }
 
-  private calculateMostCommonRoutes(legs: FlightLeg[]): RouteCount[] {
+  private calculateMostCommonRoutes(legs: AirLeg[]): RouteCount[] {
     const routeCounts = new Map<string, RouteCount>();
 
     for (const leg of legs) {
@@ -382,7 +447,7 @@ export class FlightsStatsService {
       .slice(0, 10);
   }
 
-  private calculateGeographicStats(legs: FlightLeg[]) {
+  private calculateGeographicStats(legs: AirLeg[]) {
     const airportIds = new Set<number>();
     const countries = new Set<string>();
 

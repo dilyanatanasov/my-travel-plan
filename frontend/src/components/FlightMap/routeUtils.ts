@@ -1,4 +1,70 @@
-import type { FlightJourney, Airport } from '../../types';
+import type { FlightJourney, FlightLeg, Airport, TravelMode } from '../../types';
+
+/*
+  Land travel (2026-08-17): a leg's endpoint is an airport OR a city.
+  Rather than teaching every map layer two shapes, a city poses as an
+  Airport whose "iataCode" is its name - the marker label slot - with a
+  negative id so it can never collide with a real airport. Everything
+  downstream (markers, routes, framing, export) keeps one vocabulary.
+*/
+export function cityAsAirport(
+  city: NonNullable<FlightLeg['departureCity']>,
+): Airport {
+  return {
+    id: -city.id,
+    iataCode: city.name,
+    icaoCode: null,
+    name: city.name,
+    city: null,
+    country: null,
+    countryIso: city.countryIso,
+    latitude: Number(city.latitude),
+    longitude: Number(city.longitude),
+    createdAt: '',
+  };
+}
+
+/** A leg's endpoints in the map's one vocabulary; null if data is torn. */
+export function legEndpoints(
+  leg: FlightLeg,
+): { departure: Airport; arrival: Airport } | null {
+  const departure =
+    leg.departureAirport ??
+    (leg.departureCity ? cityAsAirport(leg.departureCity) : null);
+  const arrival =
+    leg.arrivalAirport ?? (leg.arrivalCity ? cityAsAirport(leg.arrivalCity) : null);
+  if (!departure || !arrival) return null;
+  return { departure, arrival };
+}
+
+export function legMode(leg: FlightLeg): TravelMode {
+  return leg.travelMode ?? 'flight';
+}
+
+/** The vehicle, at emoji size - list rows and chips, not the map. */
+export const TRAVEL_MODE_EMOJI: Record<TravelMode, string> = {
+  flight: '✈️',
+  train: '🚆',
+  car: '🚗',
+  bus: '🚌',
+  ferry: '⛴️',
+};
+
+/**
+ * "SOF → Plovdiv → KEF" - endpoint labels from the leg chain. IATA for
+ * airports, names for cities; previously copy-pasted in three components.
+ */
+export function journeyRouteLabel(journey: FlightJourney): string {
+  const legs = [...journey.legs].sort((a, b) => a.legOrder - b.legOrder);
+  const stops: string[] = [];
+  for (const leg of legs) {
+    const endpoints = legEndpoints(leg);
+    if (!endpoints) continue;
+    if (stops.length === 0) stops.push(endpoints.departure.iataCode);
+    stops.push(endpoints.arrival.iataCode);
+  }
+  return stops.join(' → ');
+}
 
 export interface AggregatedRoute {
   key: string;
@@ -7,15 +73,22 @@ export interface AggregatedRoute {
   count: number;
   totalDistance: number;
   flights: FlightJourney[];
+  /** 'flight' unless every aggregated leg was this land mode. */
+  mode: TravelMode;
 }
 
 /**
- * Generate a unique key for a route (direction-agnostic for aggregation)
+ * Generate a unique key for a route (direction-agnostic for aggregation).
+ * Mode is part of the key: a flown and a trained SOF-PDV are two routes,
+ * not one blob. Ids, not labels - two cities may share a name.
  */
-export function getRouteKey(dep: Airport, arr: Airport): string {
-  // Sort by IATA code to make key direction-agnostic
-  const codes = [dep.iataCode, arr.iataCode].sort();
-  return `${codes[0]}-${codes[1]}`;
+export function getRouteKey(
+  dep: Airport,
+  arr: Airport,
+  mode: TravelMode = 'flight',
+): string {
+  const ids = [dep.id, arr.id].sort((a, b) => a - b);
+  return `${ids[0]}-${ids[1]}|${mode}`;
 }
 
 /**
@@ -26,15 +99,17 @@ export function getDirectionalRouteKey(dep: Airport, arr: Airport): string {
 }
 
 /**
- * Extract all unique airports from flights
+ * Extract all unique endpoints (airports and posing cities) from flights
  */
 export function extractUniqueAirports(flights: FlightJourney[]): Airport[] {
   const airportMap = new Map<string, Airport>();
 
   flights.forEach((journey) => {
     journey.legs.forEach((leg) => {
-      airportMap.set(leg.departureAirport.iataCode, leg.departureAirport);
-      airportMap.set(leg.arrivalAirport.iataCode, leg.arrivalAirport);
+      const endpoints = legEndpoints(leg);
+      if (!endpoints) return;
+      airportMap.set(endpoints.departure.iataCode, endpoints.departure);
+      airportMap.set(endpoints.arrival.iataCode, endpoints.arrival);
     });
   });
 
@@ -42,15 +117,17 @@ export function extractUniqueAirports(flights: FlightJourney[]): Airport[] {
 }
 
 /**
- * Count how many times each airport appears in flights
+ * Count how many times each endpoint appears in flights
  */
 export function countAirportVisits(flights: FlightJourney[]): Map<string, number> {
   const counts = new Map<string, number>();
 
   flights.forEach((journey) => {
     journey.legs.forEach((leg) => {
-      const depCode = leg.departureAirport.iataCode;
-      const arrCode = leg.arrivalAirport.iataCode;
+      const endpoints = legEndpoints(leg);
+      if (!endpoints) return;
+      const depCode = endpoints.departure.iataCode;
+      const arrCode = endpoints.arrival.iataCode;
       counts.set(depCode, (counts.get(depCode) || 0) + 1);
       counts.set(arrCode, (counts.get(arrCode) || 0) + 1);
     });
@@ -60,14 +137,17 @@ export function countAirportVisits(flights: FlightJourney[]): Map<string, number
 }
 
 /**
- * Aggregate flight legs into unique routes with counts
+ * Aggregate legs into unique routes with counts, per mode.
  */
 export function aggregateRoutes(flights: FlightJourney[]): AggregatedRoute[] {
   const routeMap = new Map<string, AggregatedRoute>();
 
   flights.forEach((journey) => {
     journey.legs.forEach((leg) => {
-      const key = getRouteKey(leg.departureAirport, leg.arrivalAirport);
+      const endpoints = legEndpoints(leg);
+      if (!endpoints) return;
+      const mode = legMode(leg);
+      const key = getRouteKey(endpoints.departure, endpoints.arrival, mode);
       const existing = routeMap.get(key);
 
       if (existing) {
@@ -79,11 +159,12 @@ export function aggregateRoutes(flights: FlightJourney[]): AggregatedRoute[] {
       } else {
         routeMap.set(key, {
           key,
-          departure: leg.departureAirport,
-          arrival: leg.arrivalAirport,
+          departure: endpoints.departure,
+          arrival: endpoints.arrival,
           count: 1,
           totalDistance: Number(leg.distanceKm) || 0,
           flights: [journey],
+          mode,
         });
       }
     });

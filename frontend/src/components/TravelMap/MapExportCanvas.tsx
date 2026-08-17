@@ -12,6 +12,8 @@ import {
   aggregateRoutes,
   extractUniqueAirports,
   countAirportVisits,
+  legEndpoints,
+  legMode,
 } from '../FlightMap/routeUtils';
 import FlightRoutes from '../FlightMap/FlightRoutes';
 import AirportMarkers from '../FlightMap/AirportMarkers';
@@ -161,15 +163,21 @@ function MapExportCanvasInner({
     if (journey) {
       return [...(journey.legs ?? [])]
         .sort((a, b) => a.legOrder - b.legOrder)
-        .filter((leg) => leg.departureAirport && leg.arrivalAirport)
-        .map((leg, index) => ({
-          key: `leg-${leg.id ?? index}`,
-          departure: leg.departureAirport,
-          arrival: leg.arrivalAirport,
-          count: 1,
-          totalDistance: Number(leg.distanceKm) || 0,
-          flights: [journey],
-        }));
+        .flatMap((leg, index) => {
+          const endpoints = legEndpoints(leg);
+          if (!endpoints) return [];
+          return [
+            {
+              key: `leg-${leg.id ?? index}`,
+              departure: endpoints.departure,
+              arrival: endpoints.arrival,
+              count: 1,
+              totalDistance: Number(leg.distanceKm) || 0,
+              flights: [journey],
+              mode: legMode(leg),
+            },
+          ];
+        });
     }
     return aggregateRoutes(shownFlights);
   }, [journey, shownFlights]);

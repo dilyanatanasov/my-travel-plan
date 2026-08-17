@@ -1,4 +1,4 @@
-import type { Alpha2, Alpha3 } from '../../types';
+import type { Alpha2, Alpha3, TravelMode } from '../../types';
 import { apiSlice } from '../../store/api/apiSlice';
 
 export interface PublicAirport {
@@ -13,6 +13,8 @@ export interface PublicRoute {
   to: PublicAirport;
   count: number;
   distanceKm: number;
+  /** Absent on older cached payloads; means flight. */
+  mode?: TravelMode;
 }
 
 export interface PublicCountry {

@@ -8,6 +8,7 @@ import { useToast } from '../Toast/ToastProvider';
 import FlightCard from './FlightCard';
 import TripShareDialog from '../../features/share/TripShareDialog';
 import type { FlightJourney } from '../../types';
+import { legEndpoints } from '../FlightMap/routeUtils';
 
 const UNDATED = 'Undated';
 
@@ -40,16 +41,20 @@ function canSwap(a: FlightJourney, b: FlightJourney): boolean {
   return (a.journeyDate ?? null) === (b.journeyDate ?? null);
 }
 
-/** Match against every IATA code, city and note on the journey. */
+/** Match against every endpoint label, city and note on the journey. */
 function matchesQuery(journey: FlightJourney, query: string): boolean {
   const haystack = [
     journey.notes ?? '',
-    ...journey.legs.flatMap((leg) => [
-      leg.departureAirport.iataCode,
-      leg.arrivalAirport.iataCode,
-      leg.departureAirport.city ?? '',
-      leg.arrivalAirport.city ?? '',
-    ]),
+    ...journey.legs.flatMap((leg) => {
+      const endpoints = legEndpoints(leg);
+      if (!endpoints) return [];
+      return [
+        endpoints.departure.iataCode,
+        endpoints.arrival.iataCode,
+        endpoints.departure.city ?? '',
+        endpoints.arrival.city ?? '',
+      ];
+    }),
   ]
     .join(' ')
     .toLowerCase();
@@ -113,7 +118,9 @@ function FlightList() {
   const handleDelete = async (id: number) => {
     const journey = journeys.find((j) => j.id === id);
     const label = journey
-      ? journey.legs.map((leg) => leg.departureAirport.iataCode).join(' → ')
+      ? journey.legs
+          .map((leg) => legEndpoints(leg)?.departure.iataCode ?? '?')
+          .join(' → ')
       : 'Flight';
 
     if (!window.confirm(`Delete ${label}? This cannot be undone.`)) return;

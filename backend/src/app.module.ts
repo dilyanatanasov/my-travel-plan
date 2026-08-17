@@ -7,6 +7,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { CountriesModule } from './modules/countries/countries.module';
 import { VisitsModule } from './modules/visits/visits.module';
 import { AirportsModule } from './modules/airports/airports.module';
+import { CitiesModule } from './modules/cities/cities.module';
 import { FlightsModule } from './modules/flights/flights.module';
 import { UsersModule } from './modules/users/users.module';
 import { AuthModule } from './modules/auth/auth.module';
@@ -54,6 +55,7 @@ import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
     CountriesModule,
     VisitsModule,
     AirportsModule,
+    CitiesModule,
     FlightsModule,
     UsersModule,
     AuthModule,

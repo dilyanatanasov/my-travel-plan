@@ -6,9 +6,10 @@ import { useMapColors } from '../../theme/mapColors';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
 import type { FlightJourney } from '../../types';
 
-// The glyph itself lives in lib/planeSprite, shared with the canvas video
-// renderers so every surface flies the same aircraft.
-import PlaneGlyph from './PlaneGlyph';
+// The glyphs live in lib/planeSprite, shared with the canvas video
+// renderers so every surface drives the same vehicles.
+import VehicleGlyph from './VehicleGlyph';
+import { legEndpoints, legMode } from './routeUtils';
 
 interface JourneyHighlightProps {
   journey: FlightJourney;
@@ -69,11 +70,21 @@ function JourneyHighlight({
   const altitudeRef = useRef<Beginable | null>(null);
   const trailDrawRef = useRef<Beginable | null>(null);
   const trailFadeRef = useRef<Beginable | null>(null);
+  // One per leg on mixed-mode journeys: the glyph-swap opacity animates
+  // share the same clock, so they begin in the same batch.
+  const swapRefs = useRef<(Beginable | null)[]>([]);
   useEffect(() => {
     const frame = requestAnimationFrame(() => {
-      for (const ref of [motionRef, altitudeRef, trailDrawRef, trailFadeRef]) {
+      const refs = [
+        motionRef.current,
+        altitudeRef.current,
+        trailDrawRef.current,
+        trailFadeRef.current,
+        ...swapRefs.current,
+      ];
+      for (const element of refs) {
         try {
-          ref.current?.beginElement();
+          element?.beginElement();
         } catch {
           /* detached mid-switch; the next mount will begin it */
         }
@@ -104,15 +115,24 @@ function JourneyHighlight({
   */
   const drawn = legs
     .map((leg) => {
-      const dep = leg.departureAirport;
-      const arr = leg.arrivalAirport;
-      if (!dep || !arr) return null;
+      const endpoints = legEndpoints(leg);
+      if (!endpoints) return null;
+      const { departure: dep, arrival: arr } = endpoints;
       const from = projection([Number(dep.longitude), Number(dep.latitude)]);
       const to = projection([Number(arr.longitude), Number(arr.latitude)]);
       if (!from || !to) return null;
+      const mode = legMode(leg);
       return {
         leg,
-        pathD: calculateArcPath(from as [number, number], to as [number, number]),
+        mode,
+        // A land leg draws as a straight chord - things on the ground do
+        // not bow through the sky. Curvature 0 keeps the same Q-path
+        // shape, so the splice below still works.
+        pathD: calculateArcPath(
+          from as [number, number],
+          to as [number, number],
+          mode === 'flight' ? 0.2 : 0,
+        ),
         // Projected chord length: the weight that maps time onto keyPoints,
         // so a pause lands exactly on the airport rather than at a km-based
         // guess distorted by the projection.
@@ -127,6 +147,7 @@ function JourneyHighlight({
         entry,
       ): entry is {
         leg: (typeof legs)[number];
+        mode: ReturnType<typeof legMode>;
         pathD: string;
         screenLen: number;
       } => entry !== null,
@@ -157,19 +178,37 @@ function JourneyHighlight({
     altitudeValues,
     altitudeKeyTimes,
     contrailValues,
+    legWindows,
   } = buildFlightTimeline(
-    drawn.map(({ leg, screenLen }) => ({
+    drawn.map(({ leg, mode, screenLen }) => ({
       screenLen,
       distanceKm: Number(leg.distanceKm) || 0,
+      grounded: mode !== 'flight',
     })),
     { legDurationSeconds, ambientLegSeconds: legDuration },
   );
 
+  /*
+    Mixed-mode journeys swap the vehicle at each stop (owner ask,
+    2026-08-17: Varna ✈ Geneva 🚆 Basel 🚗 Colmar must SHOW the plane,
+    then the train, then the car). One glyph per leg rides the same
+    moving group; discrete opacity keyframes hand the baton at each leg's
+    takeoff. All-one-mode journeys (nearly all of them) skip the
+    machinery and render a single glyph exactly as before.
+  */
+  const modes = drawn.map(({ mode }) => mode);
+  const isMixed = new Set(modes).size > 1;
+  const glyphWindows = modes.map((mode, index) => ({
+    mode,
+    // Visible from this leg's takeoff until the next leg's; the vehicle
+    // that just landed keeps the stage through the stop pause.
+    from: index === 0 ? 0 : legWindows[index].start,
+    until: index === modes.length - 1 ? 1 : legWindows[index + 1].start,
+  }));
+
   return (
     <g className="journey-highlight">
-      {drawn.map(({ leg, pathD }, index) => {
-        const dep = leg.departureAirport;
-        const arr = leg.arrivalAirport;
+      {drawn.map(({ leg, mode, pathD }, index) => {
         const width = getZoomAdjustedSize(2.4 * sizeScale, zoom);
         const dash = getZoomAdjustedSize(7, zoom);
         const gap = getZoomAdjustedSize(9, zoom);
@@ -178,7 +217,7 @@ function JourneyHighlight({
         const delay = (index * legDuration) / Math.max(legs.length, 1);
 
         return (
-          <g key={leg.id ?? `${leg.legOrder}-${dep.iataCode}-${arr.iataCode}`}>
+          <g key={leg.id ?? `${leg.legOrder}-${index}`}>
             {/* Soft outer glow, so the line separates from whatever is under it */}
             <path
               d={pathD}
@@ -189,13 +228,18 @@ function JourneyHighlight({
               strokeOpacity={0.28}
               pointerEvents="none"
             />
-            {/* Solid base so the leg is legible with motion disabled */}
+            {/* Solid base so the leg is legible with motion disabled.
+                Land legs are dashed - the ground-travel signature, same
+                language as the aggregate route layer. */}
             <path
               d={pathD}
               fill="none"
               stroke={colors.selected}
               strokeWidth={width}
               strokeLinecap="round"
+              strokeDasharray={
+                mode !== 'flight' ? `${dash * 0.8} ${gap * 0.55}` : undefined
+              }
               pointerEvents="none"
             />
             {/* Flowing dashes: offset decreases, so they travel from the path
@@ -327,11 +371,61 @@ function JourneyHighlight({
               separates it from the line rather than blending into it as white
               did on cream.
             */}
-            <PlaneGlyph
-              transform={`scale(${planeScaleShared}) translate(-12 -12)`}
-              fill={colors.routeHighlight}
-              outline={colors.planeOutline}
-            />
+            {!isMixed ? (
+              <VehicleGlyph
+                mode={modes[0] ?? 'flight'}
+                transform={`scale(${planeScaleShared}) translate(-12 -12)`}
+                fill={colors.routeHighlight}
+                outline={colors.planeOutline}
+              />
+            ) : (
+              /*
+                The baton pass: every leg's vehicle rides the same moving
+                group; discrete opacity keyframes show exactly one at a
+                time, swapping at each next leg's departure. The vehicle
+                that just arrived keeps the stop pause - you watch the
+                plane land in Geneva, then the train pulls out.
+              */
+              glyphWindows.map((window, index) => (
+                <g key={index} opacity={index === 0 ? 1 : 0}>
+                  {/* keyTimes must span 0..1 exactly or SMIL drops the
+                      whole animation, hence the fixed four-point form. */}
+                  <animate
+                    ref={(el) => {
+                      swapRefs.current[index] = el as unknown as
+                        | (SVGElement & { beginElement: () => void })
+                        | null;
+                    }}
+                    begin="indefinite"
+                    attributeName="opacity"
+                    values={
+                      index === 0
+                        ? '1;0;0'
+                        : window.until >= 1
+                          ? '0;1;1'
+                          : '0;1;0;0'
+                    }
+                    keyTimes={
+                      index === 0
+                        ? `0;${window.until};1`
+                        : window.until >= 1
+                          ? `0;${window.from};1`
+                          : `0;${window.from};${window.until};1`
+                    }
+                    calcMode="discrete"
+                    dur={`${journeyDuration}s`}
+                    repeatCount={repeat}
+                    fill="freeze"
+                  />
+                  <VehicleGlyph
+                    mode={window.mode}
+                    transform={`scale(${planeScaleShared}) translate(-12 -12)`}
+                    fill={colors.routeHighlight}
+                    outline={colors.planeOutline}
+                  />
+                </g>
+              ))
+            )}
           </g>
         </g>
       )}

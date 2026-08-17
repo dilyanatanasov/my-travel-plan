@@ -1,16 +1,8 @@
 import { useMemo } from 'react';
 import type { FlightJourney } from '../../types';
 import type { ReplayState } from './useJourneyReplay';
+import { journeyRouteLabel as routeLabel } from '../FlightMap/routeUtils';
 import { useToast } from '../Toast/ToastProvider';
-
-/** SOF → AMS → KEF, from the leg chain. */
-function routeLabel(journey: FlightJourney): string {
-  const legs = [...journey.legs].sort((a, b) => a.legOrder - b.legOrder);
-  if (legs.length === 0) return '';
-  const stops = [legs[0].departureAirport.iataCode];
-  for (const leg of legs) stops.push(leg.arrivalAirport.iataCode);
-  return stops.join(' → ');
-}
 
 function monthLabel(journey: FlightJourney): string {
   if (!journey.journeyDate) return '';

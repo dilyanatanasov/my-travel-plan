@@ -8,7 +8,7 @@
  * staying in place as the fallback rather than being replaced.
  */
 import { MapExportError } from './exportMapImage';
-import { drawPlaneSprite } from '../lib/planeSprite';
+import { drawVehicleSprite } from '../lib/planeSprite';
 import {
   renderTripCardTemplate,
   CARD_WIDTH,
@@ -28,9 +28,13 @@ export interface VideoCaption {
   stats: string[];
 }
 
+type RouteMode = 'flight' | 'train' | 'car' | 'bus' | 'ferry';
+
 interface RouteSamples {
   points: { x: number; y: number }[];
   length: number;
+  /** Read from data-travel-mode on the route path; picks the vehicle. */
+  mode: RouteMode;
 }
 
 /** Whether this browser can produce a video at all. */
@@ -90,7 +94,9 @@ function sampleRoutes(svg: SVGSVGElement): RouteSamples[] {
           y: matrix.b * p.x + matrix.d * p.y + matrix.f,
         };
       });
-      return { points, length };
+      const mode = (path.getAttribute('data-travel-mode') ??
+        'flight') as RouteMode;
+      return { points, length, mode };
     })
     .filter((r): r is RouteSamples => r !== null);
 }
@@ -261,7 +267,8 @@ export async function renderMapVideo(
           y: points[i0].y + (points[i0 + 1].y - points[i0].y) * frac,
         };
 
-        // Trail up to the head, following it exactly.
+        // Trail up to the head, following it exactly. Land trails are
+        // dashed - the overland signature carries into the film.
         ctx.beginPath();
         ctx.moveTo(points[0].x, points[0].y);
         for (let i = 1; i <= i0; i++) {
@@ -272,7 +279,9 @@ export async function renderMapVideo(
         ctx.lineWidth = 2;
         ctx.lineCap = 'round';
         ctx.globalAlpha = 0.85;
+        if (route.mode !== 'flight') ctx.setLineDash([7, 6]);
         ctx.stroke();
+        ctx.setLineDash([]);
         ctx.globalAlpha = 1;
 
         if (progress < 1) {
@@ -280,7 +289,7 @@ export async function renderMapVideo(
           // angles twitched on dense arcs.
           const ahead = points[Math.min(i0 + 2, n - 1)];
           const behind = points[Math.max(i0 - 1, 0)];
-          drawPlaneSprite(ctx, {
+          drawVehicleSprite(ctx, route.mode, {
             x: head.x,
             y: head.y,
             angle: Math.atan2(ahead.y - behind.y, ahead.x - behind.x),
@@ -352,6 +361,7 @@ export async function renderTripVideo(
 
   // Source-space route points, pre-mapped into the strip once.
   const cardRoutes = routes.map((route) => ({
+    mode: route.mode,
     points: route.points.map((p) => ({
       x: placement.dx + p.x * placement.scale,
       y: placement.dy + p.y * placement.scale,
@@ -433,16 +443,20 @@ export async function renderTripVideo(
         ctx.lineWidth = 3;
         ctx.lineCap = 'round';
         ctx.globalAlpha = 0.9;
+        if (route.mode !== 'flight') ctx.setLineDash([9, 7]);
         ctx.stroke();
+        ctx.setLineDash([]);
         ctx.globalAlpha = 1;
 
         if (progress < 1) {
           // Heading over a small window, not one sample pair - single-pair
           // angles twitched on dense arcs. The beacon answers "a bit hard
-          // to track"; the sprite brings the nav lights with it.
+          // to track"; the sprite brings the nav lights with it - and on
+          // a mixed trip the vehicle changes at each stop, ticket ink on
+          // all of them.
           const ahead = points[Math.min(i0 + 2, n - 1)];
           const behind = points[Math.max(i0 - 1, 0)];
-          drawPlaneSprite(ctx, {
+          drawVehicleSprite(ctx, route.mode, {
             x: head.x,
             y: head.y,
             angle: Math.atan2(ahead.y - behind.y, ahead.x - behind.x),

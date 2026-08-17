@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react';
 import type { Alpha2, FlightJourney, Visit, VisitType } from '../../types';
+import { journeyRouteLabel, legEndpoints } from '../FlightMap/routeUtils';
 import CountryFlag from '../ui/CountryFlag';
 
 interface CountryDetailCardProps {
@@ -44,11 +45,7 @@ function formatDate(value: string | null): string | null {
 
 /** Route chain, e.g. SOF → AMS → KEF. */
 function routeLabel(journey: FlightJourney): string {
-  const legs = [...journey.legs].sort((a, b) => a.legOrder - b.legOrder);
-  if (legs.length === 0) return '—';
-  const stops = [legs[0].departureAirport.iataCode];
-  for (const leg of legs) stops.push(leg.arrivalAirport.iataCode);
-  return stops.join(' → ');
+  return journeyRouteLabel(journey) || '—';
 }
 
 /**
@@ -75,18 +72,23 @@ function CountryDetailCard({
   const { touchingJourneys, airports, firstSeen, lastSeen } = useMemo(() => {
     const touching = isoAlpha2
       ? journeys.filter((journey) =>
-          journey.legs.some(
-            (leg) =>
-              leg.departureAirport.countryIso === isoAlpha2 ||
-              leg.arrivalAirport.countryIso === isoAlpha2,
-          ),
+          journey.legs.some((leg) => {
+            const endpoints = legEndpoints(leg);
+            return (
+              endpoints &&
+              (endpoints.departure.countryIso === isoAlpha2 ||
+                endpoints.arrival.countryIso === isoAlpha2)
+            );
+          }),
         )
       : [];
 
     const airportSet = new Map<string, string>();
     for (const journey of touching) {
       for (const leg of journey.legs) {
-        for (const airport of [leg.departureAirport, leg.arrivalAirport]) {
+        const endpoints = legEndpoints(leg);
+        if (!endpoints) continue;
+        for (const airport of [endpoints.departure, endpoints.arrival]) {
           if (airport.countryIso === isoAlpha2) {
             airportSet.set(airport.iataCode, airport.city || airport.name);
           }

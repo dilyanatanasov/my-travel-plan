@@ -14,7 +14,7 @@ import {
 } from '../../features/flights/flightsApi';
 import PostcardMarker from './PostcardMarker';
 import { useUpdateVisitMutation } from '../../features/visits/visitsApi';
-import { aggregateRoutes, extractUniqueAirports, countAirportVisits } from '../FlightMap/routeUtils';
+import { aggregateRoutes, extractUniqueAirports, countAirportVisits, legEndpoints } from '../FlightMap/routeUtils';
 import { applyFilters, extractFilterOptions } from '../FlightMap/filterUtils';
 import { DEFAULT_FILTERS, type FlightFilters } from '../FlightMap/filterTypes';
 import FlightRoutes from '../FlightMap/FlightRoutes';
@@ -516,8 +516,10 @@ function TravelMap() {
     if (!replay.isActive || !replay.current) return;
     const points: LonLat[] = [];
     for (const leg of replay.current.legs) {
-      points.push([leg.departureAirport.longitude, leg.departureAirport.latitude]);
-      points.push([leg.arrivalAirport.longitude, leg.arrivalAirport.latitude]);
+      const endpoints = legEndpoints(leg);
+      if (!endpoints) continue;
+      points.push([endpoints.departure.longitude, endpoints.departure.latitude]);
+      points.push([endpoints.arrival.longitude, endpoints.arrival.latitude]);
     }
     // fill 0.58 tightens the camera for immersion while still leaving margin
     // for the arc's bow; maxZoom 6 gets close on short hops without ever

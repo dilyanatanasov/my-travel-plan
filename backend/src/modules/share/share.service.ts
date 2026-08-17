@@ -144,26 +144,60 @@ export class ShareService {
       longitude: Number(airport.longitude),
     });
 
+    /*
+      A leg endpoint is an airport or a city (land travel). Cities pose as
+      the same public shape with their name in the label slot - the shared
+      map renders both through one marker component. Only the coordinates
+      and a name cross the wire; a city is world geography, not user data.
+    */
+    const endpointOf = (
+      airport: typeof journeys[number]['legs'][number]['departureAirport'],
+      city: typeof journeys[number]['legs'][number]['departureCity'],
+    ): PublicAirportDto | null => {
+      if (airport) return toPublicAirport(airport);
+      if (city) {
+        return {
+          iataCode: city.name,
+          city: null,
+          latitude: Number(city.latitude),
+          longitude: Number(city.longitude),
+        };
+      }
+      return null;
+    };
+
     for (const journey of journeys) {
       for (const leg of journey.legs ?? []) {
-        if (!leg.departureAirport || !leg.arrivalAirport) continue;
+        const mode = leg.travelMode ?? 'flight';
+        const from = endpointOf(leg.departureAirport, leg.departureCity);
+        const to = endpointOf(leg.arrivalAirport, leg.arrivalCity);
+        if (!from || !to) continue;
 
-        flights += 1;
-        distanceKm += Number(leg.distanceKm) || 0;
+        // The flights counter means flights; land km stay out of
+        // "distance flown" here exactly as they do in the private stats.
+        if (mode === 'flight') {
+          flights += 1;
+          distanceKm += Number(leg.distanceKm) || 0;
+        }
 
-        const from = toPublicAirport(leg.departureAirport);
-        const to = toPublicAirport(leg.arrivalAirport);
         airportMap.set(from.iataCode, from);
         airportMap.set(to.iataCode, to);
 
         const legDistance = Number(leg.distanceKm) || 0;
-        const key = [from.iataCode, to.iataCode].sort().join('-');
+        // Mode in the key: a flown and a trained SOF-PDV are two routes.
+        const key = `${[from.iataCode, to.iataCode].sort().join('-')}|${mode}`;
         const existing = routeMap.get(key);
         if (existing) {
           existing.count += 1;
           existing.distanceKm += legDistance;
         } else {
-          routeMap.set(key, { from, to, count: 1, distanceKm: legDistance });
+          routeMap.set(key, {
+            from,
+            to,
+            count: 1,
+            distanceKm: legDistance,
+            mode,
+          });
         }
       }
     }

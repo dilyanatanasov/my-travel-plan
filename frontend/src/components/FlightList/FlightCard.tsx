@@ -10,6 +10,12 @@ import {
 import { useUpdateFlightMutation } from '../../features/flights/flightsApi';
 import { useToast } from '../../components/Toast/ToastProvider';
 import { moveStop, loopStatus } from './stopChain';
+import {
+  journeyRouteLabel,
+  legEndpoints,
+  legMode,
+  TRAVEL_MODE_EMOJI,
+} from '../FlightMap/routeUtils';
 import StopPhotoControl from '../../features/flights/StopPhotoControl';
 
 interface FlightCardProps {
@@ -125,14 +131,7 @@ function FlightCard({
       showToast(message, { tone: 'error' });
     }
   };
-  const routeString = journey.legs
-    .map((leg, index) => {
-      if (index === 0) {
-        return `${leg.departureAirport.iataCode} → ${leg.arrivalAirport.iataCode}`;
-      }
-      return leg.arrivalAirport.iataCode;
-    })
-    .join(' → ');
+  const routeString = journeyRouteLabel(journey);
 
   const totalDistance = journey.legs.reduce(
     (sum, leg) => sum + (Number(leg.distanceKm) || 0),
@@ -508,7 +507,16 @@ function FlightCard({
               key={leg.id}
               className="flex items-center gap-1 text-xs text-ink-muted"
             >
-              <span className="font-mono">{leg.departureAirport.iataCode}</span>
+              {/* Land legs announce their vehicle; flights stay quiet -
+                  a plane on every row would be noise on a flight app. */}
+              {legMode(leg) !== 'flight' && (
+                <span aria-label={legMode(leg)}>
+                  {TRAVEL_MODE_EMOJI[legMode(leg)]}
+                </span>
+              )}
+              <span className="font-mono">
+                {legEndpoints(leg)?.departure.iataCode ?? '?'}
+              </span>
               <svg
                 className="w-3 h-3"
                 fill="none"
@@ -522,7 +530,9 @@ function FlightCard({
                   d="M17 8l4 4m0 0l-4 4m4-4H3"
                 />
               </svg>
-              <span className="font-mono">{leg.arrivalAirport.iataCode}</span>
+              <span className="font-mono">
+                {legEndpoints(leg)?.arrival.iataCode ?? '?'}
+              </span>
               <span className="text-ink-subtle">
                 ({Math.round(Number(leg.distanceKm) || 0)} km)
               </span>

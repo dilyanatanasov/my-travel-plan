@@ -2,19 +2,14 @@ import RouteBuilder from './RouteBuilder';
 import { useAddFlightMutation } from '../../features/flights/flightsApi';
 import { useToast } from '../Toast/ToastProvider';
 import { useMapFocus } from '../../features/map/MapFocusContext';
+import type { CreateFlightDto } from '../../types';
 
 function FlightForm() {
   const [addFlight, { isLoading }] = useAddFlightMutation();
   const { showToast } = useToast();
   const { focusJourney } = useMapFocus();
 
-  const handleSubmit = async (data: {
-    airportIds: number[];
-    journeyDate?: string;
-    datePrecision?: 'day' | 'month' | 'year';
-    isRoundTrip: boolean;
-    notes?: string;
-  }) => {
+  const handleSubmit = async (data: CreateFlightDto) => {
     try {
       const journey = await addFlight(data).unwrap();
       // A hop between same-city airports (NRT→HND) is a train, not a
@@ -39,7 +34,7 @@ function FlightForm() {
 
   return (
     <div>
-      <h2 className="text-sm font-medium text-ink mb-3">Add a flight</h2>
+      <h2 className="text-sm font-medium text-ink mb-3">Add a journey</h2>
       <RouteBuilder onSubmit={handleSubmit} isLoading={isLoading} />
     </div>
   );

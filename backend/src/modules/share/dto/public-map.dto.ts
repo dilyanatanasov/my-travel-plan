@@ -17,6 +17,7 @@ export interface PublicCountryDto {
 }
 
 export interface PublicAirportDto {
+  /** Marker label: IATA for airports; the city's name for land endpoints. */
   iataCode: string;
   city: string | null;
   latitude: number;
@@ -28,6 +29,8 @@ export interface PublicRouteDto {
   to: PublicAirportDto;
   count: number;
   distanceKm: number;
+  /** Absent means flight - older cached payloads predate land travel. */
+  mode?: 'flight' | 'train' | 'car' | 'bus' | 'ferry';
 }
 
 export interface PublicMapStatsDto {

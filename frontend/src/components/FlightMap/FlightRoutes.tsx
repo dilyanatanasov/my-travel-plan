@@ -46,9 +46,14 @@ function FlightRoutes({
         // Skip if projection fails
         if (!from || !to) return null;
 
+        // Land routes are straight dashed chords - things on the ground
+        // do not bow through the sky, and the dash is the overland
+        // signature everywhere (highlight, export video, shared map).
+        const isLand = (route.mode ?? 'flight') !== 'flight';
         const pathD = calculateArcPath(
           from as [number, number],
-          to as [number, number]
+          to as [number, number],
+          isLand ? 0 : 0.2
         );
         const baseStrokeWidth = getStrokeWidth(route.count, maxCount, sizeScale);
         const isHovered = hoveredRouteKey === route.key;
@@ -77,9 +82,15 @@ function FlightRoutes({
             <path
               d={pathD}
               fill="none"
+              data-travel-mode={route.mode ?? 'flight'}
               stroke={isHovered ? colors.routeHighlight : colors.route}
               strokeWidth={strokeWidth}
               strokeLinecap="round"
+              strokeDasharray={
+                isLand
+                  ? `${getZoomAdjustedSize(5, zoom)} ${getZoomAdjustedSize(4, zoom)}`
+                  : undefined
+              }
               strokeOpacity={faded ? 0.1 : isHovered ? 1 : 0.65}
               pointerEvents="none"
               style={{

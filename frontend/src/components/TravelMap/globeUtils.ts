@@ -1,6 +1,7 @@
 import { geoDistance, geoInterpolate } from 'd3-geo';
-import type { FlightJourney } from '../../types';
+import type { FlightJourney, TravelMode } from '../../types';
 import { legFlightSeconds, STOP_PAUSE_SECONDS } from './useJourneyReplay';
+import { legEndpoints, legMode } from '../FlightMap/routeUtils';
 
 /** d3 rotation, [lambda, phi]. The camera faces [-lambda, -phi]. */
 export type GlobeRotation = [number, number];
@@ -55,6 +56,8 @@ interface TimelineSegment {
   endS: number;
   /** End of the ground stop that follows (equals endS on the last leg). */
   pauseEndS: number;
+  /** The leg's vehicle - a mixed trip swaps glyphs at each stop. */
+  mode: TravelMode;
 }
 
 export interface JourneyTimeline {
@@ -83,9 +86,9 @@ export function buildJourneyTimeline(
 
   for (let i = 0; i < legs.length; i++) {
     const leg = legs[i];
-    const dep = leg.departureAirport;
-    const arr = leg.arrivalAirport;
-    if (!dep || !arr) continue;
+    const endpoints = legEndpoints(leg);
+    if (!endpoints) continue;
+    const { departure: dep, arrival: arr } = endpoints;
     // Postgres numerics arrive as strings; d3 wants numbers.
     const from: [number, number] = [Number(dep.longitude), Number(dep.latitude)];
     const to: [number, number] = [Number(arr.longitude), Number(arr.latitude)];
@@ -100,6 +103,7 @@ export function buildJourneyTimeline(
       startS: t,
       endS: t + flight,
       pauseEndS: t + flight + (isLast ? 0 : STOP_PAUSE_SECONDS),
+      mode: legMode(leg),
     });
     t = segments[segments.length - 1].pauseEndS;
     maxLegDeg = Math.max(maxLegDeg, geoDistance(from, to) * DEG);
@@ -130,6 +134,8 @@ export interface PlaneFrame {
   trail: [number, number][];
   /** True once the journey is complete and the plane is parked. */
   done: boolean;
+  /** The current leg's vehicle - the glyph the globe should draw. */
+  mode: TravelMode;
 }
 
 /** Points per leg for the contrail. Coarse is fine — geoPath resamples. */
@@ -163,15 +169,16 @@ export function samplePlaneFrame(
 
   for (const seg of segments) {
     if (t < seg.endS) {
-      // In flight on this leg.
+      // In flight on this leg. Grounded vehicles do not climb.
       const f = Math.max(0, (t - seg.startS) / (seg.endS - seg.startS));
       sampleArc(seg.interpolate, f, trail);
       return {
         position: seg.interpolate(f),
         ahead: seg.interpolate(Math.min(f + 0.01, 1.001)),
-        altitude: altitudeAt(f),
+        altitude: seg.mode === 'flight' ? altitudeAt(f) : 1,
         trail,
         done: false,
+        mode: seg.mode,
       };
     }
     sampleArc(seg.interpolate, 1, trail);
@@ -183,6 +190,7 @@ export function samplePlaneFrame(
         altitude: 1,
         trail,
         done: false,
+        mode: seg.mode,
       };
     }
   }
@@ -194,6 +202,7 @@ export function samplePlaneFrame(
     altitude: 1,
     trail,
     done: t >= timeline.totalS,
+    mode: last.mode,
   };
 }
 

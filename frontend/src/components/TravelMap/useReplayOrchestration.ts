@@ -3,6 +3,7 @@ import type { Alpha3 } from '../../types';
 import {
   aggregateRoutes,
   extractUniqueAirports,
+  legEndpoints,
   type AggregatedRoute,
 } from '../FlightMap/routeUtils';
 import type { CountryDisplayInfo } from './countryColors';
@@ -248,7 +249,7 @@ export function useReplayOrchestration(
     }
 
     // You are already standing in the origin when the journey begins.
-    const origin = isoOf(legs[0].departureAirport.countryIso);
+    const origin = isoOf(legEndpoints(legs[0])?.departure.countryIso ?? null);
     if (origin) reveal(origin);
 
     /*
@@ -257,7 +258,7 @@ export function useReplayOrchestration(
       origin and destination while the country in the middle stayed dark.
     */
     legs.forEach((leg, index) => {
-      const iso3 = isoOf(leg.arrivalAirport.countryIso);
+      const iso3 = isoOf(legEndpoints(leg)?.arrival.countryIso ?? null);
       if (!iso3) return;
       const at = arrivalMsAt(index);
       timers.push(window.setTimeout(() => reveal(iso3), at));

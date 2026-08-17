@@ -1,6 +1,7 @@
 import type { FlightJourney, FlightLeg, Airport } from '../../types';
 import type { FlightFilters, DistanceRange } from './filterTypes';
 import { getContinent, type Continent } from './continentUtils';
+import { legEndpoints } from './routeUtils';
 
 /**
  * Check if a leg matches the distance range filter
@@ -17,8 +18,10 @@ function matchesDistanceRange(distanceKm: number, range: DistanceRange): boolean
  * Check if a leg is domestic (same country) or international
  */
 function isDomesticFlight(leg: FlightLeg): boolean {
-  const depCountry = leg.departureAirport.countryIso;
-  const arrCountry = leg.arrivalAirport.countryIso;
+  const endpoints = legEndpoints(leg);
+  if (!endpoints) return false;
+  const depCountry = endpoints.departure.countryIso;
+  const arrCountry = endpoints.arrival.countryIso;
   return depCountry === arrCountry && depCountry !== null;
 }
 
@@ -27,9 +30,11 @@ function isDomesticFlight(leg: FlightLeg): boolean {
  */
 function matchesContinents(leg: FlightLeg, continents: Continent[]): boolean {
   if (continents.length === 0) return true;
+  const endpoints = legEndpoints(leg);
+  if (!endpoints) return false;
 
-  const depContinent = getContinent(leg.departureAirport.countryIso);
-  const arrContinent = getContinent(leg.arrivalAirport.countryIso);
+  const depContinent = getContinent(endpoints.departure.countryIso);
+  const arrContinent = getContinent(endpoints.arrival.countryIso);
 
   return continents.includes(depContinent) || continents.includes(arrContinent);
 }
@@ -42,10 +47,12 @@ function matchesAirport(
   originAirport: string | null,
   destinationAirport: string | null
 ): boolean {
-  if (originAirport && leg.departureAirport.iataCode !== originAirport) {
+  const endpoints = legEndpoints(leg);
+  if (!endpoints) return false;
+  if (originAirport && endpoints.departure.iataCode !== originAirport) {
     return false;
   }
-  if (destinationAirport && leg.arrivalAirport.iataCode !== destinationAirport) {
+  if (destinationAirport && endpoints.arrival.iataCode !== destinationAirport) {
     return false;
   }
   return true;
@@ -130,8 +137,10 @@ export function extractFilterOptions(flights: FlightJourney[]) {
     }
 
     journey.legs.forEach((leg) => {
-      originAirports.set(leg.departureAirport.iataCode, leg.departureAirport);
-      destinationAirports.set(leg.arrivalAirport.iataCode, leg.arrivalAirport);
+      const endpoints = legEndpoints(leg);
+      if (!endpoints) return;
+      originAirports.set(endpoints.departure.iataCode, endpoints.departure);
+      destinationAirports.set(endpoints.arrival.iataCode, endpoints.arrival);
     });
   });
 

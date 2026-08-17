@@ -84,12 +84,35 @@ export interface Airport {
   createdAt: string;
 }
 
+/** How a leg was travelled. Land modes connect cities, not airports. */
+export type TravelMode = 'flight' | 'train' | 'car' | 'bus' | 'ferry';
+
+/** A city endpoint for land legs - GeoNames-seeded world geography. */
+export interface CityRef {
+  id: number;
+  name: string;
+  countryIso: Alpha2;
+  latitude: number;
+  longitude: number;
+  population?: number;
+}
+
 // Flight types
 export interface FlightLeg {
   id: number;
   legOrder: number;
-  departureAirport: Airport;
-  arrivalAirport: Airport;
+  /** Absent on older payloads; treat as 'flight'. */
+  travelMode?: TravelMode;
+  /*
+    Each end is exactly one of airport or city (DB CHECK). All-flight
+    journeys - everything created before land travel - always carry both
+    airports, which is why most flight-only code paths can keep using
+    legEndpoints() from routeUtils instead of null-checking here.
+  */
+  departureAirport: Airport | null;
+  arrivalAirport: Airport | null;
+  departureCity?: CityRef | null;
+  arrivalCity?: CityRef | null;
   distanceKm: number;
 }
 
@@ -118,12 +141,23 @@ export interface FlightJourney {
   updatedAt: string;
 }
 
+/** One stop in a mixed-mode chain: exactly one of the two ids. */
+export interface TravelStop {
+  airportId?: number;
+  cityId?: number;
+}
+
 export interface CreateFlightDto {
   journeyDate?: string;
   datePrecision?: 'day' | 'month' | 'year';
   isRoundTrip?: boolean;
   notes?: string;
-  airportIds: number[]; // Chain of airport IDs: [VAR_id, IST_id, LIS_id]
+  /** All-flight chain of airport IDs: [VAR_id, IST_id, LIS_id]. */
+  airportIds?: number[];
+  /** Mixed-mode chain; wins over airportIds when present. */
+  stops?: TravelStop[];
+  /** One per hop, aligned with stops; omitted means all flights. */
+  modes?: TravelMode[];
 }
 
 export interface UpdateFlightDto {
@@ -133,6 +167,9 @@ export interface UpdateFlightDto {
   notes?: string;
   /** Full replacement airport chain; legs are rebuilt server-side. */
   airportIds?: number[];
+  /** Mixed-mode replacement chain, same shape as create. */
+  stops?: TravelStop[];
+  modes?: TravelMode[];
 }
 
 // Statistics types
@@ -178,6 +215,8 @@ export interface FlightSummary {
   totalFlights: number;
   totalJourneys: number;
   totalDistanceKm: number;
+  /** Land km - never mixed into "distance flown" (owner decision). */
+  overlandDistanceKm?: number;
 }
 
 export interface FlightStats {
@@ -220,6 +259,11 @@ export interface FlightStats {
   moonDistancePercent: number;
   estimatedFlightHours: number;
   walkingYears: number;
+
+  // Land travel - the overland tally, separate by decision.
+  overlandDistanceKm?: number;
+  overlandLegs?: number;
+  overlandByMode?: { mode: TravelMode; legs: number; distanceKm: number }[];
 }
 
 // Flight Search Types

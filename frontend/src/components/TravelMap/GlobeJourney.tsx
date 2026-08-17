@@ -2,7 +2,7 @@ import { memo } from 'react';
 import { useMapContext } from 'react-simple-maps';
 import type { LineString } from 'geojson';
 import type { FlightJourney } from '../../types';
-import PlaneGlyph from '../FlightMap/PlaneGlyph';
+import VehicleGlyph from '../FlightMap/VehicleGlyph';
 import { useMapColors } from '../../theme/mapColors';
 import { cameraCenter, isOnVisibleSide, type PlaneFrame } from './globeUtils';
 
@@ -123,7 +123,8 @@ function GlobeJourney({ journey, plane, sizeScale = 1 }: GlobeJourneyProps) {
 
       {pos && (
         <g transform={`translate(${pos[0]}, ${pos[1]}) rotate(${bearing})`}>
-          <PlaneGlyph
+          <VehicleGlyph
+            mode={plane.mode}
             transform={`scale(${planeScale}) translate(-12 -12)`}
             fill={colors.routeHighlight}
             outline={colors.planeOutline}

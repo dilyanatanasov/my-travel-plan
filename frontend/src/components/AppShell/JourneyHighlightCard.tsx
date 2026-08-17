@@ -1,4 +1,5 @@
 import type { FlightJourney } from '../../types';
+import { journeyRouteLabel } from '../FlightMap/routeUtils';
 import { useMapFocus } from '../../features/map/MapFocusContext';
 
 interface JourneyHighlightCardProps {
@@ -10,13 +11,8 @@ interface JourneyHighlightCardProps {
   isUpcoming: boolean;
 }
 
-/** SOF → AMS → KEF, from the leg chain. */
 function routeLabel(journey: FlightJourney): string {
-  const legs = [...journey.legs].sort((a, b) => a.legOrder - b.legOrder);
-  if (legs.length === 0) return 'No route';
-  const stops = [legs[0].departureAirport.iataCode];
-  for (const leg of legs) stops.push(leg.arrivalAirport.iataCode);
-  return stops.join(' → ');
+  return journeyRouteLabel(journey) || 'No route';
 }
 
 function relativeLabel(days: number | null, isUpcoming: boolean): string | null {

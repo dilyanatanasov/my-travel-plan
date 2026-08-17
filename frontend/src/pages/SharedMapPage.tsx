@@ -52,12 +52,14 @@ function SharedMapPage() {
   const routes = useMemo<AggregatedRoute[]>(
     () =>
       (data?.routes ?? []).map((route) => ({
-        key: `${route.from.iataCode}-${route.to.iataCode}`,
+        key: `${route.from.iataCode}-${route.to.iataCode}|${route.mode ?? 'flight'}`,
         departure: route.from as unknown as Airport,
         arrival: route.to as unknown as Airport,
         count: route.count,
         totalDistance: route.distanceKm,
         flights: [],
+        // Older cached payloads predate land travel; absent means flight.
+        mode: route.mode ?? 'flight',
       })),
     [data]
   );

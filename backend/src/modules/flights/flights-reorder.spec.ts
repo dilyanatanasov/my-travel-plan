@@ -47,6 +47,7 @@ describe('FlightsService.reorder', () => {
       {} as never,
       {} as never,
       {} as never,
+      {} as never,
     );
   };
 

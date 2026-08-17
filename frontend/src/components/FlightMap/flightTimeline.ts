@@ -24,6 +24,8 @@ export interface TimelineLeg {
   screenLen: number;
   /** Great-circle distance, used for per-leg speed in replay mode. */
   distanceKm: number;
+  /** Land leg (train/car/bus): no climb, the vehicle stays ground-sized. */
+  grounded?: boolean;
 }
 
 export interface FlightTimeline {
@@ -33,6 +35,11 @@ export interface FlightTimeline {
   altitudeValues: string;
   altitudeKeyTimes: string;
   contrailValues: string;
+  /**
+   * Each leg's travel window as fractions of totalSeconds (pauses
+   * excluded) - what the mixed-mode glyph swap keys its visibility on.
+   */
+  legWindows: { start: number; end: number }[];
 }
 
 const CRUISE_SCALE = '1.9';
@@ -57,11 +64,19 @@ export function buildFlightTimeline(
   const keyTimes: string[] = ['0'];
   const altitudeValuesArr: string[] = ['1'];
   const altitudeKeyTimesArr: string[] = ['0'];
+  const legWindows: { start: number; end: number }[] = [];
   let t = 0;
   let len = 0;
   legs.forEach((d, i) => {
     const legT = legSeconds[i];
-    altitudeValuesArr.push(CRUISE_SCALE, CRUISE_SCALE, '1');
+    legWindows.push({
+      start: Number((t / totalSeconds).toFixed(4)),
+      end: Number(((t + legT) / totalSeconds).toFixed(4)),
+    });
+    // A train does not climb: grounded legs hold scale 1 through the
+    // same keyTimes so the lists stay parallel.
+    const cruise = d.grounded ? '1' : CRUISE_SCALE;
+    altitudeValuesArr.push(cruise, cruise, '1');
     altitudeKeyTimesArr.push(
       ((t + 0.3 * legT) / totalSeconds).toFixed(4),
       ((t + 0.7 * legT) / totalSeconds).toFixed(4),
@@ -91,5 +106,6 @@ export function buildFlightTimeline(
     altitudeValues: altitudeValuesArr.join(';'),
     altitudeKeyTimes: altitudeKeyTimesArr.join(';'),
     contrailValues: keyPoints.map((p) => (1 - Number(p)).toFixed(4)).join(';'),
+    legWindows,
   };
 }

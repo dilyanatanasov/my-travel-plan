@@ -18,6 +18,7 @@ import { PriceObservation } from './entities/price-observation.entity';
 import { ApiSpend } from './entities/api-spend.entity';
 import { TripWatch } from './entities/trip-watch.entity';
 import { Airport } from '../airports/entities/airport.entity';
+import { City } from '../cities/entities/city.entity';
 import { VisitsModule } from '../visits/visits.module';
 import { PushModule } from '../push/push.module';
 import { MailModule } from '../mail/mail.module';
@@ -43,6 +44,7 @@ import { WatchesService } from './services/watches.service';
       ApiSpend,
       TripWatch,
       Airport,
+      City,
     ]),
     VisitsModule,
     PushModule,

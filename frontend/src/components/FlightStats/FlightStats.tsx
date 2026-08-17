@@ -4,6 +4,7 @@ import {
   useGetFlightStatsQuery,
 } from '../../features/flights/flightsApi';
 import { computeTravelRecords } from '../../features/stats/records';
+import { TRAVEL_MODE_EMOJI } from '../FlightMap/routeUtils';
 import YearBarChart from './YearBarChart';
 import StatsCard from './StatsCard';
 
@@ -104,9 +105,13 @@ function FlightStats() {
           }
         />
         <StatsCard
-          title="Distance Traveled"
+          title="Distance Flown"
           value={`${formatNumber(Math.round(stats.totalDistanceKm))} km`}
-          subtitle={`${stats.earthCircumferences.toFixed(1)}× around Earth`}
+          subtitle={
+            stats.overlandDistanceKm && stats.overlandDistanceKm > 0
+              ? `+ ${formatNumber(Math.round(stats.overlandDistanceKm))} km overland`
+              : `${stats.earthCircumferences.toFixed(1)}× around Earth`
+          }
           color="green"
           icon={
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -157,6 +162,27 @@ function FlightStats() {
           </div>
         </div>
       </div>
+
+      {/* Overland: the ground tally, deliberately separate from every
+          flight number - a train ride must never inflate "distance flown". */}
+      {stats.overlandByMode && stats.overlandByMode.length > 0 && (
+        <div className="bg-surface rounded-xl border border-line p-4">
+          <h4 className="text-sm text-ink-muted mb-2">Overland</h4>
+          <div className="flex flex-wrap gap-x-6 gap-y-2">
+            {stats.overlandByMode.map((row) => (
+              <div key={row.mode} className="flex items-baseline gap-2">
+                <span aria-hidden="true">{TRAVEL_MODE_EMOJI[row.mode]}</span>
+                <span className="font-semibold text-ink tabular-nums">
+                  {formatNumber(Math.round(row.distanceKm))} km
+                </span>
+                <span className="text-sm text-ink-muted">
+                  {row.legs} {row.legs === 1 ? 'trip' : 'trips'} by {row.mode}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <YearBarChart byYear={stats.byYear} strongestYear={stats.strongestYear} />
 

@@ -1,50 +1,100 @@
 import { useState } from 'react';
 import AirportSearch from '../AirportSearch';
-import type { Airport } from '../../types';
+import CitySearch from '../CitySearch/CitySearch';
+import type { Airport, CityRef, CreateFlightDto, TravelMode } from '../../types';
+import { TRAVEL_MODE_EMOJI } from '../FlightMap/routeUtils';
 import { MONTH_NAMES } from '../../utils/journeyDate';
 
 interface RouteBuilderProps {
-  onSubmit: (data: {
-    airportIds: number[];
-    journeyDate?: string;
-    datePrecision?: 'day' | 'month' | 'year';
-    isRoundTrip: boolean;
-    notes?: string;
-  }) => void;
+  onSubmit: (data: CreateFlightDto) => void;
   isLoading?: boolean;
 }
 
+/*
+  Land travel (2026-08-17): a journey is a chain of stops - airports or
+  cities - with a travel mode per hop. The default walk-through is
+  identical to the old flight-only form (airport stops, plane hops); the
+  mode chips between stops unlock "Varna ✈ Geneva 🚆 Basel 🚗 Colmar" as
+  one journey.
+*/
+interface StopState {
+  kind: 'airport' | 'city';
+  airport: Airport | null;
+  city: CityRef | null;
+}
+
+const emptyStop = (): StopState => ({
+  kind: 'airport',
+  airport: null,
+  city: null,
+});
+
+/** The modes the UI offers; ferry is schema-ready but not surfaced yet. */
+const HOP_MODES: TravelMode[] = ['flight', 'train', 'car', 'bus'];
+
+const MODE_LABEL: Record<TravelMode, string> = {
+  flight: 'Flight',
+  train: 'Train',
+  car: 'Car',
+  bus: 'Bus',
+  ferry: 'Ferry',
+};
+
+function stopLabel(stop: StopState): string | null {
+  if (stop.kind === 'airport') return stop.airport?.iataCode ?? null;
+  return stop.city?.name ?? null;
+}
+
+function stopFilled(stop: StopState): boolean {
+  return stop.kind === 'airport' ? stop.airport !== null : stop.city !== null;
+}
+
 function RouteBuilder({ onSubmit, isLoading }: RouteBuilderProps) {
-  const [airports, setAirports] = useState<(Airport | null)[]>([null, null]);
+  const [stops, setStops] = useState<StopState[]>([emptyStop(), emptyStop()]);
+  const [modes, setModes] = useState<TravelMode[]>(['flight']);
   const [dateYear, setDateYear] = useState('');
   const [dateMonth, setDateMonth] = useState('');
   const [dateDay, setDateDay] = useState('');
   const [isRoundTrip, setIsRoundTrip] = useState(false);
   const [notes, setNotes] = useState('');
 
-  const handleAirportChange = (index: number, airport: Airport | null) => {
-    const newAirports = [...airports];
-    newAirports[index] = airport;
-    setAirports(newAirports);
+  const setStop = (index: number, patch: Partial<StopState>) => {
+    setStops((current) =>
+      current.map((stop, i) => (i === index ? { ...stop, ...patch } : stop)),
+    );
+  };
+
+  const setMode = (index: number, mode: TravelMode) => {
+    setModes((current) => current.map((m, i) => (i === index ? mode : m)));
   };
 
   const addLeg = () => {
-    setAirports([...airports, null]);
+    setStops((current) => [...current, emptyStop()]);
+    setModes((current) => [...current, 'flight']);
   };
 
   const removeLeg = (index: number) => {
-    if (airports.length <= 2) return;
-    const newAirports = airports.filter((_, i) => i !== index);
-    setAirports(newAirports);
+    if (stops.length <= 2) return;
+    setStops((current) => current.filter((_, i) => i !== index));
+    // Removing stop i removes the hop before it (or the first hop for i=0),
+    // keeping modes exactly one shorter than stops.
+    const modeIndex = Math.max(index - 1, 0);
+    setModes((current) => current.filter((_, i) => i !== modeIndex));
   };
+
+  const allFilled = stops.every(stopFilled);
+  // A plane cannot land in a city centre: flight hops need airports.
+  const flightHopViolation = modes.some(
+    (mode, i) =>
+      mode === 'flight' &&
+      (stops[i]?.kind !== 'airport' || stops[i + 1]?.kind !== 'airport'),
+  );
+  const isValid = allFilled && stops.length >= 2 && !flightHopViolation;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const validAirports = airports.filter((a): a is Airport => a !== null);
-    if (validAirports.length < 2) return;
+    if (!isValid) return;
 
-    // The date is stored as the first day of the asserted period; precision
-    // records how much of it the user actually claimed.
     const year = dateYear.trim();
     const journeyDate = year
       ? `${year.padStart(4, '0')}-${dateMonth || '01'}-${dateDay || '01'}`
@@ -57,16 +107,26 @@ function RouteBuilder({ onSubmit, isLoading }: RouteBuilderProps) {
           : ('year' as const)
       : undefined;
 
-    onSubmit({
-      airportIds: validAirports.map((a) => a.id),
-      journeyDate,
-      datePrecision,
-      isRoundTrip,
-      notes: notes || undefined,
-    });
+    const base = { journeyDate, datePrecision, isRoundTrip, notes: notes || undefined };
+    const allFlight = modes.every((mode) => mode === 'flight');
+    const allAirports = stops.every((stop) => stop.kind === 'airport');
+    if (allFlight && allAirports) {
+      // The legacy shape keeps the server's ground-transfer typo guard.
+      onSubmit({ ...base, airportIds: stops.map((s) => s.airport!.id) });
+    } else {
+      onSubmit({
+        ...base,
+        stops: stops.map((stop) =>
+          stop.kind === 'airport'
+            ? { airportId: stop.airport!.id }
+            : { cityId: stop.city!.id },
+        ),
+        modes,
+      });
+    }
 
-    // Reset form
-    setAirports([null, null]);
+    setStops([emptyStop(), emptyStop()]);
+    setModes(['flight']);
     setDateYear('');
     setDateMonth('');
     setDateDay('');
@@ -74,59 +134,122 @@ function RouteBuilder({ onSubmit, isLoading }: RouteBuilderProps) {
     setNotes('');
   };
 
-  const validAirports = airports.filter((a): a is Airport => a !== null);
-  const isValid = validAirports.length >= 2;
-
-  // Only exclude the previous airport to prevent consecutive duplicates (VAR → VAR)
-  // but allow returning to the same airport later (VAR → SOF → VAR)
-  const getExcludeIds = (index: number): number[] => {
-    const prevAirport = index > 0 ? airports[index - 1] : null;
-    return prevAirport ? [prevAirport.id] : [];
+  // Only exclude the previous stop's id to prevent consecutive duplicates
+  // (VAR → VAR) while allowing a return later (VAR → SOF → VAR).
+  const excludeIdsFor = (index: number, kind: 'airport' | 'city'): number[] => {
+    const prev = index > 0 ? stops[index - 1] : null;
+    if (!prev || prev.kind !== kind) return [];
+    const id = kind === 'airport' ? prev.airport?.id : prev.city?.id;
+    return id != null ? [id] : [];
   };
 
-  // Build route preview
-  const routePreview = validAirports.map((a) => a.iataCode).join(' → ');
-  const returnPreview = isRoundTrip && validAirports.length >= 2
-    ? [...validAirports].reverse().map((a) => a.iataCode).join(' → ')
-    : null;
+  const labels = stops.map(stopLabel);
+  const routePreview = labels.every(Boolean)
+    ? labels
+        .map((label, i) =>
+          i === 0 ? label : `${TRAVEL_MODE_EMOJI[modes[i - 1]]} ${label}`,
+        )
+        .join(' ')
+    : labels.filter(Boolean).join(' → ');
+  const returnPreview =
+    isRoundTrip && labels.every(Boolean) && labels.length >= 2
+      ? [...labels]
+          .reverse()
+          .map((label, i, arr) =>
+            i === 0
+              ? label
+              : `${TRAVEL_MODE_EMOJI[modes[arr.length - 1 - i]]} ${label}`,
+          )
+          .join(' ')
+      : null;
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="space-y-3">
-        {airports.map((airport, index) => (
-          <div key={index} className="flex items-center gap-2">
-            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-brand-100 text-brand-text flex items-center justify-center text-sm font-medium">
-              {index + 1}
-            </div>
-            <div className="flex-1">
-              <AirportSearch
-                value={airport}
-                onChange={(a) => handleAirportChange(index, a)}
-                placeholder={index === 0 ? 'Start from...' : `Then to...`}
-                excludeIds={getExcludeIds(index)}
-              />
-            </div>
-            {airports.length > 2 && (
+      <div className="space-y-2">
+        {stops.map((stop, index) => (
+          <div key={index}>
+            {/* The hop's mode, between its two stops. */}
+            {index > 0 && (
+              <div className="flex items-center gap-1 ml-10 mb-2">
+                {HOP_MODES.map((mode) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    aria-pressed={modes[index - 1] === mode}
+                    onClick={() => setMode(index - 1, mode)}
+                    className={`min-h-8 px-2.5 rounded-full text-xs font-medium transition-colors ${
+                      modes[index - 1] === mode
+                        ? 'bg-brand-600 text-white'
+                        : 'bg-surface-sunken text-ink-muted hover:text-ink'
+                    }`}
+                  >
+                    {TRAVEL_MODE_EMOJI[mode]} {MODE_LABEL[mode]}
+                  </button>
+                ))}
+              </div>
+            )}
+            <div className="flex items-center gap-2">
+              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-brand-100 text-brand-text flex items-center justify-center text-sm font-medium">
+                {index + 1}
+              </div>
+              <div className="flex-1">
+                {stop.kind === 'airport' ? (
+                  <AirportSearch
+                    value={stop.airport}
+                    onChange={(airport) => setStop(index, { airport })}
+                    placeholder={index === 0 ? 'Start from...' : 'Then to...'}
+                    excludeIds={excludeIdsFor(index, 'airport')}
+                  />
+                ) : (
+                  <CitySearch
+                    value={stop.city}
+                    onChange={(city) => setStop(index, { city })}
+                    placeholder={index === 0 ? 'Start from...' : 'Then to...'}
+                    excludeIds={excludeIdsFor(index, 'city')}
+                  />
+                )}
+              </div>
+              {/* Airport or city, per stop: a train can leave from either. */}
               <button
                 type="button"
-                onClick={() => removeLeg(index)}
-                className="flex-shrink-0 p-2 text-red-500 hover:bg-danger-soft rounded-lg"
+                onClick={() =>
+                  setStop(index, {
+                    kind: stop.kind === 'airport' ? 'city' : 'airport',
+                    airport: null,
+                    city: null,
+                  })
+                }
+                title={
+                  stop.kind === 'airport'
+                    ? 'This stop is an airport - switch to a city'
+                    : 'This stop is a city - switch to an airport'
+                }
+                className="flex-shrink-0 min-h-8 px-2 rounded-lg text-sm bg-surface-sunken text-ink-muted hover:text-ink"
               >
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                  />
-                </svg>
+                {stop.kind === 'airport' ? '✈️' : '🏙️'}
               </button>
-            )}
+              {stops.length > 2 && (
+                <button
+                  type="button"
+                  onClick={() => removeLeg(index)}
+                  className="flex-shrink-0 p-2 text-red-500 hover:bg-danger-soft rounded-lg"
+                >
+                  <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                    />
+                  </svg>
+                </button>
+              )}
+            </div>
           </div>
         ))}
       </div>
@@ -151,6 +274,13 @@ function RouteBuilder({ onSubmit, isLoading }: RouteBuilderProps) {
         </svg>
         Add stop
       </button>
+
+      {flightHopViolation && (
+        <p className="text-sm text-danger">
+          A flight needs airports at both ends - pick the nearest airport or
+          change that hop to train, car or bus.
+        </p>
+      )}
 
       {routePreview && (
         <div className="p-3 bg-surface-sunken rounded-lg">
@@ -272,7 +402,7 @@ function RouteBuilder({ onSubmit, isLoading }: RouteBuilderProps) {
             : 'bg-surface-sunken text-ink-muted cursor-not-allowed'
         }`}
       >
-        {isLoading ? 'Adding...' : 'Add Flight'}
+        {isLoading ? 'Adding...' : 'Add journey'}
       </button>
     </form>
   );
