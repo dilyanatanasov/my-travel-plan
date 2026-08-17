@@ -281,8 +281,10 @@ function DailyPage() {
             <h1 className="font-display font-normal text-2xl text-ink">
               Daily country
             </h1>
+            {/* "in 6" read as "6 what?" (friend feedback 2026-08-17) —
+                say tries, out loud. */}
             <p className="text-xs text-ink-subtle">
-              #{number} · guess the shape in {MAX_GUESSES}
+              #{number} · guess the country in {MAX_GUESSES} tries
               {shownStats.streak > 0 && ` · streak ${shownStats.streak}`}
             </p>
           </div>
@@ -334,7 +336,15 @@ function DailyPage() {
         </div>
 
         {/* Guesses so far. */}
-        <ul className="mt-4 space-y-1.5">
+        {state.guesses.length > 0 && (
+          /* The squares/arrow read as decoration without a key (friend
+             feedback 2026-08-17): one quiet line says the whole language. */
+          <p className="mt-4 mb-1.5 text-[11px] text-ink-subtle">
+            More green squares = a closer guess · the km and arrow point
+            toward the answer
+          </p>
+        )}
+        <ul className="space-y-1.5">
           {state.guesses.map((guess, index) => (
             <li
               key={index}

@@ -106,7 +106,19 @@ export class FlightsStatsService {
   async getSummary(
     userId: number,
   ): Promise<{ totalFlights: number; totalJourneys: number; totalDistanceKm: number }> {
-    const journeyCount = await this.journeyRepository.count({ where: { userId } });
+    /*
+      Future-dated journeys are plans, not history (friend feedback,
+      2026-08-17): they stay visible in the list but must not inflate the
+      stats — "distance flown" cannot include a flight that hasn't flown.
+      Undated journeys keep counting; nobody logs an undated future trip.
+    */
+    const journeyCount = await this.journeyRepository
+      .createQueryBuilder('journey')
+      .where('journey.user_id = :userId', { userId })
+      .andWhere(
+        '(journey.journey_date IS NULL OR journey.journey_date <= CURRENT_DATE)',
+      )
+      .getCount();
 
     // Legs (i.e. individual flights) and their distance, scoped to this user's
     // journeys via the join rather than loading the journeys themselves.
@@ -114,6 +126,9 @@ export class FlightsStatsService {
       .createQueryBuilder('leg')
       .innerJoin('leg.journey', 'journey')
       .where('journey.user_id = :userId', { userId })
+      .andWhere(
+        '(journey.journey_date IS NULL OR journey.journey_date <= CURRENT_DATE)',
+      )
       .select('COUNT(leg.id)', 'flights')
       .addSelect('COALESCE(SUM(leg.distance_km), 0)', 'distance')
       .getRawOne<{ flights: string; distance: string }>();
@@ -126,11 +141,19 @@ export class FlightsStatsService {
   }
 
   async getStats(userId: number): Promise<FlightStats> {
-    // Get this user's journeys with legs
-    const journeys = await this.journeyRepository.find({
-      where: { userId },
-      relations: ['legs', 'legs.departureAirport', 'legs.arrivalAirport'],
-    });
+    // Get this user's journeys with legs — history only, same rule as the
+    // summary: a future-dated journey is a plan and stays out of stats.
+    const today = new Date().toISOString().slice(0, 10);
+    const journeys = (
+      await this.journeyRepository.find({
+        where: { userId },
+        relations: ['legs', 'legs.departureAirport', 'legs.arrivalAirport'],
+      })
+    ).filter(
+      (journey) =>
+        !journey.journeyDate ||
+        new Date(journey.journeyDate).toISOString().slice(0, 10) <= today,
+    );
 
     // Flatten all legs
     const allLegs = journeys.flatMap((j) => j.legs);

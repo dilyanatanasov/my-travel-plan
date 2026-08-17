@@ -19,12 +19,15 @@ export interface TravelRecords {
  */
 export function computeTravelRecords(
   journeys: FlightJourney[],
+  today = new Date().toISOString().slice(0, 10),
 ): TravelRecords {
   const firstSeenYear = new Map<string, number>();
   const continentsByYear = new Map<number, Set<string>>();
 
   for (const journey of journeys) {
     if (!journey.journeyDate) continue;
+    // A future-dated journey is a plan; records describe what happened.
+    if (journey.journeyDate.slice(0, 10) > today) continue;
     const year = Number(String(journey.journeyDate).slice(0, 4));
     if (!Number.isFinite(year)) continue;
 

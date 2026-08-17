@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { useGetFlightsQuery } from '../../features/flights/flightsApi';
 import JourneyHighlightCard from './JourneyHighlightCard';
 import RegionProgress from './RegionProgress';
@@ -102,11 +103,25 @@ function OverviewPanel({
           label={`Of the world (${tripCount}/${totalCountries})`}
           tone="bg-brand-500/15 text-ink"
         />
-        <StatTile
-          value={homeCountry}
-          label="Home country"
-          tone="bg-surface-sunken text-ink"
-        />
+        {/* "Not set" was a dead end (friend feedback, 2026-08-17): the tile
+            that names the gap now opens the place that fixes it. */}
+        {homeCountry === 'Not set' ? (
+          <Link
+            to="/settings"
+            className="rounded-xl p-3 bg-surface-sunken text-ink hover:bg-brand-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 transition-colors"
+          >
+            <div className="font-display font-normal text-2xl">Not set</div>
+            <div className="text-xs text-brand-text mt-0.5 font-medium">
+              Home country — set it →
+            </div>
+          </Link>
+        ) : (
+          <StatTile
+            value={homeCountry}
+            label="Home country"
+            tone="bg-surface-sunken text-ink"
+          />
+        )}
       </div>
 
       {next && (
