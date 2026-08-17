@@ -40,6 +40,7 @@ function TripShareDialog({
   const [error, setError] = useState<string | null>(null);
   const [retryToken, setRetryToken] = useState(0);
   const [videoProgress, setVideoProgress] = useState<number | null>(null);
+  const [videoFile, setVideoFile] = useState<File | null>(null);
   const blobRef = useRef<Blob | null>(null);
   const canExportVideo = useMemo(() => isVideoExportSupported(), []);
 
@@ -70,6 +71,7 @@ function TripShareDialog({
 
     const render = async () => {
       setError(null);
+      setVideoFile(null);
       const svg = await findExportSvg(TRIP_SVG_ID, () => cancelled);
       if (cancelled) return;
       if (!svg) {
@@ -142,12 +144,14 @@ function TripShareDialog({
   }, [filename, handleDownload, routeCodes, showToast]);
 
   /*
-    The replay, portable (owner ask, 2026-08-17): the plane flies this
-    journey's legs in order INSIDE the boarding pass - the still and the
-    video are the same passport, one of them just moves. MP4 where the
-    browser can, which is what stories accept.
+    The replay, portable, in two taps ON PURPOSE (owner report: "still
+    downloaded, have to post separately"): browsers only open the share
+    sheet within a moment of a real tap, and the 4-10s render burned that
+    moment - so navigator.share was silently rejected and the flow fell
+    to download every time. Tap one records; tap two is fresh, so the
+    social picker actually opens, with the finished MP4 attached.
   */
-  const handleVideo = useCallback(async () => {
+  const handleCreateVideo = useCallback(async () => {
     const svg = await findExportSvg(TRIP_SVG_ID, () => false);
     if (!svg) {
       showToast('The map is still loading - try again in a moment', {
@@ -178,23 +182,7 @@ function TripShareDialog({
       track('share_render', { style: 'trip-video' });
       const extension = videoFileExtension(blob.type);
       const videoName = filename.replace(/\.png$/, `.${extension}`);
-      const file = new File([blob], videoName, { type: blob.type });
-      if (canShareFiles(file)) {
-        try {
-          await navigator.share({
-            files: [file],
-            title: 'myContrail trip',
-            text: routeCodes.join(' → '),
-          });
-          return;
-        } catch (shareError) {
-          if ((shareError as Error)?.name === 'AbortError') return;
-        }
-      }
-      downloadBlob(blob, videoName);
-      showToast('Video saved - post it from your gallery', {
-        durationMs: 6000,
-      });
+      setVideoFile(new File([blob], videoName, { type: blob.type }));
     } catch (videoError) {
       showToast(
         videoError instanceof Error
@@ -206,6 +194,24 @@ function TripShareDialog({
       setVideoProgress(null);
     }
   }, [legs, journey, routeCodes, filename, showToast, user?.displayName]);
+
+  const handleShareVideo = useCallback(async () => {
+    if (!videoFile) return;
+    if (canShareFiles(videoFile)) {
+      try {
+        await navigator.share({
+          files: [videoFile],
+          title: 'myContrail trip',
+          text: routeCodes.join(' → '),
+        });
+        return;
+      } catch (shareError) {
+        if ((shareError as Error)?.name === 'AbortError') return;
+      }
+    }
+    downloadBlob(videoFile, videoFile.name);
+    showToast('Video saved - post it from your gallery', { durationMs: 6000 });
+  }, [videoFile, routeCodes, showToast]);
 
   return (
     <div
@@ -273,18 +279,38 @@ function TripShareDialog({
             Save image
           </Button>
         </div>
-        {canExportVideo && (
+        {canExportVideo && !videoFile && (
           <Button
             variant="ghost"
             fullWidth
             className="rounded-xl"
-            onClick={handleVideo}
+            onClick={handleCreateVideo}
             disabled={!previewUrl || videoProgress !== null}
           >
             {videoProgress !== null
               ? `Recording flight… ${Math.round(videoProgress * 100)}%`
-              : 'Share as video ✈️'}
+              : 'Create video ✈️'}
           </Button>
+        )}
+        {videoFile && (
+          <div className="flex gap-2">
+            <Button
+              className="flex-1 rounded-xl font-semibold"
+              onClick={handleShareVideo}
+            >
+              Share video
+            </Button>
+            <Button
+              variant="outline"
+              className="flex-1 rounded-xl font-semibold"
+              onClick={() => {
+                downloadBlob(videoFile, videoFile.name);
+                showToast('Video saved', { tone: 'success' });
+              }}
+            >
+              Save video
+            </Button>
+          </div>
         )}
       </div>
     </div>

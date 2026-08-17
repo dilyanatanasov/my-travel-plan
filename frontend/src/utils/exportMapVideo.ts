@@ -100,11 +100,18 @@ function sampleRoutes(svg: SVGSVGElement): RouteSamples[] {
 function serializeWithoutRoutes(
   svg: SVGSVGElement,
   width: number,
-  height: number
+  height: number,
+  keepAirports = false
 ): string {
   const clone = svg.cloneNode(true) as SVGSVGElement;
   // The backdrop is the map without its routes; the animation draws those.
-  clone.querySelectorAll('.flight-routes, .airport-markers').forEach((n) => n.remove());
+  // The trip video keeps its airports - the dots and city names are where
+  // the plane is going, and stripping them left an anonymous map.
+  clone
+    .querySelectorAll(
+      keepAirports ? '.flight-routes' : '.flight-routes, .airport-markers'
+    )
+    .forEach((n) => n.remove());
   clone.setAttribute('width', String(width));
   clone.setAttribute('height', String(height));
   clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
@@ -324,7 +331,7 @@ export async function renderTripVideo(
   const routes = sampleRoutes(svg);
   const backdrop = await loadImage(
     `data:image/svg+xml;charset=utf-8,${encodeURIComponent(
-      serializeWithoutRoutes(svg, width, height)
+      serializeWithoutRoutes(svg, width, height, true)
     )}`
   );
   const { canvas: template, placement } = await renderTripCardTemplate(
@@ -390,14 +397,28 @@ export async function renderTripVideo(
         const local = t * cardRoutes.length - index;
         if (local <= 0) return;
         const progress = easeInOut(Math.min(local, 1));
-        const lastIndex = Math.floor(progress * (route.points.length - 1));
-        if (lastIndex < 1) return;
+        const points = route.points;
+        const n = points.length;
+
+        /*
+          Fractional position, not Math.floor: snapping the head to sampled
+          points made the plane hop point-to-point ("not so smooth"). The
+          head lerps between samples; the trail follows it exactly.
+        */
+        const exact = progress * (n - 1);
+        const i0 = Math.min(Math.floor(exact), n - 2);
+        const frac = exact - i0;
+        const head = {
+          x: points[i0].x + (points[i0 + 1].x - points[i0].x) * frac,
+          y: points[i0].y + (points[i0 + 1].y - points[i0].y) * frac,
+        };
 
         ctx.beginPath();
-        ctx.moveTo(route.points[0].x, route.points[0].y);
-        for (let i = 1; i <= lastIndex; i++) {
-          ctx.lineTo(route.points[i].x, route.points[i].y);
+        ctx.moveTo(points[0].x, points[0].y);
+        for (let i = 1; i <= i0; i++) {
+          ctx.lineTo(points[i].x, points[i].y);
         }
+        ctx.lineTo(head.x, head.y);
         ctx.strokeStyle = TICKET_TRAIL;
         ctx.lineWidth = 3;
         ctx.lineCap = 'round';
@@ -406,13 +427,26 @@ export async function renderTripVideo(
         ctx.globalAlpha = 1;
 
         if (progress < 1) {
-          const head = route.points[lastIndex];
-          const prev = route.points[Math.max(lastIndex - 1, 0)];
-          const angle = Math.atan2(head.y - prev.y, head.x - prev.x);
+          // Heading over a small window, not one sample pair - single-pair
+          // angles twitched on dense arcs.
+          const ahead = points[Math.min(i0 + 2, n - 1)];
+          const behind = points[Math.max(i0 - 1, 0)];
+          const angle = Math.atan2(ahead.y - behind.y, ahead.x - behind.x);
+
+          // A soft pulse under the plane: "a bit hard to track" wanted a
+          // beacon, not a bigger glyph alone.
+          const pulse = 14 + 4 * Math.sin(elapsed / 140);
+          ctx.beginPath();
+          ctx.arc(head.x, head.y, pulse, 0, Math.PI * 2);
+          ctx.fillStyle = TICKET_PLANE;
+          ctx.globalAlpha = 0.18;
+          ctx.fill();
+          ctx.globalAlpha = 1;
+
           ctx.save();
           ctx.translate(head.x, head.y);
           ctx.rotate(angle);
-          ctx.scale(1.3, 1.3);
+          ctx.scale(1.8, 1.8);
           ctx.translate(-12, -12);
           ctx.fillStyle = TICKET_PLANE;
           ctx.strokeStyle = '#f8f0e1';
