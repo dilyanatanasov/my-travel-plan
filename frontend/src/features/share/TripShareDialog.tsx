@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import type { FlightJourney } from '../../types';
 import MapExportCanvas from '../../components/TravelMap/MapExportCanvas';
 import {
@@ -220,7 +221,15 @@ function TripShareDialog({
       track('share_render', { style: 'trip-video' });
       const extension = videoFileExtension(blob.type);
       const videoName = filename.replace(/\.png$/, `.${extension}`);
-      setVideoFile(new File([blob], videoName, { type: blob.type }));
+      /*
+        Strip codec parameters from the type: MediaRecorder labels its
+        output "video/mp4;codecs=avc1", and Android's share sheet matches
+        its allow-list against the full string - the parameterised type
+        fails with exactly "Permission denied" (OnePlus 13 report,
+        2026-08-17). Plain "video/mp4" passes.
+      */
+      const shareType = blob.type.split(';')[0] || 'video/mp4';
+      setVideoFile(new File([blob], videoName, { type: shareType }));
     } catch (videoError) {
       showToast(
         videoError instanceof Error
@@ -273,7 +282,14 @@ function TripShareDialog({
     }
   }, [videoFile, routeCodes, showToast]);
 
-  return (
+  /*
+    Portalled to <body> (owner report: the overlay stopped short of the
+    top of the phone screen): the dialog used to render inside the mobile
+    section sheet, whose CSS transform makes position:fixed anchor to the
+    sheet instead of the viewport. From the body there is no transformed
+    ancestor and inset-0 means the actual screen.
+  */
+  return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
       onClick={onClose}
@@ -397,7 +413,8 @@ function TripShareDialog({
             </div>
           ))}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
