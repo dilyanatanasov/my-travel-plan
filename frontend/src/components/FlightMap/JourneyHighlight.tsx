@@ -6,22 +6,9 @@ import { useMapColors } from '../../theme/mapColors';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
 import type { FlightJourney } from '../../types';
 
-/**
- * Airliner silhouette in a 24x24 box, nose pointing right (+x): tapered
- * fuselage, swept wings, tailplane and tail cone. Vector on purpose — the
- * glyph scales 1.9× mid-flight and recolors with the theme, both of which a
- * raster plane cannot survive.
- *
- * The direction matters: animateMotion's rotate="auto" aligns +x with the
- * path tangent, so a nose-up drawing would fly permanently sideways.
- */
-// Exported for the globe's replay plane, which shares the glyph but is
-// driven by requestAnimationFrame rather than SMIL (see GlobeJourney).
-export const PLANE_PATH =
-  'M21.8 12 C22 11.4 21 10.9 19.5 10.9 L14.5 10.9 L9.5 5.2 L7.6 5.2 L11.4 10.9 ' +
-  'L5.8 10.9 L3.4 8.6 L2.2 8.6 L3.6 11.2 L2.6 11.6 L2.6 12.4 L3.6 12.8 ' +
-  'L2.2 15.4 L3.4 15.4 L5.8 13.1 L11.4 13.1 L7.6 18.8 L9.5 18.8 L14.5 13.1 ' +
-  'L19.5 13.1 C21 13.1 22 12.6 21.8 12 Z';
+// The glyph itself lives in lib/planeSprite, shared with the canvas video
+// renderers so every surface flies the same aircraft.
+import PlaneGlyph from './PlaneGlyph';
 
 interface JourneyHighlightProps {
   journey: FlightJourney;
@@ -340,13 +327,10 @@ function JourneyHighlight({
               separates it from the line rather than blending into it as white
               did on cream.
             */}
-            <path
-              d={PLANE_PATH}
-              fill={colors.routeHighlight}
-              stroke={colors.planeOutline}
-              strokeWidth={1.8}
-              strokeLinejoin="round"
+            <PlaneGlyph
               transform={`scale(${planeScaleShared}) translate(-12 -12)`}
+              fill={colors.routeHighlight}
+              outline={colors.planeOutline}
             />
           </g>
         </g>

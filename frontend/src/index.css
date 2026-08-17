@@ -55,6 +55,54 @@ body {
 }
 
 /*
+  The aircraft's navigation lights (PlaneGlyph): port red and starboard
+  green twinkle in antiphase - a left-right blink - and the tail strobe
+  double-flashes like the real thing: flash, flash, dark. CSS rather than
+  JS so the blink costs zero re-renders while the plane is being moved.
+*/
+@keyframes plane-nav-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.25;
+  }
+}
+
+@keyframes plane-strobe-flash {
+  0%,
+  6% {
+    opacity: 1;
+  }
+  7%,
+  13% {
+    opacity: 0;
+  }
+  14%,
+  20% {
+    opacity: 1;
+  }
+  21%,
+  100% {
+    opacity: 0;
+  }
+}
+
+.plane-light-port {
+  animation: plane-nav-blink 0.9s ease-in-out infinite;
+}
+
+.plane-light-stbd {
+  animation: plane-nav-blink 0.9s ease-in-out infinite;
+  animation-delay: -0.45s;
+}
+
+.plane-light-strobe {
+  animation: plane-strobe-flash 1.3s linear infinite;
+}
+
+/*
   Looping motion is a real problem for some vestibular conditions. The
   highlight still reads without it: the solid stroke and the dashes stay, they
   simply stop moving. The travelling dot is a SMIL <animateMotion>, which CSS
@@ -63,6 +111,17 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .route-flow {
     animation: none;
+  }
+
+  /* Lights hold steady instead of blinking; the strobe dims to a glint. */
+  .plane-light-port,
+  .plane-light-stbd,
+  .plane-light-strobe {
+    animation: none;
+  }
+
+  .plane-light-strobe {
+    opacity: 0.7;
   }
 }
 

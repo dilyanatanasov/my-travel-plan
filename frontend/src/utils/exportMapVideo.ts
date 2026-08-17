@@ -8,6 +8,7 @@
  * staying in place as the fallback rather than being replaced.
  */
 import { MapExportError } from './exportMapImage';
+import { drawPlaneSprite } from '../lib/planeSprite';
 import {
   renderTripCardTemplate,
   CARD_WIDTH,
@@ -21,9 +22,6 @@ const DURATION_MS = 9000;
 const STAGGER = 0.55;
 /** Held at the end so the finished map is the last thing on screen. */
 const HOLD_MS = 1200;
-
-const PLANE_PATH_2D =
-  'M2.5 12 L9 9.5 L9 4.2 A1.5 1.5 0 0 1 12 4.2 L12 8.4 L21.5 12 L12 15.6 L12 19.8 A1.5 1.5 0 0 1 9 19.8 L9 14.5 Z';
 
 export interface VideoCaption {
   title: string;
@@ -218,7 +216,6 @@ export async function renderMapVideo(
     recorder.onerror = () => reject(new MapExportError('Recording failed'));
   });
 
-  const plane = new Path2D(PLANE_PATH_2D);
   const mode = options.mode ?? 'wave';
   const durationMs = options.durationMs ?? DURATION_MS;
   const start = performance.now();
@@ -247,16 +244,30 @@ export async function renderMapVideo(
         }
         if (local <= 0) return;
         const progress = easeInOut(Math.min(local, 1));
+        const points = route.points;
+        const n = points.length;
 
-        const lastIndex = Math.floor(progress * (route.points.length - 1));
-        if (lastIndex < 1) return;
+        /*
+          Fractional head, exactly like the trip video: snapping to sampled
+          points made the plane hop, and this renderer kept hopping after
+          the trip one was smoothed (owner report, 2026-08-17). One motion
+          model for every film now.
+        */
+        const exact = progress * (n - 1);
+        const i0 = Math.min(Math.floor(exact), n - 2);
+        const frac = exact - i0;
+        const head = {
+          x: points[i0].x + (points[i0 + 1].x - points[i0].x) * frac,
+          y: points[i0].y + (points[i0 + 1].y - points[i0].y) * frac,
+        };
 
-        // Trail
+        // Trail up to the head, following it exactly.
         ctx.beginPath();
-        ctx.moveTo(route.points[0].x, route.points[0].y);
-        for (let i = 1; i <= lastIndex; i++) {
-          ctx.lineTo(route.points[i].x, route.points[i].y);
+        ctx.moveTo(points[0].x, points[0].y);
+        for (let i = 1; i <= i0; i++) {
+          ctx.lineTo(points[i].x, points[i].y);
         }
+        ctx.lineTo(head.x, head.y);
         ctx.strokeStyle = '#60a5fa';
         ctx.lineWidth = 2;
         ctx.lineCap = 'round';
@@ -264,24 +275,22 @@ export async function renderMapVideo(
         ctx.stroke();
         ctx.globalAlpha = 1;
 
-        // Plane at the head, angled along the last segment, until it lands.
         if (progress < 1) {
-          const head = route.points[lastIndex];
-          const prev = route.points[Math.max(lastIndex - 1, 0)];
-          const angle = Math.atan2(head.y - prev.y, head.x - prev.x);
-          ctx.save();
-          ctx.translate(head.x, head.y);
-          ctx.rotate(angle);
-          // The glyph is a 24-unit box on a 1600px canvas. At 0.7 it was ~17px
-          // and read as a speck rather than a plane.
-          ctx.scale(1.6, 1.6);
-          ctx.translate(-12, -12);
-          ctx.fillStyle = '#fb7185';
-          ctx.strokeStyle = '#ffffff';
-          ctx.lineWidth = 0.9;
-          ctx.fill(plane);
-          ctx.stroke(plane);
-          ctx.restore();
+          // Heading over a small window, not one sample pair - single-pair
+          // angles twitched on dense arcs.
+          const ahead = points[Math.min(i0 + 2, n - 1)];
+          const behind = points[Math.max(i0 - 1, 0)];
+          drawPlaneSprite(ctx, {
+            x: head.x,
+            y: head.y,
+            angle: Math.atan2(ahead.y - behind.y, ahead.x - behind.x),
+            // The glyph is a 24-unit box on a 1600px canvas. Smaller read
+            // as a speck rather than a plane.
+            scale: 1.6,
+            fill: '#fb7185',
+            outline: '#ffffff',
+            timeMs: elapsed,
+          });
         }
       });
 
@@ -369,7 +378,6 @@ export async function renderTripVideo(
     recorder.onerror = () => reject(new MapExportError('Recording failed'));
   });
 
-  const plane = new Path2D(PLANE_PATH_2D);
   const start = performance.now();
   recorder.start();
 
@@ -430,32 +438,20 @@ export async function renderTripVideo(
 
         if (progress < 1) {
           // Heading over a small window, not one sample pair - single-pair
-          // angles twitched on dense arcs.
+          // angles twitched on dense arcs. The beacon answers "a bit hard
+          // to track"; the sprite brings the nav lights with it.
           const ahead = points[Math.min(i0 + 2, n - 1)];
           const behind = points[Math.max(i0 - 1, 0)];
-          const angle = Math.atan2(ahead.y - behind.y, ahead.x - behind.x);
-
-          // A soft pulse under the plane: "a bit hard to track" wanted a
-          // beacon, not a bigger glyph alone.
-          const pulse = 14 + 4 * Math.sin(elapsed / 140);
-          ctx.beginPath();
-          ctx.arc(head.x, head.y, pulse, 0, Math.PI * 2);
-          ctx.fillStyle = TICKET_PLANE;
-          ctx.globalAlpha = 0.18;
-          ctx.fill();
-          ctx.globalAlpha = 1;
-
-          ctx.save();
-          ctx.translate(head.x, head.y);
-          ctx.rotate(angle);
-          ctx.scale(1.8, 1.8);
-          ctx.translate(-12, -12);
-          ctx.fillStyle = TICKET_PLANE;
-          ctx.strokeStyle = '#f8f0e1';
-          ctx.lineWidth = 0.9;
-          ctx.fill(plane);
-          ctx.stroke(plane);
-          ctx.restore();
+          drawPlaneSprite(ctx, {
+            x: head.x,
+            y: head.y,
+            angle: Math.atan2(ahead.y - behind.y, ahead.x - behind.x),
+            scale: 1.8,
+            fill: TICKET_PLANE,
+            outline: '#f8f0e1',
+            timeMs: elapsed,
+            beacon: { color: TICKET_PLANE },
+          });
         }
       });
 
