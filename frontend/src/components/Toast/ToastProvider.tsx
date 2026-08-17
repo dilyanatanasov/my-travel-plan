@@ -27,6 +27,13 @@ interface ShowToastOptions {
   action?: ToastAction;
   /** Milliseconds before auto-dismiss. Undo toasts get longer by default. */
   durationMs?: number;
+  /**
+   * Coalescing key: a new toast with the same key replaces the previous
+   * one instead of stacking under it. Cycling a country's status fires a
+   * toast per tap, and four of them queued up is clutter, not feedback
+   * (friend feedback, 2026-08-17).
+   */
+  key?: string;
 }
 
 interface ToastContextValue {
@@ -49,6 +56,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
   const nextId = useRef(1);
   const timers = useRef(new Map<number, ReturnType<typeof setTimeout>>());
+  const byKey = useRef(new Map<string, number>());
 
   const dismiss = useCallback((id: number) => {
     const timer = timers.current.get(id);
@@ -61,7 +69,14 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
   const showToast = useCallback(
     (message: string, options: ShowToastOptions = {}) => {
+      // Same key = same conversation: the newer message replaces the older.
+      if (options.key !== undefined) {
+        const previous = byKey.current.get(options.key);
+        if (previous !== undefined) dismiss(previous);
+      }
+
       const id = nextId.current++;
+      if (options.key !== undefined) byKey.current.set(options.key, id);
       const duration =
         options.durationMs ??
         (options.action ? ACTION_DURATION : DEFAULT_DURATION);

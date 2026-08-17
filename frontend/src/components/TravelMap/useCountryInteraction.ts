@@ -12,7 +12,7 @@ import type { Visit } from '../../types';
 
 interface UpdateVisitArgs {
   id: number;
-  data: { visitType: 'transit' | 'wishlist' };
+  data: { visitType: 'lived' | 'transit' | 'wishlist' };
 }
 
 export function useCountryInteraction(options: {
@@ -21,7 +21,10 @@ export function useCountryInteraction(options: {
   addVisitForCountry: (countryId: number) => Promise<unknown>;
   updateVisit: (args: UpdateVisitArgs) => { unwrap: () => Promise<unknown> };
   removeVisitWithUndo: (visit: Visit) => unknown;
-  showToast: (message: string, opts?: { durationMs?: number }) => void;
+  showToast: (
+    message: string,
+    opts?: { durationMs?: number; key?: string },
+  ) => void;
   /** A highlighted journey puts the map in "reading" mode. */
   hasSelectedJourney: boolean;
   /** The replay owns the map while it runs. */
@@ -89,16 +92,31 @@ export function useCountryInteraction(options: {
         await addVisitForCountry(countryId);
         return;
       }
+      /*
+        Cycle grew a step (friend feedback, 2026-08-17): visited → lived →
+        transit → want to go → removed. The toasts share one coalescing key
+        so rapid taps replace the message instead of stacking four of them.
+      */
       const type = existingVisit.visitType || 'trip';
       if (type === 'home') {
         onOpenCountry(isoCode);
       } else if (type === 'trip') {
         await updateVisit({
           id: existingVisit.id,
+          data: { visitType: 'lived' },
+        }).unwrap();
+        showToast('Lived here — tap again for transit', {
+          durationMs: 3000,
+          key: 'visit-cycle',
+        });
+      } else if (type === 'lived') {
+        await updateVisit({
+          id: existingVisit.id,
           data: { visitType: 'transit' },
         }).unwrap();
         showToast('Transit — tap again for "want to go", hold for details', {
           durationMs: 3000,
+          key: 'visit-cycle',
         });
       } else if (type === 'transit') {
         await updateVisit({
@@ -107,6 +125,7 @@ export function useCountryInteraction(options: {
         }).unwrap();
         showToast('On your "want to go" list — tap again to clear', {
           durationMs: 3000,
+          key: 'visit-cycle',
         });
       } else {
         await removeVisitWithUndo(existingVisit);

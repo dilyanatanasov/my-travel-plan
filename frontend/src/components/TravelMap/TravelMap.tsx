@@ -27,7 +27,6 @@ import TripShareDialog from '../../features/share/TripShareDialog';
 import MapControlPanel, { type TravelMapSettings } from './MapControlPanel';
 import MapZoomControls from './MapZoomControls';
 import MapLegend from './MapLegend';
-import MapOnboardingHint from './MapOnboardingHint';
 import { useMapViewport } from './useMapViewport';
 import { useMapFocus } from '../../features/map/MapFocusContext';
 import { useMapColors } from '../../theme/mapColors';
@@ -82,7 +81,7 @@ const GLOBE_MODE_KEY = 'contrail:globe-mode';
 
 function TravelMap() {
   // Data queries
-  const { data: visits = [], isLoading: visitsLoading } = useGetVisitsQuery();
+  const { data: visits = [] } = useGetVisitsQuery();
   const { data: countries = [] } = useGetCountriesQuery();
   const { data: flights = [] } = useGetFlightsQuery();
 
@@ -927,12 +926,6 @@ function TravelMap() {
       {/* Hidden during replay (density budget): the map is the show. */}
       {!replay.isActive && (
         <MapLegend showFlights={settings.showFlights} stats={stats} />
-      )}
-      {/* Suppressed while a country card is open: on a phone the two share
-          the bottom of the screen, and the hint covered the card's own
-          controls (caught in the 390px capture). */}
-      {!replay.isActive && !openCountryIso && (
-        <MapOnboardingHint visitCount={visits.length} ready={!visitsLoading} />
       )}
 
       {/*

@@ -12,7 +12,7 @@ import SectionPanel from '../components/AppShell/SectionPanel';
 import OverviewPanel from '../components/AppShell/OverviewPanel';
 import SharePanel from '../features/share/SharePanel';
 import MapPeekBar from '../components/AppShell/MapPeekBar';
-import MapFirstRunHint from '../components/TravelMap/MapFirstRunHint';
+import MapTour from '../components/TravelMap/MapTour';
 import { useGetFlightSummaryQuery } from '../features/flights/flightsApi';
 import { useMilestones } from '../features/milestones/useMilestones';
 import { useDailyNudge } from '../features/daily/useDailyNudge';
@@ -52,9 +52,6 @@ function TravelMapPage() {
   // default on desktop because it is the primary action; mobile starts closed
   // so the first thing you see is your map.
   const [activeSection, setActiveSection] = useState<SectionId | null>(null);
-  // Session-scoped on purpose: an empty map on a later visit earns the hint
-  // again; a dismissal mid-session is respected until then.
-  const [hintDismissed, setHintDismissed] = useState(false);
   const isDesktop = useIsDesktop();
 
   // "Where do they stay the most" — null section means the bare map.
@@ -88,8 +85,8 @@ function TravelMapPage() {
       // kind only — never which country (analytics privacy rule).
       track('map_interact', { kind: 'country_open' });
       /*
-        Tap cycles the state (user's design, 2026-08-13):
-        none → visited → transit → want to go → removed.
+        Tap cycles the state (user's design, 2026-08-13; lived added
+        2026-08-17): none → visited → lived → transit → want to go → removed.
 
         Home is deliberately NOT in the cycle: it is set only via the picker,
         and tapping it keeps the old remove-with-undo — a stray tap must
@@ -97,14 +94,26 @@ function TravelMapPage() {
         direct path to any state.
       */
       if (existingVisit) {
+        // Same cycle as the map layer (lived joined 2026-08-17); toasts
+        // share the coalescing key so cycling never stacks messages.
         const type = existingVisit.visitType || 'trip';
         if (type === 'trip') {
+          await updateVisit({
+            id: existingVisit.id,
+            data: { visitType: 'lived' },
+          }).unwrap();
+          showToast('Lived here — tap again for transit', {
+            durationMs: 3000,
+            key: 'visit-cycle',
+          });
+        } else if (type === 'lived') {
           await updateVisit({
             id: existingVisit.id,
             data: { visitType: 'transit' },
           }).unwrap();
           showToast('Marked as transit — tap again for "want to go"', {
             durationMs: 3000,
+            key: 'visit-cycle',
           });
         } else if (type === 'transit') {
           await updateVisit({
@@ -113,6 +122,7 @@ function TravelMapPage() {
           }).unwrap();
           showToast('On your "want to go" list — tap again to clear', {
             durationMs: 3000,
+            key: 'visit-cycle',
           });
         } else {
           // wishlist completes the cycle; home skips it entirely.
@@ -131,6 +141,7 @@ function TravelMapPage() {
         localStorage.setItem(FLIGHT_NUDGE_KEY, '1');
         showToast('Marked as visited ✓ — got there by plane?', {
           durationMs: 8000,
+          key: 'visit-cycle',
           action: {
             label: 'Add the flight',
             onAction: () => setActiveSection('flights'),
@@ -317,19 +328,11 @@ function TravelMapPage() {
               <>
                 <TravelMap />
                 {/*
-                  Only while there is genuinely nothing: one country or one
-                  flight and it is gone for good.
+                  One tour instead of two hint cards (friend feedback,
+                  2026-08-17): the old empty-map hint and the gesture hint
+                  overlapped and said half of this each. Once per device.
                 */}
-                {!hintDismissed &&
-                  visits.length === 0 &&
-                  (flightSummary?.totalFlights ?? 0) === 0 && (
-                    <div className="absolute z-20 left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 lg:top-auto lg:bottom-24">
-                      <MapFirstRunHint
-                        onAddFlights={() => setActiveSection('flights')}
-                        onDismiss={() => setHintDismissed(true)}
-                      />
-                    </div>
-                  )}
+                <MapTour />
 
                 <MapPeekBar
                   countriesVisited={overviewStats.tripCount}
