@@ -9,6 +9,11 @@ import {
   type TripContent,
 } from '../../utils/shareCard';
 import { downloadBlob } from '../../utils/exportMapImage';
+import {
+  renderMapVideo,
+  isVideoExportSupported,
+  videoFileExtension,
+} from '../../utils/exportMapVideo';
 import { useToast } from '../../components/Toast/ToastProvider';
 import { useAuth } from '../auth/authApi';
 import { formatJourneyDate } from '../../utils/journeyDate';
@@ -34,7 +39,9 @@ function TripShareDialog({
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [retryToken, setRetryToken] = useState(0);
+  const [videoProgress, setVideoProgress] = useState<number | null>(null);
   const blobRef = useRef<Blob | null>(null);
+  const canExportVideo = useMemo(() => isVideoExportSupported(), []);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -134,6 +141,76 @@ function TripShareDialog({
     showToast('Saved - post it from your gallery', { durationMs: 6000 });
   }, [filename, handleDownload, routeCodes, showToast]);
 
+  /*
+    The replay, portable (owner ask, 2026-08-17): the plane flies this
+    journey's legs in order over the same journey-framed map the boarding
+    pass uses. Short - a trip is a moment, not a feature film - and MP4
+    where the browser can, which is what stories accept.
+  */
+  const handleVideo = useCallback(async () => {
+    const svg = await findExportSvg(TRIP_SVG_ID, () => false);
+    if (!svg) {
+      showToast('The map is still loading - try again in a moment', {
+        tone: 'error',
+      });
+      return;
+    }
+    setVideoProgress(0);
+    try {
+      const km = legs.reduce(
+        (sum, leg) => sum + (Number(leg.distanceKm) || 0),
+        0,
+      );
+      const stats = [
+        `${legs.length} ${legs.length === 1 ? 'flight' : 'flights'}`,
+        `${Math.round(km).toLocaleString()} km`,
+      ];
+      const dateLabel = formatJourneyDate(journey);
+      if (dateLabel) stats.unshift(dateLabel);
+
+      const blob = await renderMapVideo(
+        svg,
+        { title: routeCodes.join(' → '), stats },
+        setVideoProgress,
+        {
+          mode: 'sequential',
+          // ~2.6s per leg, clamped: one hop stays snappy, a five-leg epic
+          // does not drone on.
+          durationMs: Math.min(Math.max(legs.length * 2600, 4000), 10000),
+        },
+      );
+      track('share_render', { style: 'trip-video' });
+      const extension = videoFileExtension(blob.type);
+      const videoName = filename.replace(/\.png$/, `.${extension}`);
+      const file = new File([blob], videoName, { type: blob.type });
+      if (canShareFiles(file)) {
+        try {
+          await navigator.share({
+            files: [file],
+            title: 'myContrail trip',
+            text: routeCodes.join(' → '),
+          });
+          return;
+        } catch (shareError) {
+          if ((shareError as Error)?.name === 'AbortError') return;
+        }
+      }
+      downloadBlob(blob, videoName);
+      showToast('Video saved - post it from your gallery', {
+        durationMs: 6000,
+      });
+    } catch (videoError) {
+      showToast(
+        videoError instanceof Error
+          ? videoError.message
+          : 'Could not create the video',
+        { tone: 'error' },
+      );
+    } finally {
+      setVideoProgress(null);
+    }
+  }, [legs, journey, routeCodes, filename, showToast]);
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
@@ -200,6 +277,19 @@ function TripShareDialog({
             Save image
           </Button>
         </div>
+        {canExportVideo && (
+          <Button
+            variant="ghost"
+            fullWidth
+            className="rounded-xl"
+            onClick={handleVideo}
+            disabled={!previewUrl || videoProgress !== null}
+          >
+            {videoProgress !== null
+              ? `Recording flight… ${Math.round(videoProgress * 100)}%`
+              : 'Share as video ✈️'}
+          </Button>
+        )}
       </div>
     </div>
   );

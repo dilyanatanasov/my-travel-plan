@@ -14,6 +14,8 @@ import {
   canShareFiles,
   CARD_WIDTH,
   CARD_HEIGHT,
+  STORY_WIDTH,
+  STORY_HEIGHT,
   type ShareStyle,
   type ShareContent,
 } from '../../utils/shareCard';
@@ -33,6 +35,8 @@ const STYLES: { id: ShareStyle; label: string; hint: string }[] = [
   // Promoted from the trip card by request ("add this ticket version to
   // the normal also", 2026-08-14).
   { id: 'ticket', label: 'Ticket', hint: 'Boarding pass' },
+  // 9:16 - fills an Instagram/WhatsApp story instead of letterboxing.
+  { id: 'story', label: 'Story', hint: 'Tall, for stories' },
 ];
 
 function SharePanel() {
@@ -357,15 +361,20 @@ function SharePanel() {
         })}
       </div>
       <p className="text-xs text-ink-subtle -mt-3">
-        {STYLES.find((s) => s.id === style)?.hint} · exports at {CARD_WIDTH}×
-        {CARD_HEIGHT}
+        {STYLES.find((s) => s.id === style)?.hint} · exports at{' '}
+        {style === 'story' ? `${STORY_WIDTH}×${STORY_HEIGHT}` : `${CARD_WIDTH}×${CARD_HEIGHT}`}
       </p>
 
       {/*
-        aspect-[4/5] reserves the space before the first render lands, so
-        switching styles does not shunt the buttons up and down the page.
+        The frame reserves the export's own aspect before the first render
+        lands, so switching styles does not shunt the buttons up and down
+        the page - and a 9:16 story is not squeezed into a 4:5 box.
       */}
-      <div className="relative aspect-[4/5] rounded-2xl overflow-hidden border border-line bg-surface-sunken shadow-md">
+      <div
+        className={`relative ${
+          style === 'story' ? 'aspect-[9/16] max-w-xs mx-auto' : 'aspect-[4/5]'
+        } rounded-2xl overflow-hidden border border-line bg-surface-sunken shadow-md`}
+      >
         {previewUrl && (
           <img
             src={previewUrl}

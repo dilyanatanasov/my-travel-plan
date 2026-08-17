@@ -9,6 +9,7 @@ import { renderMapPng, downloadBlob } from '../../utils/exportMapImage';
 import {
   renderMapVideo,
   isVideoExportSupported,
+  videoFileExtension,
 } from '../../utils/exportMapVideo';
 import MapExportCanvas, {
   EXPORT_SVG_ID,
@@ -22,8 +23,8 @@ function ShareMenu() {
   const [isOpen, setIsOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [videoProgress, setVideoProgress] = useState<number | null>(null);
-  // Safari and iOS cannot record WebM, so the option is hidden there rather
-  // than offered and then failing.
+  // Hidden only where MediaRecorder truly can't produce anything: with MP4
+  // preferred, Safari and iOS now record too.
   const canExportVideo = useMemo(() => isVideoExportSupported(), []);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -126,7 +127,8 @@ function ShareMenu() {
     setVideoProgress(0);
     try {
       const blob = await renderMapVideo(svg, buildCaption(), setVideoProgress);
-      downloadBlob(blob, 'travel-map.webm');
+      // MP4 where the browser can (story-friendly), WebM elsewhere.
+      downloadBlob(blob, `travel-map.${videoFileExtension(blob.type)}`);
       setIsOpen(false);
       showToast('Video downloaded', { tone: 'success' });
     } catch (error) {

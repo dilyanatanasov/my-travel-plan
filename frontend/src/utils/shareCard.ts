@@ -13,7 +13,7 @@
  * tainted and the output stays crisp.
  */
 
-export type ShareStyle = 'warm' | 'ink' | 'editorial' | 'ticket';
+export type ShareStyle = 'warm' | 'ink' | 'editorial' | 'ticket' | 'story';
 
 export interface ShareContent {
   /** e.g. "21 countries and counting" */
@@ -66,10 +66,25 @@ const PALETTES: Record<ShareStyle, Palette> = {
     accent: '#8c491a',
     mapBg: '#f8f0e1',
   },
+  // Story wears Warm's colours at 9:16 - the format is the feature.
+  story: {
+    bg: '#f5ead8',
+    text: '#201e1d',
+    muted: '#645c50',
+    accent: '#8c491a',
+    mapBg: '#f5ead8',
+  },
 };
 
 export const CARD_WIDTH = 1080;
 export const CARD_HEIGHT = 1350;
+/*
+  Instagram/WhatsApp stories are 9:16; the 4:5 card gets letterboxed with
+  dead bars there (owner feedback, 2026-08-17). Story is the same card
+  language recomposed for the tall frame.
+*/
+export const STORY_WIDTH = 1080;
+export const STORY_HEIGHT = 1920;
 
 export class ShareCardError extends Error {}
 
@@ -279,14 +294,14 @@ export async function renderShareCard(
   );
 
   const canvas = document.createElement('canvas');
-  canvas.width = CARD_WIDTH;
-  canvas.height = CARD_HEIGHT;
+  canvas.width = style === 'story' ? STORY_WIDTH : CARD_WIDTH;
+  canvas.height = style === 'story' ? STORY_HEIGHT : CARD_HEIGHT;
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new ShareCardError('Your browser could not create the image');
 
   const p = PALETTES[style];
   ctx.fillStyle = p.bg;
-  ctx.fillRect(0, 0, CARD_WIDTH, CARD_HEIGHT);
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.textBaseline = 'top';
 
   if (style === 'ticket') {
@@ -299,11 +314,13 @@ export async function renderShareCard(
     drawEditorial(ctx, mapImage, content, p);
   } else if (style === 'ink') {
     drawInk(ctx, mapImage, content, p);
+  } else if (style === 'story') {
+    drawStory(ctx, mapImage, content, p);
   } else {
     drawWarm(ctx, mapImage, content, p);
   }
 
-  if (style !== 'ticket') drawWatermark(ctx, p);
+  if (style !== 'ticket') drawWatermark(ctx, p, canvas.width, canvas.height);
 
   return new Promise((resolve, reject) => {
     canvas.toBlob((blob) => {
@@ -609,14 +626,19 @@ export async function renderTripCard(
  * a stranger seeing the card in a chat has no idea where it lives - the
  * watermark is the card's only actionable pointer back, i.e. the marketing.
  */
-function drawWatermark(ctx: CanvasRenderingContext2D, p: Palette) {
+function drawWatermark(
+  ctx: CanvasRenderingContext2D,
+  p: Palette,
+  width = CARD_WIDTH,
+  height = CARD_HEIGHT,
+) {
   ctx.save();
   ctx.font = mono(24, '600');
   ctx.fillStyle = p.muted;
   ctx.globalAlpha = 0.9;
   ctx.textAlign = 'right';
   ctx.textBaseline = 'alphabetic';
-  ctx.fillText('mycontrail.com', CARD_WIDTH - 72, CARD_HEIGHT - 40);
+  ctx.fillText('mycontrail.com', width - 72, height - 40);
   ctx.restore();
 }
 
@@ -738,6 +760,87 @@ function drawInk(
   ctx.fillStyle = p.muted;
   ctx.font = body(capSize, '600');
   ctx.fillText(content.hero.caption.toUpperCase(), pad, y + heroSize * 1.02);
+}
+
+/**
+ * Story: the Warm language recomposed for a 9:16 frame - kicker and
+ * headline up top, the map in the middle, the hero number given the room
+ * a phone screen offers, facts underneath. Even-gap rule as everywhere.
+ */
+function drawStory(
+  ctx: CanvasRenderingContext2D,
+  map: HTMLImageElement,
+  content: ShareContent,
+  p: Palette,
+) {
+  const pad = 84;
+  const inner = STORY_WIDTH - pad * 2;
+  const topPad = 140;
+  const bottomReserve = 150;
+
+  const mapW = inner;
+  const mapH = mapW / 2;
+
+  // Measure before drawing, same as Warm.
+  const size = fitFont(ctx, content.headline, inner, 112, display);
+  ctx.font = display(size);
+  const lines = wrap(ctx, content.headline, inner, 2);
+  const headlineH = lines.length * size * 1.06;
+  const heroSize = fitFont(ctx, content.hero.value, inner, 230, display);
+  const capSize = fitFont(ctx, content.hero.caption, inner, 34, (s) =>
+    body(s, '600'),
+  );
+  const heroH = heroSize * 1.02 + capSize * 1.4;
+  const factsH = 64 + 16 + 28;
+  const blocksH = 32 + headlineH + mapH + heroH + factsH;
+  const gap = Math.max(
+    44,
+    (STORY_HEIGHT - topPad - bottomReserve - blocksH) / 4,
+  );
+
+  let y = topPad;
+  ctx.fillStyle = p.accent;
+  ctx.font = mono(30, '600');
+  ctx.fillText(content.kicker.toUpperCase(), pad, y);
+  y += 32 + gap;
+
+  ctx.font = display(size);
+  ctx.fillStyle = p.text;
+  lines.forEach((line, i) => ctx.fillText(line, pad, y + i * size * 1.06));
+  y += headlineH + gap;
+
+  ctx.save();
+  roundedRect(ctx, pad, y, mapW, mapH, 44);
+  ctx.clip();
+  ctx.fillStyle = p.mapBg;
+  ctx.fillRect(pad, y, mapW, mapH);
+  drawMapContain(ctx, map, pad, y, mapW, mapH);
+  ctx.restore();
+  y += mapH + gap;
+
+  ctx.font = display(heroSize);
+  ctx.fillStyle = p.text;
+  ctx.fillText(content.hero.value, pad, y);
+  ctx.fillStyle = p.muted;
+  ctx.font = body(capSize, '600');
+  ctx.fillText(content.hero.caption.toUpperCase(), pad, y + heroSize * 1.02);
+  y += heroH + gap;
+
+  // The hero already owns its number; repeating it in the facts row read
+  // as a copy-paste mistake in the first render.
+  const facts = content.facts
+    .filter((fact) => fact.value !== content.hero.value)
+    .slice(0, 3);
+  const columnWidth = inner / Math.max(Math.min(facts.length, 3), 1);
+  facts.forEach((fact, i) => {
+    const x = pad + i * columnWidth;
+    ctx.fillStyle = p.text;
+    ctx.font = display(60);
+    ctx.fillText(fact.value, x, y);
+    ctx.fillStyle = p.muted;
+    ctx.font = body(26, '600');
+    ctx.fillText(fact.label, x, y + 78);
+  });
 }
 
 function drawEditorial(

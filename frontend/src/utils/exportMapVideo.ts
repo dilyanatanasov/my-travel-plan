@@ -38,11 +38,24 @@ export function isVideoExportSupported(): boolean {
 
 function pickMimeType(): string | null {
   const candidates = [
+    /*
+      MP4 first (2026-08-17): Instagram, iMessage and most story targets
+      accept H.264 MP4 and often reject WebM - and Safari, which cannot
+      record WebM at all, records MP4 natively, so preferring it turns
+      video export ON for iPhones instead of hiding the button there.
+    */
+    'video/mp4;codecs=avc1',
+    'video/mp4',
     'video/webm;codecs=vp9',
     'video/webm;codecs=vp8',
     'video/webm',
   ];
   return candidates.find((t) => MediaRecorder.isTypeSupported(t)) ?? null;
+}
+
+/** The honest filename suffix for whatever the recorder produced. */
+export function videoFileExtension(mimeType: string): 'mp4' | 'webm' {
+  return mimeType.includes('mp4') ? 'mp4' : 'webm';
 }
 
 /**
@@ -125,6 +138,18 @@ function drawCaption(
   ctx.fillText(caption.stats.join('   ·   '), 32, top + 84);
 }
 
+export interface VideoOptions {
+  /**
+   * 'wave' staggers every route's take-off (the whole-map flythrough);
+   * 'sequential' flies them strictly one after another in DOM order -
+   * which for a single journey's export SVG is leg order, i.e. the
+   * replay: out, connection, home.
+   */
+  mode?: 'wave' | 'sequential';
+  /** Overrides the 9s default; a one-leg hop doesn't need nine seconds. */
+  durationMs?: number;
+}
+
 /**
  * Render and record the flythrough.
  *
@@ -134,7 +159,8 @@ function drawCaption(
 export async function renderMapVideo(
   svg: SVGSVGElement,
   caption: VideoCaption,
-  onProgress?: (fraction: number) => void
+  onProgress?: (fraction: number) => void,
+  options: VideoOptions = {}
 ): Promise<Blob> {
   const mimeType = pickMimeType();
   if (!mimeType) {
@@ -180,22 +206,32 @@ export async function renderMapVideo(
   });
 
   const plane = new Path2D(PLANE_PATH_2D);
+  const mode = options.mode ?? 'wave';
+  const durationMs = options.durationMs ?? DURATION_MS;
   const start = performance.now();
   recorder.start();
 
   await new Promise<void>((resolve) => {
     const frame = (now: number) => {
       const elapsed = now - start;
-      const t = Math.min(elapsed / DURATION_MS, 1);
+      const t = Math.min(elapsed / durationMs, 1);
       onProgress?.(t);
 
       ctx.drawImage(backdrop, 0, 0, width, height);
 
       routes.forEach((route, index) => {
-        // Spread take-offs over the run so routes arrive in a wave rather
-        // than all at once.
-        const offset = routes.length > 1 ? (index / (routes.length - 1)) * STAGGER : 0;
-        const local = (t - offset) / (1 - STAGGER);
+        let local: number;
+        if (mode === 'sequential') {
+          // One leg at a time, replay-style: leg i owns its slice of the
+          // timeline and the next waits for touchdown.
+          local = t * routes.length - index;
+        } else {
+          // Spread take-offs over the run so routes arrive in a wave rather
+          // than all at once.
+          const offset =
+            routes.length > 1 ? (index / (routes.length - 1)) * STAGGER : 0;
+          local = (t - offset) / (1 - STAGGER);
+        }
         if (local <= 0) return;
         const progress = easeInOut(Math.min(local, 1));
 
@@ -238,7 +274,7 @@ export async function renderMapVideo(
 
       drawCaption(ctx, caption, width, height, captionHeight);
 
-      if (elapsed < DURATION_MS + HOLD_MS) {
+      if (elapsed < durationMs + HOLD_MS) {
         requestAnimationFrame(frame);
       } else {
         resolve();
