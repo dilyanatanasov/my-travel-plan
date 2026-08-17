@@ -8,7 +8,7 @@ interface CountryDetailCardProps {
    * Alpha-2, because that is what airports store.
    *
    * The map keys countries by alpha-3 (from the TopoJSON's numeric ids) while
-   * the airports table holds alpha-2 — "BGR" against "BG" silently matched
+   * the airports table holds alpha-2 - "BGR" against "BG" silently matched
    * nothing, so a country with flights showed neither its airports nor its
    * journeys.
    */
@@ -57,7 +57,7 @@ function routeLabel(journey: FlightJourney): string {
  * Tapping a visited country used to delete it. That made the map's only
  * interaction destructive, and a stray tap while panning could quietly remove
  * somewhere you had been. Now a tap opens this, and removal is a deliberate
- * button inside it — the map becomes something you read, not just something
+ * button inside it - the map becomes something you read, not just something
  * you edit.
  *
  * Everything here is derived from data already held: no new endpoint.
@@ -123,7 +123,7 @@ function CountryDetailCard({
   /*
     Escape closes the card.
 
-    It is reachable from the keyboard — searching a visited country opens it —
+    It is reachable from the keyboard - searching a visited country opens it —
     and it was not dismissible from the keyboard, so the only way out was to
     find the close button. Escape is what anyone tries first on a thing that
     floats over the page.

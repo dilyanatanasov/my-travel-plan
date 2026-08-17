@@ -102,7 +102,7 @@ function SettingsPage() {
       downloadBlob(blob, 'mycontrail-export.json');
       showToast('Your data has been downloaded', { tone: 'success' });
     } catch {
-      showToast('Could not export your data — try again', { tone: 'error' });
+      showToast('Could not export your data - try again', { tone: 'error' });
     } finally {
       setIsExporting(false);
     }
@@ -194,7 +194,7 @@ function SettingsPage() {
           </div>
 
           <p className="text-xs text-ink-subtle mt-4">
-            The map itself stays dark in both themes — it reads as a canvas
+            The map itself stays dark in both themes - it reads as a canvas
             rather than a panel, which is what keeps routes and countries
             legible on top of it.
           </p>
@@ -203,7 +203,7 @@ function SettingsPage() {
         {/*
           Home country lives here, not in the map's filter panel.
 
-          Everything else in that panel is a view toggle — it changes what you
+          Everything else in that panel is a view toggle - it changes what you
           are looking at and nothing else. This writes to your data: it
           rewrites a visit's type, and switching it moves the marker off
           whichever country held it. A control that edits records should not
@@ -249,14 +249,14 @@ function SettingsPage() {
             rather than interrupting one. The home country control above stays
             available to them: gating a cosmetic map setting adds friction
             while someone is still deciding, and the gates that actually
-            convert are the things people want in the moment — a share link,
+            convert are the things people want in the moment - a share link,
             a video.
           */}
           {isGuest ? (
             <>
               <p className="text-sm text-ink-muted mt-2 leading-relaxed">
                 You don&rsquo;t have one yet. Your map lives on this device
-                only — clear your browser or switch phones and it&rsquo;s
+                only - clear your browser or switch phones and it&rsquo;s
                 gone. An account keeps it, and lets you share it.
               </p>
               <Link
@@ -392,7 +392,7 @@ function SettingsPage() {
             <div className="mt-3 border border-danger/30 rounded-lg p-3 space-y-2">
               <p className="text-xs text-ink-muted leading-relaxed">
                 This permanently deletes your account, countries, flights and
-                any share or duel links. There is no undo — consider
+                any share or duel links. There is no undo - consider
                 downloading your data first.
               </p>
               {!isGuest && (

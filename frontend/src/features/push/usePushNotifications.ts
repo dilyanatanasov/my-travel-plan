@@ -40,8 +40,8 @@ function detectSupport(): PushSupport {
 /**
  * One browser's push subscription, as toggle-shaped state.
  *
- * The browser is the source of truth for "enabled" — the server only mirrors
- * it — so state initializes from pushManager.getSubscription(), and enable()
+ * The browser is the source of truth for "enabled" - the server only mirrors
+ * it - so state initializes from pushManager.getSubscription(), and enable()
  * must run inside a user gesture (the permission prompt requires one).
  */
 export function usePushNotifications() {
@@ -99,13 +99,13 @@ export function usePushNotifications() {
         // The server never learned about it; leaving the browser subscribed
         // would show the toggle on while nothing can ever arrive.
         await subscription.unsubscribe().catch(() => undefined);
-        return 'Could not save the subscription — try again.';
+        return 'Could not save the subscription - try again.';
       }
 
       setEnabled(true);
       return null;
     } catch {
-      return 'Could not enable notifications — try again.';
+      return 'Could not enable notifications - try again.';
     } finally {
       setBusy(false);
     }

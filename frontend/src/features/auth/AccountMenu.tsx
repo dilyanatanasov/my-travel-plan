@@ -55,14 +55,14 @@ function AccountMenu() {
           isGuest
             ? // Deliberately styled as a call to action, not as an avatar. This
               // is the only always-visible reminder that nothing is saved yet,
-              // and it costs no layout — a banner would eat scarce vertical
+              // and it costs no layout - a banner would eat scarce vertical
               // space on a phone, where the map is the product.
               'flex items-center gap-1.5 min-h-11 px-3 rounded-lg bg-brand-600 text-white text-sm font-medium hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-500'
             : 'flex items-center gap-2 min-h-11 px-2 rounded-lg hover:bg-surface-sunken focus:outline-none focus:ring-2 focus:ring-brand-500'
         }
         aria-haspopup="menu"
         aria-expanded={isOpen}
-        aria-label={isGuest ? 'Guest account — save your map' : `Account menu for ${label}`}
+        aria-label={isGuest ? 'Guest account - save your map' : `Account menu for ${label}`}
       >
         {isGuest ? (
           <>

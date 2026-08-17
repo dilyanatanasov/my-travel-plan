@@ -75,12 +75,12 @@ export async function renderMapPng(
   const height = Number(svg.getAttribute('height')) || svg.getBoundingClientRect().height;
 
   if (!width || !height) {
-    throw new MapExportError('The map is not ready yet — try again in a moment');
+    throw new MapExportError('The map is not ready yet - try again in a moment');
   }
 
   // A blank world means the geography fetch has not resolved.
   if (!svg.querySelector('path')) {
-    throw new MapExportError('The map is still loading — try again in a moment');
+    throw new MapExportError('The map is still loading - try again in a moment');
   }
 
   const svgString = serializeSvg(svg, width, height);

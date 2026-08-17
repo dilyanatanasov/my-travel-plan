@@ -6,7 +6,7 @@ import type { Visit } from '../../types';
  *
  * Extracted from TravelMap (2026-08-13 consolidation) as a pure move: the
  * guards, the cycle order and the toasts are the originals. The drag/consumed
- * refs stay owned by the map container — they arbitrate between d3-zoom and
+ * refs stay owned by the map container - they arbitrate between d3-zoom and
  * clicks for every layer, not just countries.
  */
 
@@ -66,7 +66,7 @@ export function useCountryInteraction(options: {
 
       /*
         The replay owns the map while it runs. Editing during it would both
-        corrupt the illusion — countries appearing that you did not fly to —
+        corrupt the illusion - countries appearing that you did not fly to —
         and quietly change real data from a tap the user meant as "pause".
       */
       if (replayActive) return;
@@ -80,7 +80,7 @@ export function useCountryInteraction(options: {
         Tap cycles the state (user's design, 2026-08-13):
         none → visited → transit → want to go → removed (undo toast).
 
-        The detail card moved to long-press — it was the tap-on-visited
+        The detail card moved to long-press - it was the tap-on-visited
         action before, which is why the cycle "didn't register" in testing:
         the card swallowed every tap after the first. Home stays out of the
         cycle entirely; tapping it opens its card, and only the card can
@@ -105,7 +105,7 @@ export function useCountryInteraction(options: {
           id: existingVisit.id,
           data: { visitType: 'lived' },
         }).unwrap();
-        showToast('Lived here — tap again for transit', {
+        showToast('Lived here - tap again for transit', {
           durationMs: 3000,
           key: 'visit-cycle',
         });
@@ -114,7 +114,7 @@ export function useCountryInteraction(options: {
           id: existingVisit.id,
           data: { visitType: 'transit' },
         }).unwrap();
-        showToast('Transit — tap again for "want to go", hold for details', {
+        showToast('Transit - tap again for "want to go", hold for details', {
           durationMs: 3000,
           key: 'visit-cycle',
         });
@@ -123,7 +123,7 @@ export function useCountryInteraction(options: {
           id: existingVisit.id,
           data: { visitType: 'wishlist' },
         }).unwrap();
-        showToast('On your "want to go" list — tap again to clear', {
+        showToast('On your "want to go" list - tap again to clear', {
           durationMs: 3000,
           key: 'visit-cycle',
         });
@@ -149,7 +149,7 @@ export function useCountryInteraction(options: {
   /*
     Hold a country to open its card, adding it first if it is not yet
     visited. That gives trip / transit / home a route that does not involve
-    opening a panel — which matters most on a phone, where the panel covers
+    opening a panel - which matters most on a phone, where the panel covers
     the map you are pointing at.
   */
   const handleCountryLongPress = useCallback(

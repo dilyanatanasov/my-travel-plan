@@ -62,12 +62,12 @@ function SharePanel() {
   const [disableShare, { isLoading: isDisabling }] = useDisableShareMutation();
   const [uploadShareCard] = useUploadShareCardMutation();
   // Latest token for the render effect, which must not re-render the card
-  // when sharing is toggled — only when the card itself would change.
+  // when sharing is toggled - only when the card itself would change.
   const shareTokenRef = useRef<string | null>(null);
   shareTokenRef.current = shareStatus?.shareToken ?? null;
   const [resendVerification, { isLoading: isResending }] =
     useResendVerificationMutation();
-  // One send per panel visit — the server throttles too, but the button
+  // One send per panel visit - the server throttles too, but the button
   // saying "sent" beats a throttle error.
   const [resendDone, setResendDone] = useState(false);
 
@@ -77,7 +77,7 @@ function SharePanel() {
       setResendDone(true);
       showToast('Verification email sent', { tone: 'success' });
     } catch {
-      showToast('Could not send the email — try again in a minute', {
+      showToast('Could not send the email - try again in a minute', {
         tone: 'error',
       });
     }
@@ -108,7 +108,7 @@ function SharePanel() {
     /*
       A card full of zeros undersells a real traveller: someone who came by
       bus, train or ship has countries worth bragging about and no flights at
-      all. So the card celebrates whichever story exists — flights when they
+      all. So the card celebrates whichever story exists - flights when they
       are logged, the country tally when they are not.
     */
     if (flights === 0) {
@@ -170,14 +170,14 @@ function SharePanel() {
 
       /*
         Poll for the off-screen canvas rather than assuming it exists after
-        one frame — react-simple-maps builds its <svg> asynchronously, and a
+        one frame - react-simple-maps builds its <svg> asynchronously, and a
         permanent error here is why the first visit to Share could once show
         a card with no map. Shared with the trip dialog.
       */
       const svg = await findExportSvg(EXPORT_SVG_ID, () => cancelled);
       if (cancelled) return;
       if (!svg) {
-        setRenderError('The map is still loading — reopen Share in a moment.');
+        setRenderError('The map is still loading - reopen Share in a moment.');
         setIsRendering(false);
         return;
       }
@@ -185,7 +185,7 @@ function SharePanel() {
       try {
         const blob = await renderShareCard(svg, content, style);
         if (cancelled) return;
-        // Which style, and whether share is used at all — style name only.
+        // Which style, and whether share is used at all - style name only.
         track('share_render', { style });
         blobRef.current = blob;
         // Keep the stored card in step with what just rendered, so the link
@@ -250,7 +250,7 @@ function SharePanel() {
           title: 'myContrail map',
           text: content.headline,
         });
-        // How people share — the kind of action, never the content.
+        // How people share - the kind of action, never the content.
         track('share_action', { kind: 'native_sheet' });
         return;
       } catch (error) {
@@ -260,7 +260,7 @@ function SharePanel() {
     }
 
     handleDownload();
-    showToast('Saved — post it from your gallery', { durationMs: 6000 });
+    showToast('Saved - post it from your gallery', { durationMs: 6000 });
   }, [content.headline, filename, handleDownload, showToast]);
 
   const token = shareStatus?.shareToken ?? null;
@@ -330,7 +330,7 @@ function SharePanel() {
       {/* Off-screen source for the card. */}
       {/* Ink is a dark card, so its map has to be the dark palette. */}
       {/* Always 2:1: a taller canvas was tried (2026-08-14) and just baked
-          ocean into the image — the framing zoom is pinned by the data's
+          ocean into the image - the framing zoom is pinned by the data's
           longitude span, so extra height cannot fill with land. The card
           layouts are shaped around the 2:1 source instead. */}
       <MapExportCanvas theme={style === 'ink' ? 'dark' : 'light'} />
@@ -414,7 +414,7 @@ function SharePanel() {
       </div>
 
       {/*
-        The image is free for everyone — it is how the app spreads. The public
+        The image is free for everyone - it is how the app spreads. The public
         link needs an account, because it has to live at a URL that outlives
         the browser it was made in.
       */}
@@ -439,7 +439,7 @@ function SharePanel() {
             {/* Server enforces this too (403 EMAIL_UNVERIFIED); the panel
                 just explains it before the button can fail. */}
             <p className="text-xs text-ink-muted mt-1 leading-relaxed">
-              Verify your email first — it proves the account is a person, and
+              Verify your email first - it proves the account is a person, and
               it's what keeps the public-map space free of throwaway spam.
             </p>
             <button
@@ -449,7 +449,7 @@ function SharePanel() {
               className="mt-3 flex items-center justify-center w-full min-h-11 rounded-xl bg-brand-600 text-white text-sm font-medium hover:bg-brand-700 disabled:opacity-50"
             >
               {resendDone
-                ? 'Sent — check your inbox'
+                ? 'Sent - check your inbox'
                 : isResending
                   ? 'Sending…'
                   : `Email a verify link to ${user?.email ?? 'you'}`}

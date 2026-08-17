@@ -1,7 +1,7 @@
 /**
  * The alert rules, pure (search v2 M4). A watch fires when the best
  * current price either dips under the user's own threshold, or undercuts
- * the route's 30-day trailing minimum by more than 10% — "cheaper than
+ * the route's 30-day trailing minimum by more than 10% - "cheaper than
  * anything this month has seen". Both are muzzled by a 24h debounce and
  * by never re-announcing a price that isn't better than the last one
  * announced.
@@ -56,6 +56,6 @@ export function alertCopy(watch: {
   );
   return {
     title: `✈️ ${watch.origin} → ${watch.destination} dropped`,
-    body: `${monthName} trips from $${Math.round(watch.bestPrice)}. Prices move fast — worth a look.`,
+    body: `${monthName} trips from $${Math.round(watch.bestPrice)}. Prices move fast - worth a look.`,
   };
 }

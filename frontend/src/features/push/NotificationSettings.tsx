@@ -16,11 +16,11 @@ function NotificationSettings() {
   const handleTest = async () => {
     try {
       await testPush().unwrap();
-      showToast('Test sent — it should pop up in a moment', {
+      showToast('Test sent - it should pop up in a moment', {
         tone: 'success',
       });
     } catch {
-      showToast('Could not send the test — try again', { tone: 'error' });
+      showToast('Could not send the test - try again', { tone: 'error' });
     }
   };
 
@@ -50,7 +50,7 @@ function NotificationSettings() {
         Notifications
       </h2>
       <p className="text-sm text-ink-muted mt-1">
-        Trip anniversaries, as they come around — &ldquo;one year ago you
+        Trip anniversaries, as they come around - &ldquo;one year ago you
         landed in Tokyo.&rdquo; Nothing else, and only on devices where you
         turn it on.
       </p>

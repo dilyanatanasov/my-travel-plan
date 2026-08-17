@@ -4,7 +4,7 @@
  *
  * Uses MediaRecorder over a canvas stream, so no encoder dependency. The
  * output is WebM, which Chrome and Firefox produce and play but Safari and
- * iOS largely do not — hence `isVideoExportSupported`, and the PNG export
+ * iOS largely do not - hence `isVideoExportSupported`, and the PNG export
  * staying in place as the fallback rather than being replaced.
  */
 import { MapExportError } from './exportMapImage';
@@ -49,7 +49,7 @@ function pickMimeType(): string | null {
  * Sample each route arc into canvas-space points.
  *
  * getPointAtLength works in the path's own user space, so each point is put
- * through the path's CTM to land in the SVG viewport — which, because the
+ * through the path's CTM to land in the SVG viewport - which, because the
  * export SVG's viewBox matches its pixel size, is also canvas space. Reading
  * the live SVG avoids reimplementing the projection.
  */
@@ -144,10 +144,10 @@ export async function renderMapVideo(
   const width = Number(svg.getAttribute('width')) || svg.getBoundingClientRect().width;
   const height = Number(svg.getAttribute('height')) || svg.getBoundingClientRect().height;
   if (!width || !height) {
-    throw new MapExportError('The map is not ready yet — try again in a moment');
+    throw new MapExportError('The map is not ready yet - try again in a moment');
   }
   if (!svg.querySelector('path')) {
-    throw new MapExportError('The map is still loading — try again in a moment');
+    throw new MapExportError('The map is still loading - try again in a moment');
   }
 
   const routes = sampleRoutes(svg);

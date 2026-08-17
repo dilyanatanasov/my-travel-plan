@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import TripSearchPanel from '../features/search/tripSearch/TripSearchPanel';
 
 /**
- * The v2 funnel at /search/trips: you know WHERE, this finds WHEN — the
+ * The v2 funnel at /search/trips: you know WHERE, this finds WHEN - the
  * discovery page next door answers the opposite question. Same secondary
  * chrome as WhereNextPage.
  */

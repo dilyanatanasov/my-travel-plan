@@ -4,7 +4,7 @@ import { DiscoveryPanel } from '../features/search/components';
 /**
  * Standalone home for discovery at /search, replacing the orphaned
  * FlightSearchPage (which was already hidden from the nav; its files stay
- * as the v2 substrate — see context/research/2026-08-12).
+ * as the v2 substrate - see context/research/2026-08-12).
  *
  * Same secondary-page chrome as Settings. When A docks DiscoveryPanel
  * beside the map (Q1), this page keeps working as the mobile "Explore all"

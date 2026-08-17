@@ -45,7 +45,7 @@ export class ShareService {
     private readonly configService: ConfigService,
   ) {}
 
-  /** 16 URL-safe characters — long enough that tokens are not enumerable. */
+  /** 16 URL-safe characters - long enough that tokens are not enumerable. */
   private generateToken(): string {
     return randomBytes(12).toString('base64url').slice(0, 16);
   }
@@ -87,7 +87,7 @@ export class ShareService {
     const user = await this.userRepository.findOne({
       where: { shareToken: token },
     });
-    // Same response for "no such token" and "revoked" — neither should be
+    // Same response for "no such token" and "revoked" - neither should be
     // distinguishable from outside.
     if (!user) {
       throw new NotFoundException('This map is not available');
@@ -196,8 +196,8 @@ export class ShareService {
    *
    * The body arrives as a raw Buffer (express.raw in main.ts, image/png
    * only). Validated here rather than trusted: the magic bytes prove it is a
-   * PNG, and width/height come from its IHDR — the first chunk, at fixed
-   * offsets — so a crawler is never told dimensions the file does not have.
+   * PNG, and width/height come from its IHDR - the first chunk, at fixed
+   * offsets - so a crawler is never told dimensions the file does not have.
    */
   async saveCard(userId: number, body: unknown): Promise<{ ok: true }> {
     if (!Buffer.isBuffer(body) || body.length === 0) {
@@ -234,7 +234,7 @@ export class ShareService {
    * The stored card for a share token.
    *
    * Looked up via the token, never a user id, so revoking sharing kills the
-   * preview image along with the map — same indistinguishable 404 for
+   * preview image along with the map - same indistinguishable 404 for
    * "no such token", "revoked" and "no card yet".
    */
   async getCard(token: string): Promise<ShareCard> {
@@ -279,7 +279,7 @@ export class ShareService {
       });
     }
 
-    // Count the same way PublicMapDto does — trips and homes, not transits —
+    // Count the same way PublicMapDto does - trips and homes, not transits —
     // and only the count: notes and dates never appear in an unfurl (privacy
     // rule, same as the public map).
     const [countriesVisited, card] = await Promise.all([
@@ -298,7 +298,7 @@ export class ShareService {
     const pageUrl = `${app}/s/${encodeURIComponent(token)}`;
 
     return this.unfurlHtml({
-      title: `${name} travel map — ${countriesVisited} ${noun}`,
+      title: `${name} travel map - ${countriesVisited} ${noun}`,
       description:
         'Countries visited and flights flown, on one interactive world map. Made with myContrail.',
       // ?v= busts crawler image caches: the card URL never changes (one card
@@ -378,7 +378,7 @@ export class ShareService {
 
   /**
    * Saved duels are bookmarks over tokens. Dead tokens (sharing revoked)
-   * are filtered out here rather than surfaced as errors — the bookmark
+   * are filtered out here rather than surfaced as errors - the bookmark
    * silently stops resolving, exactly like the share link it points at.
    */
   async listSavedDuels(
@@ -428,7 +428,7 @@ export class ShareService {
     return { ok: true };
   }
 
-  /** Base URL for absolute OG URLs — same DOMAIN-derived pattern as MailService. */
+  /** Base URL for absolute OG URLs - same DOMAIN-derived pattern as MailService. */
   private appUrl(): string {
     const domain = this.configService.get<string>('DOMAIN');
     return domain ? `https://${domain}` : 'http://localhost:5173';

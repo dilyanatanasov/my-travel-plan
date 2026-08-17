@@ -21,7 +21,7 @@ function formatDay(date: string): string {
  * where its cheapest observed price sits in the month's terciles. Ringed
  * days are the candidates the funnel chose to price precisely.
  *
- * A cell's price quietly belongs to a date PAIR — tapping the day says the
+ * A cell's price quietly belongs to a date PAIR - tapping the day says the
  * whole sentence: "out Wed 7 Oct → back Wed 14 Oct · 7 nights · ~$489"
  * (the invisible-return-date finding from the design review).
  */

@@ -112,7 +112,7 @@ function OverviewPanel({
           >
             <div className="font-display font-normal text-2xl">Not set</div>
             <div className="text-xs text-brand-text mt-0.5 font-medium">
-              Home country — set it →
+              Home country - set it →
             </div>
           </Link>
         ) : (

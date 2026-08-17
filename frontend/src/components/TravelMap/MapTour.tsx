@@ -5,7 +5,7 @@ const TOUR_KEY = 'mycontrail-tour-done';
 interface TourStep {
   title: string;
   body: string;
-  /** Where the card sits — near the thing it talks about. */
+  /** Where the card sits - near the thing it talks about. */
   placement: string;
 }
 
@@ -19,7 +19,7 @@ interface TourStep {
 const STEPS: TourStep[] = [
   {
     title: 'This map is the app',
-    body: 'Tap any country you’ve been to — tap again to cycle Visited → Lived → Transit → Want to go. Hold (or right-click) a country for details and dates.',
+    body: 'Tap any country you’ve been to - tap again to cycle Visited → Lived → Transit → Want to go. Hold (or right-click) a country for details and dates.',
     placement:
       'left-1/2 -translate-x-1/2 bottom-40 sm:bottom-28 w-[min(92vw,24rem)]',
   },
@@ -62,7 +62,7 @@ function MapTour() {
 
   return (
     // Solid surface, not glass: the previous hints washed out over the map
-    // (friend feedback) — a card that teaches must be readable first.
+    // (friend feedback) - a card that teaches must be readable first.
     <div
       role="dialog"
       aria-label={`Tip ${stepIndex + 1} of ${STEPS.length}: ${step.title}`}

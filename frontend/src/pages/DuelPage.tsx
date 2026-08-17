@@ -19,8 +19,8 @@ import CountryFlag from '../components/ui/CountryFlag';
 import type { Alpha2, Alpha3 } from '../types';
 
 /*
-  The duel: two public maps on one canvas, a scoreline, and — behind a
-  sign-in gate — the two lists that actually fuel rivalry. The gate is a
+  The duel: two public maps on one canvas, a scoreline, and - behind a
+  sign-in gate - the two lists that actually fuel rivalry. The gate is a
   conversion surface, not security: both maps are public via their own
   share links, so the composite cannot be more secret than its parts
   (decision 2026-08-13: tease publicly, gate the depth).
@@ -41,7 +41,7 @@ function ScoreTile({ value, label }: { value: string; label: string }) {
   );
 }
 
-/** /duel/:tokenA — the challenge landing: their map, your move. */
+/** /duel/:tokenA - the challenge landing: their map, your move. */
 function ChallengeLanding({ token }: { token: string }) {
   const navigate = useNavigate();
   const { user, isGuest } = useAuth();
@@ -78,7 +78,7 @@ function ChallengeLanding({ token }: { token: string }) {
             onClick={() => navigate(`/duel/${token}/${myToken}`)}
             className="inline-flex items-center justify-center min-h-11 px-6 rounded-xl bg-brand-600 text-white font-medium hover:bg-brand-700"
           >
-            Add my map — let's duel
+            Add my map - let's duel
           </button>
         ) : user && !isGuest ? (
           <p className="text-sm text-ink-muted">
@@ -109,7 +109,7 @@ function ChallengeLanding({ token }: { token: string }) {
 function PageShell({ children }: { children: React.ReactNode }) {
   return (
     /* SatelliteShell (2026-08-14 coherence pass): a session gets the real
-       app header, strangers the shared slim one — this page's hand-rolled
+       app header, strangers the shared slim one - this page's hand-rolled
        mini-header retired with it. Scrolling stays owned here via the
        shell (the app body is overflow:hidden). */
     <SatelliteShell
@@ -179,8 +179,8 @@ function DuelPage() {
     );
     /*
       Full roster per side, exclusives first (the rivalry), shared after
-      (the common ground). A country both have paints as 'home' — the map's
-      highest-contrast tone — and repeats in both columns marked shared.
+      (the common ground). A country both have paints as 'home' - the map's
+      highest-contrast tone - and repeats in both columns marked shared.
     */
     const listA: { name: string; iso2: Alpha2; shared: boolean }[] = [];
     const listB: { name: string; iso2: Alpha2; shared: boolean }[] = [];
@@ -214,7 +214,7 @@ function DuelPage() {
   if (isError || !duel)
     return (
       <PageShell>
-        One of these maps is no longer shared — the duel is off.
+        One of these maps is no longer shared - the duel is off.
       </PageShell>
     );
 
@@ -228,7 +228,7 @@ function DuelPage() {
     if (!opponentToken) return;
     try {
       await saveDuel(opponentToken).unwrap();
-      showToast('Duel saved — find it in your Share panel', {
+      showToast('Duel saved - find it in your Share panel', {
         tone: 'success',
       });
     } catch {
@@ -305,7 +305,7 @@ function DuelPage() {
           />
         </div>
 
-        {/* The rivalry fuel — signed-in only (the catchy part is the carrot).
+        {/* The rivalry fuel - signed-in only (the catchy part is the carrot).
             Two full rosters, exclusives first and bold, shared muted with a
             "both" dot: repeats across players are common ground, not noise. */}
         {isSignedIn ? (

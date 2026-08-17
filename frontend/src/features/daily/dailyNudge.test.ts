@@ -17,7 +17,7 @@ describe('shouldNudge', () => {
     expect(shouldNudge(base)).toBe(true);
   });
 
-  it('never nudges someone without a streak — non-players are left alone', () => {
+  it('never nudges someone without a streak - non-players are left alone', () => {
     expect(shouldNudge({ ...base, streak: 0 })).toBe(false);
   });
 

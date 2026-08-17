@@ -35,7 +35,7 @@ import type { VisitType, Visit } from '../types';
 /** One-time "add the flight?" toast after the first country is marked. */
 const FLIGHT_NUDGE_KEY = 'mycontrail-flight-nudge-shown';
 
-/** Visited countries, excluding transit — the same rule the Overview uses. */
+/** Visited countries, excluding transit - the same rule the Overview uses. */
 function overviewStatsCountForMilestones(
   visits: { visitType?: string | null }[]
 ): number {
@@ -48,13 +48,13 @@ function overviewStatsCountForMilestones(
 }
 
 function TravelMapPage() {
-  // Null means "no panel" — the map gets the whole canvas. Countries opens by
+  // Null means "no panel" - the map gets the whole canvas. Countries opens by
   // default on desktop because it is the primary action; mobile starts closed
   // so the first thing you see is your map.
   const [activeSection, setActiveSection] = useState<SectionId | null>(null);
   const isDesktop = useIsDesktop();
 
-  // "Where do they stay the most" — null section means the bare map.
+  // "Where do they stay the most" - null section means the bare map.
   useSectionDwell(activeSection ?? 'map');
 
   const { data: countries = [] } = useGetCountriesQuery();
@@ -82,14 +82,14 @@ function TravelMapPage() {
   const handleToggleCountry = useCallback(
     async (countryId: number) => {
       const existingVisit = visitByCountryId.get(countryId);
-      // kind only — never which country (analytics privacy rule).
+      // kind only - never which country (analytics privacy rule).
       track('map_interact', { kind: 'country_open' });
       /*
         Tap cycles the state (user's design, 2026-08-13; lived added
         2026-08-17): none → visited → lived → transit → want to go → removed.
 
         Home is deliberately NOT in the cycle: it is set only via the picker,
-        and tapping it keeps the old remove-with-undo — a stray tap must
+        and tapping it keeps the old remove-with-undo - a stray tap must
         never silently demote someone's home country. The picker remains the
         direct path to any state.
       */
@@ -102,7 +102,7 @@ function TravelMapPage() {
             id: existingVisit.id,
             data: { visitType: 'lived' },
           }).unwrap();
-          showToast('Lived here — tap again for transit', {
+          showToast('Lived here - tap again for transit', {
             durationMs: 3000,
             key: 'visit-cycle',
           });
@@ -111,7 +111,7 @@ function TravelMapPage() {
             id: existingVisit.id,
             data: { visitType: 'transit' },
           }).unwrap();
-          showToast('Marked as transit — tap again for "want to go"', {
+          showToast('Marked as transit - tap again for "want to go"', {
             durationMs: 3000,
             key: 'visit-cycle',
           });
@@ -120,7 +120,7 @@ function TravelMapPage() {
             id: existingVisit.id,
             data: { visitType: 'wishlist' },
           }).unwrap();
-          showToast('On your "want to go" list — tap again to clear', {
+          showToast('On your "want to go" list - tap again to clear', {
             durationMs: 3000,
             key: 'visit-cycle',
           });
@@ -134,12 +134,12 @@ function TravelMapPage() {
       /*
         One-time flights nudge, at the moment of highest intent: they just
         marked somewhere they've been. Phrased as a question because flights
-        are optional — bus, train and ship travellers have already done
+        are optional - bus, train and ship travellers have already done
         everything they need by tapping (user decision, 2026-08-13).
       */
       if (!localStorage.getItem(FLIGHT_NUDGE_KEY)) {
         localStorage.setItem(FLIGHT_NUDGE_KEY, '1');
-        showToast('Marked as visited ✓ — got there by plane?', {
+        showToast('Marked as visited ✓ - got there by plane?', {
           durationMs: 8000,
           key: 'visit-cycle',
           action: {
@@ -260,9 +260,9 @@ function TravelMapPage() {
         return (
           <div className="space-y-6">
             {/* "Past or future?" was a real question (friend feedback,
-                2026-08-17) — answer it before the form does. */}
+                2026-08-17) - answer it before the form does. */}
             <p className="text-xs text-ink-muted -mb-3">
-              Your flight log — trips you&rsquo;ve taken. A future date is
+              Your flight log - trips you&rsquo;ve taken. A future date is
               kept as a plan and stays out of your stats until it happens.
             </p>
             <FlightForm />

@@ -8,7 +8,7 @@ import { useToast } from '../../components/Toast/ToastProvider';
 
 const API_BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? '/api';
 
-/** Authed photo URL — <img> sends same-origin cookies, so no client magic. */
+/** Authed photo URL - <img> sends same-origin cookies, so no client magic. */
 export function legPhotoUrl(legId: number, cacheBust?: number): string {
   return `${API_BASE}/flights/legs/${legId}/photo${
     cacheBust ? `?v=${cacheBust}` : ''
@@ -17,7 +17,7 @@ export function legPhotoUrl(legId: number, cacheBust?: number): string {
 
 /**
  * The camera on a stop chip (trip photos, 2026-08-14): upload, replace via
- * tapping the thumbnail, remove via its ✕. One photo per stop — the server
+ * tapping the thumbnail, remove via its ✕. One photo per stop - the server
  * enforces it; this just mirrors it. Shared wherever a stop is shown.
  */
 function StopPhotoControl({ legId }: { legId: number }) {
@@ -39,7 +39,7 @@ function StopPhotoControl({ legId }: { legId: number }) {
     try {
       await uploadPhoto({ legId, file }).unwrap();
       setCacheBust(Date.now());
-      showToast('Postcard saved — it will appear in your replay', {
+      showToast('Postcard saved - it will appear in your replay', {
         tone: 'success',
       });
     } catch (error) {
@@ -103,7 +103,7 @@ function StopPhotoControl({ legId }: { legId: number }) {
           onClick={() => inputRef.current?.click()}
           disabled={isUploading}
           aria-label="Add a photo to this stop"
-          title="Add a photo — it shows as a postcard in your replay"
+          title="Add a photo - it shows as a postcard in your replay"
           className="p-1 text-ink-subtle hover:text-brand-700 hover:bg-brand-50 rounded transition-colors disabled:opacity-50"
         >
           <svg

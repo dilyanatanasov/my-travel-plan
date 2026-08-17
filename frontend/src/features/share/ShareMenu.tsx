@@ -116,7 +116,7 @@ function ShareMenu() {
   const handleDownloadVideo = async () => {
     const svg = document.getElementById(EXPORT_SVG_ID) as SVGSVGElement | null;
     if (!svg) {
-      showToast('The map is not ready yet — try again in a moment', {
+      showToast('The map is not ready yet - try again in a moment', {
         tone: 'error',
       });
       return;
@@ -147,7 +147,7 @@ function ShareMenu() {
       EXPORT_SVG_ID
     ) as SVGSVGElement | null;
     if (!svg) {
-      showToast('The map is not ready yet — try again in a moment', {
+      showToast('The map is not ready yet - try again in a moment', {
         tone: 'error',
       });
       return;
@@ -249,7 +249,7 @@ function ShareMenu() {
           <div className="border-t border-line my-1" />
 
           {/*
-            The image stays free for everyone — it is how the app spreads.
+            The image stays free for everyone - it is how the app spreads.
             Sharing and video are what an account buys, because both are
             things someone actively wants in the moment, which is a far
             stronger reason to sign up than an abstract warning about losing
@@ -262,7 +262,7 @@ function ShareMenu() {
               </p>
               <p className="text-xs text-ink-subtle mt-0.5 leading-relaxed">
                 A free account gives you a public link to your map and the
-                animated video export — and keeps your map if you change
+                animated video export - and keeps your map if you change
                 device.
               </p>
               <Link

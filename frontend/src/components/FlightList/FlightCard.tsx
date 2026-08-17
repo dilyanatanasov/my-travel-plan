@@ -17,7 +17,7 @@ interface FlightCardProps {
   onDelete: (id: number) => void;
   /**
    * Reorder arrows (2026-08-14): present only when the neighbouring swap is
-   * legal — same-date neighbour for dated journeys, any neighbour for
+   * legal - same-date neighbour for dated journeys, any neighbour for
    * undated ones. An absent arrow is the constraint made visible.
    */
   onMoveUp?: () => void;
@@ -38,7 +38,7 @@ function FlightCard({
   /*
     Inline editing for what the backend can change on an existing journey:
     date (at any precision), notes, the round-trip label. The route itself
-    stays delete-and-re-add — leg editing is a different feature. Split-off
+    stays delete-and-re-add - leg editing is a different feature. Split-off
     return journeys land here with no date, so this is where they get one.
   */
   const [isEditing, setIsEditing] = useState(false);
@@ -70,7 +70,7 @@ function FlightCard({
     Every stop mutation (reorder, retype, remove) flows through here so the
     Round trip label stays honest (2026-08-14): a chain that provably no
     longer ends where it started is not a round trip, and the checkbox
-    unchecks itself — visibly, with the reason shown — rather than shipping
+    unchecks itself - visibly, with the reason shown - rather than shipping
     a label that lies. It never re-checks itself: "round trip" is the
     user's claim to make.
   */
@@ -203,7 +203,7 @@ function FlightCard({
         {/*
           Below sm the three actions collapse into one ⋯ menu: four inline
           controls left the route ~240px on a phone (user report,
-          2026-08-14). The reorder arrows stay inline — "tap and watch the
+          2026-08-14). The reorder arrows stay inline - "tap and watch the
           card move" dies inside a menu.
         */}
         <div className="relative sm:hidden">
@@ -338,7 +338,7 @@ function FlightCard({
               is rejected server-side with a message pointing at separate
               journeys, matching the add form's split behavior. */}
           <p className="text-xs text-ink-subtle">
-            Changing the route rebuilds its stops — stop photos are removed
+            Changing the route rebuilds its stops - stop photos are removed
             with them.
           </p>
           <div className="space-y-1.5">
@@ -469,7 +469,7 @@ function FlightCard({
           </div>
           {roundTripAutoCleared && (
             <p className="text-xs text-ink-muted">
-              Round trip unchecked — the route no longer ends where it
+              Round trip unchecked - the route no longer ends where it
               started. Re-check it if that is still wrong.
             </p>
           )}

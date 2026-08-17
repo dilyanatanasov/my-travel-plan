@@ -66,7 +66,7 @@ function TripShareDialog({
       const svg = await findExportSvg(TRIP_SVG_ID, () => cancelled);
       if (cancelled) return;
       if (!svg) {
-        setError('The map is still loading — try again in a moment.');
+        setError('The map is still loading - try again in a moment.');
         return;
       }
       const content: TripContent = {
@@ -79,7 +79,7 @@ function TripShareDialog({
       try {
         const blob = await renderTripCard(svg, content);
         if (cancelled) return;
-        // Style name only — never the route or the date.
+        // Style name only - never the route or the date.
         track('share_render', { style: 'trip' });
         blobRef.current = blob;
         objectUrl = URL.createObjectURL(blob);
@@ -131,7 +131,7 @@ function TripShareDialog({
       }
     }
     handleDownload();
-    showToast('Saved — post it from your gallery', { durationMs: 6000 });
+    showToast('Saved - post it from your gallery', { durationMs: 6000 });
   }, [filename, handleDownload, routeCodes, showToast]);
 
   return (

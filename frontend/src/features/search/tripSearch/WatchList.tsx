@@ -15,7 +15,7 @@ function monthLabel(month: string): string {
 
 /**
  * The user's active watches. The nightly sweep does the work; this list
- * is the receipt — and the off switch.
+ * is the receipt - and the off switch.
  */
 function WatchList() {
   const { data: watches = [] } = useGetWatchesQuery();
@@ -39,7 +39,7 @@ function WatchList() {
       <h3 className="text-sm font-semibold text-ink mb-1">Watching</h3>
       <p className="text-xs text-ink-muted mb-3">
         Checked nightly. You get a notification when a price genuinely
-        drops — at most one per watch per day.
+        drops - at most one per watch per day.
       </p>
       <ul className="space-y-2">
         {active.map((watch) => (

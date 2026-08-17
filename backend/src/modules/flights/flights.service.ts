@@ -44,7 +44,7 @@ export class FlightsService {
       relations: ['legs', 'legs.departureAirport', 'legs.arrivalAirport'],
     });
     if (!journey) {
-      // 404 rather than 403 — do not confirm that another user's row exists.
+      // 404 rather than 403 - do not confirm that another user's row exists.
       throw new NotFoundException(`Flight journey with ID ${id} not found`);
     }
     return journey;
@@ -96,12 +96,12 @@ export class FlightsService {
       throw new BadRequestException('One or more airports not found');
     }
 
-    // Split the chain at ground transfers — see flight-chain.util.ts, where
+    // Split the chain at ground transfers - see flight-chain.util.ts, where
     // the rules live and are tested.
     const segments = splitChainAtGroundTransfers(legData, airportMap);
     if (segments.length === 0) {
       throw new BadRequestException(
-        'Every hop in this chain is a ground transfer — nothing to record as a flight',
+        'Every hop in this chain is a ground transfer - nothing to record as a flight',
       );
     }
 
@@ -179,10 +179,10 @@ export class FlightsService {
 
   /**
    * Swap the replay order of two journeys (user decision, 2026-08-14: no
-   * hours on journeys — same-date order is adjusted by hand instead).
+   * hours on journeys - same-date order is adjusted by hand instead).
    *
    * Undated journeys may swap freely; dated ones only with the exact same
-   * stored date (precision may differ — two journeys sharing a stored date
+   * stored date (precision may differ - two journeys sharing a stored date
    * are ambiguous enough that either order is a legitimate claim). A
    * cross-date swap would silently rewrite chronology, so it is refused:
    * changing the date is the honest way to move a dated journey.
@@ -220,7 +220,7 @@ export class FlightsService {
    *
    * Codes are resolved here rather than trusted from the client, and every
    * journey goes through `create` so distances and the country visits it
-   * derives are identical to a hand-entered flight — an import that produced
+   * derives are identical to a hand-entered flight - an import that produced
    * subtly different records would be worse than no import.
    *
    * Re-running the same file is safe: anything matching an existing date and
@@ -319,7 +319,7 @@ export class FlightsService {
   }
 
   /**
-   * Create visit records for countries visited in this flight — every one
+   * Create visit records for countries visited in this flight - every one
    * as a full visit ('trip'), never auto-transit.
    *
    * The old heuristic marked any arrive-then-depart country as transit,
@@ -388,7 +388,7 @@ export class FlightsService {
     /*
       Route editing: a new airport chain replaces the legs wholesale, with
       distances recomputed and auto-visits created for newly touched
-      countries. Visits from the old route stay — they record where the
+      countries. Visits from the old route stay - they record where the
       user has been, which editing a typo does not undo (same policy as
       deleting a journey). Ground transfers are rejected rather than
       silently split: splitting an existing journey in place would have to
@@ -411,7 +411,7 @@ export class FlightsService {
         const distance = calculateAirportDistance(from, to);
         if (chain[i] !== chain[i + 1] && distance < 100) {
           throw new BadRequestException(
-            `${from.iataCode} to ${to.iataCode} looks like a ground transfer, not a flight — record the parts before and after it as separate journeys`,
+            `${from.iataCode} to ${to.iataCode} looks like a ground transfer, not a flight - record the parts before and after it as separate journeys`,
           );
         }
         legs.push(

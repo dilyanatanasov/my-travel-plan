@@ -2,7 +2,7 @@ import { geoDistance } from 'd3-geo';
 
 /**
  * The puzzle uses the 50m-resolution atlas, not the map's 110m one: the
- * coarse tier silently drops microstates — Malta, Andorra, Liechtenstein —
+ * coarse tier silently drops microstates - Malta, Andorra, Liechtenstein —
  * which is unacceptable in a guessing game (typing "Malta" and finding
  * nothing reads as broken). ~240KB gzipped, fetched only on /daily, cached
  * per session like the map's own loader.
@@ -28,19 +28,19 @@ export function loadDailyGeography(): Promise<unknown> {
 /**
  * The daily country guesser's pure logic (2026-08-14, D6): deterministic
  * daily pick, Worldle-style hints (distance + compass direction +
- * proximity), localStorage streaks, emoji share grid. No backend — the
+ * proximity), localStorage streaks, emoji share grid. No backend - the
  * whole game derives from the UTC date and the map's own geography data.
  */
 
 /** Launch day; puzzle #1. */
 const EPOCH_UTC = Date.UTC(2026, 7, 13);
 const EARTH_KM = 6371;
-/** Antipodes are ~20,015km apart — the proximity scale's far end. */
+/** Antipodes are ~20,015km apart - the proximity scale's far end. */
 const MAX_KM = 20000;
 
 export type LonLat = [number, number];
 
-/** "YYYY-MM-DD" for the current UTC day — the whole world plays the same one. */
+/** "YYYY-MM-DD" for the current UTC day - the whole world plays the same one. */
 export function todayUtc(now = new Date()): string {
   return now.toISOString().slice(0, 10);
 }
@@ -127,7 +127,7 @@ export function shareText(
   const rows = guesses.map(
     (guess) => `${guessSquares(guess.proximity)} ${guess.arrow}`,
   );
-  return [`myContrail daily #${number} — ${score}`, ...rows, url].join('\n');
+  return [`myContrail daily #${number} - ${score}`, ...rows, url].join('\n');
 }
 
 /* ------------------------- persistence ------------------------- */
@@ -138,7 +138,7 @@ export interface DayState {
   status: 'playing' | 'won' | 'lost';
   /**
    * The answer this state was played against. If the candidate dataset
-   * ever changes mid-day (it did once, 110m→50m), the pick shifts — and
+   * ever changes mid-day (it did once, 110m→50m), the pick shifts - and
    * old guesses must not render against a new answer.
    */
   answerName?: string;

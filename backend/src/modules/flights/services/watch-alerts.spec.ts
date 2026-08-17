@@ -2,7 +2,7 @@ import { shouldAlert, alertCopy } from './watch-alerts.util';
 
 /**
  * The alert rules: threshold, trend, the 24h muzzle, and "only news is
- * news" — a price that isn't better than the last announcement is not an
+ * news" - a price that isn't better than the last announcement is not an
  * announcement.
  */
 describe('shouldAlert', () => {

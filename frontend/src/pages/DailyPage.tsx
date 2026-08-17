@@ -39,7 +39,7 @@ interface Candidate {
 
 const MAX_GUESSES = 6;
 
-/** ms until the next UTC midnight — when tomorrow's country arrives. */
+/** ms until the next UTC midnight - when tomorrow's country arrives. */
 function msToNextUtcMidnight(now = new Date()): number {
   const next = Date.UTC(
     now.getUTCFullYear(),
@@ -60,7 +60,7 @@ function formatCountdown(ms: number): string {
 /**
  * The daily country guesser (/daily, 2026-08-14): one silhouette per UTC
  * day, six guesses, distance + direction hints. Deliberately playable by
- * anyone — no account, streaks in localStorage; the game IS the funnel,
+ * anyone - no account, streaks in localStorage; the game IS the funnel,
  * and the nudge under a finished puzzle points at the map.
  */
 function DailyPage() {
@@ -72,7 +72,7 @@ function DailyPage() {
   /*
     Streaks of record: any session (guests included) mirrors results to the
     server, where first-write-wins per day makes cache-clearing pointless.
-    Truly anonymous players keep localStorage — that is anonymity's deal.
+    Truly anonymous players keep localStorage - that is anonymity's deal.
   */
   const hasSession = Boolean(user);
   const { data: serverStats } = useGetDailyStatsQuery(undefined, {
@@ -209,7 +209,7 @@ function DailyPage() {
         .unwrap()
         .catch(() => undefined); // local copy already has it
     }
-    // Result and try-count only — never which country it was.
+    // Result and try-count only - never which country it was.
     track('daily_play', { result: won ? 'won' : 'lost', tries: guesses.length });
   };
 
@@ -256,7 +256,7 @@ function DailyPage() {
     }
     try {
       await navigator.clipboard.writeText(text);
-      showToast('Result copied — paste it anywhere', { tone: 'success' });
+      showToast('Result copied - paste it anywhere', { tone: 'success' });
     } catch {
       showToast(text, { durationMs: 12000 });
     }
@@ -288,7 +288,7 @@ function DailyPage() {
               {shownStats.streak > 0 && ` · streak ${shownStats.streak}`}
             </p>
           </div>
-          {/* The last week, newest right — the record of what you guessed. */}
+          {/* The last week, newest right - the record of what you guessed. */}
           {serverStats?.recent && serverStats.recent.length > 0 && (
             <div
               className="flex gap-1 flex-shrink-0"
@@ -300,7 +300,7 @@ function DailyPage() {
                 .map((day) => (
                   <span
                     key={day.date}
-                    title={`${day.date} — ${day.won ? `won in ${day.tries}` : 'lost'}`}
+                    title={`${day.date} - ${day.won ? `won in ${day.tries}` : 'lost'}`}
                     className={`w-6 h-6 rounded flex items-center justify-center text-[10px] font-semibold ${
                       day.won
                         ? 'bg-brand-600 text-white'
@@ -329,7 +329,7 @@ function DailyPage() {
           ) : (
             <div className="h-[32vh] flex items-center justify-center text-sm text-ink-muted">
               {candidates?.length === 0
-                ? 'Could not load the world — try a reload.'
+                ? 'Could not load the world - try a reload.'
                 : 'Drawing today’s mystery…'}
             </div>
           )}
@@ -409,7 +409,7 @@ function DailyPage() {
             <p className="text-sm text-ink">
               {state.status === 'won' ? (
                 <>
-                  Got it — <span className="font-semibold">{answer.name}</span>{' '}
+                  Got it - <span className="font-semibold">{answer.name}</span>{' '}
                   in {state.guesses.length}.
                 </>
               ) : (

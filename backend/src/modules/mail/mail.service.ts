@@ -37,7 +37,7 @@ export class MailService {
   async sendVerificationEmail(to: string, link: string): Promise<void> {
     await this.send(
       to,
-      'Verify your email — myContrail',
+      'Verify your email - myContrail',
       this.branded({
         paragraphs: [
           'Welcome to myContrail!',
@@ -54,16 +54,16 @@ export class MailService {
   async sendPasswordResetEmail(to: string, link: string): Promise<void> {
     await this.send(
       to,
-      'Reset your password — myContrail',
+      'Reset your password - myContrail',
       this.branded({
         paragraphs: [
           'Someone asked to reset the password for this myContrail account.',
         ],
         cta: { label: 'Choose a new password', link },
         fineprint:
-          "The link works once and expires in 1 hour. If this wasn't you, ignore this email — your password is unchanged.",
+          "The link works once and expires in 1 hour. If this wasn't you, ignore this email - your password is unchanged.",
       }),
-      `Someone asked to reset the password for this myContrail account.\n\nChoose a new password:\n${link}\n\nThe link works once and expires in 1 hour. If this wasn't you, ignore this email — your password is unchanged.`,
+      `Someone asked to reset the password for this myContrail account.\n\nChoose a new password:\n${link}\n\nThe link works once and expires in 1 hour. If this wasn't you, ignore this email - your password is unchanged.`,
     );
   }
 
@@ -76,7 +76,7 @@ export class MailService {
     const link = `${this.appUrl()}/search/trips`;
     await this.send(
       to,
-      `${title} — myContrail`,
+      `${title} - myContrail`,
       this.branded({
         paragraphs: [title, body],
         cta: { label: 'See the dates', link },
@@ -90,7 +90,7 @@ export class MailService {
   /**
    * Shared branded shell: logo, two-tone wordmark, one CTA button.
    *
-   * Table layout and inline styles on purpose — email clients ignore
+   * Table layout and inline styles on purpose - email clients ignore
    * stylesheets and most CSS layout. Colors are the app's own light-theme
    * tokens (brand-600 terracotta on cream canvas) so inbox and app feel
    * like one product. The plain-text part always carries the same link.
@@ -137,7 +137,7 @@ export class MailService {
     text: string,
   ): Promise<void> {
     if (!this.apiKey) {
-      this.logger.log(`[mail disabled] To: ${to} — ${subject}\n${text}`);
+      this.logger.log(`[mail disabled] To: ${to} - ${subject}\n${text}`);
       return;
     }
 

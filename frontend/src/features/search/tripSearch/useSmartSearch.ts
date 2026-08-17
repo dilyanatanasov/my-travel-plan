@@ -96,7 +96,7 @@ export function useSmartSearch() {
       setState({
         ...INITIAL,
         phase: 'error',
-        error: 'Could not start the search — try again.',
+        error: 'Could not start the search - try again.',
       });
       return;
     }
@@ -151,7 +151,7 @@ export function useSmartSearch() {
         (event as MessageEvent).data !== undefined
           ? (JSON.parse((event as MessageEvent).data) as { message: string })
               .message
-          : 'The search stream dropped — results may be incomplete.';
+          : 'The search stream dropped - results may be incomplete.';
       source.close();
       setState((current) =>
         current.phase === 'done'

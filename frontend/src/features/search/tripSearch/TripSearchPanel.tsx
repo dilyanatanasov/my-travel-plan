@@ -18,7 +18,7 @@ import { useToast } from '../../../components/Toast/ToastProvider';
 
 /**
  * The v2 funnel's face: "May, Sofia to Tokyo, at least 5 nights" as a
- * form, then the stream — calendar first (which dates look cheap at all),
+ * form, then the stream - calendar first (which dates look cheap at all),
  * bookable results as they land, judgement badges when the funnel has
  * seen enough to have an opinion.
  */
@@ -54,7 +54,7 @@ function TripSearchPanel() {
         minNights: minNights ? Number(minNights) : undefined,
         maxNights: maxNights ? Number(maxNights) : undefined,
       }).unwrap();
-      showToast('Watching this route — you’ll hear when it drops', {
+      showToast('Watching this route - you’ll hear when it drops', {
         tone: 'success',
       });
     } catch (watchError) {
@@ -160,7 +160,7 @@ function TripSearchPanel() {
             <option value="first">First</option>
           </select>
           <div className="flex-1" />
-          {/* Watching needs only the route+month — no search required. */}
+          {/* Watching needs only the route+month - no search required. */}
           <Button
             variant="outline"
             onClick={handleWatch}
@@ -288,7 +288,7 @@ function TripSearchPanel() {
             ))}
             {visibleResults.length === 0 && (
               <p className="text-sm text-ink-muted">
-                Every result is hidden by the current filters — loosen the
+                Every result is hidden by the current filters - loosen the
                 stops or protection filter to see them again.
               </p>
             )}
@@ -299,7 +299,7 @@ function TripSearchPanel() {
       {phase === 'done' && surface.length > 0 && results.length === 0 && (
         <p className="text-sm text-ink-muted">
           {meta?.degraded
-            ? 'Live pricing is unavailable right now — the calendar above shows the indicative picture.'
+            ? 'Live pricing is unavailable right now - the calendar above shows the indicative picture.'
             : 'No bookable itineraries came back for the candidate dates.'}
         </p>
       )}

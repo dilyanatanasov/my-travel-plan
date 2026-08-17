@@ -61,7 +61,7 @@ function LegRow({ leg, label }: { leg: FlightLegDto; label: string }) {
 
 /**
  * One streamed itinerary. A split-ticket result is a first-class route —
- * same badges, same front — but it says what it is: separate bookings via
+ * same badges, same front - but it says what it is: separate bookings via
  * a positioning hub, no missed-connection protection, one Book button per
  * ticket.
  */
@@ -72,7 +72,7 @@ function TripResultCard({ flight, judgement }: TripResultCardProps) {
   /*
     Estimate cards (born the night Kiwi's data API died): a real date pair
     and an indicative total from the cached surface, no flight times to
-    show — so the card says the dates, owns up to being an estimate, and
+    show - so the card says the dates, owns up to being an estimate, and
     the button opens the live search for exactly those dates.
   */
   if (flight.isEstimate) {
@@ -95,10 +95,10 @@ function TripResultCard({ flight, judgement }: TripResultCardProps) {
               {flight.outboundLeg.arrivalAirport} ·{' '}
               {formatDay(flight.outboundLeg.departureTime)}
               {flight.returnLeg &&
-                ` — back ${formatDay(flight.returnLeg.departureTime)}`}
+                ` - back ${formatDay(flight.returnLeg.departureTime)}`}
             </p>
             <p className="text-xs text-ink-muted">
-              Recently seen at about this price — exact flights and times on
+              Recently seen at about this price - exact flights and times on
               the live search.
               {split &&
                 ' Two separate tickets: a delay on the first isn’t protected on the second.'}
@@ -176,7 +176,7 @@ function TripResultCard({ flight, judgement }: TripResultCardProps) {
           <p className="text-xs text-ink-subtle">{carriers.join(', ')}</p>
           {split && (
             <p className="text-xs text-ink-muted">
-              Two separate tickets — a delay on the first isn&rsquo;t
+              Two separate tickets - a delay on the first isn&rsquo;t
               protected on the second. Book both, in this order.
             </p>
           )}

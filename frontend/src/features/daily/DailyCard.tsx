@@ -10,7 +10,7 @@ import { useAuth } from '../auth/authApi';
 
 /**
  * The daily guesser's home inside the app (owner decision 2026-08-14:
- * Overview card, no header entry). Everything here is localStorage — the
+ * Overview card, no header entry). Everything here is localStorage - the
  * card renders your streak and today's state without any request.
  */
 function DailyCard() {
@@ -27,9 +27,9 @@ function DailyCard() {
 
   const status =
     state?.status === 'won'
-      ? `Solved in ${state.guesses.length} — back tomorrow`
+      ? `Solved in ${state.guesses.length} - back tomorrow`
       : state?.status === 'lost'
-        ? 'Revealed — revenge tomorrow'
+        ? 'Revealed - revenge tomorrow'
         : 'Guess the country from its shape';
 
   return (

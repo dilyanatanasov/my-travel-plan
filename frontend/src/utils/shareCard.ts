@@ -162,7 +162,7 @@ function wrap(
  * Draw the map to fit entirely inside a box.
  *
  * Cover-cropping a 2:1 map into a nearly-square block throws away more than
- * half its width — which cut the user's countries off the Warm and Ink cards
+ * half its width - which cut the user's countries off the Warm and Ink cards
  * while Editorial, whose band is close to 2:1, looked right. Now the map is
  * framed to the traveller's own region, cropping is exactly the wrong move:
  * there is no filler at the edges to lose.
@@ -188,7 +188,7 @@ function drawMapContain(
  * Fill a box with the map, cropping the overflow.
  *
  * Only for Editorial's full-bleed band, which is close enough to the source's
- * aspect that the crop takes ocean rather than countries — and where a
+ * aspect that the crop takes ocean rather than countries - and where a
  * letterbox would break the edge-to-edge effect that style exists for.
  */
 function drawMapCover(
@@ -209,8 +209,8 @@ function drawMapCover(
  * Wait until the world's geography is actually in the SVG.
  *
  * The countries come from a fetched TopoJSON while the routes come from data
- * already in the store, so there is a window where the map has paths — the
- * routes — but no land. Checking merely for "a path" passed in that window
+ * already in the store, so there is a window where the map has paths - the
+ * routes - but no land. Checking merely for "a path" passed in that window
  * and produced a card showing flight lines floating over an empty ocean.
  *
  * countries-110m carries ~177 features, so a threshold well above the number
@@ -219,7 +219,7 @@ function drawMapCover(
  *
  * The timeout is generous because the geography comes from a CDN on a cold
  * load. A short one meant the very first visit to Share timed out and
- * dead-ended, while every later visit worked from the browser cache — which
+ * dead-ended, while every later visit worked from the browser cache - which
  * reads as "it only breaks the first time".
  */
 const MIN_GEOGRAPHY_PATHS = 60;
@@ -230,14 +230,14 @@ async function waitForGeography(svg: SVGSVGElement, timeoutMs = 30000) {
     svg.querySelectorAll('path').length >= MIN_GEOGRAPHY_PATHS &&
     // The canvas frames itself on the user's countries once their centroids
     // are known. Without waiting for that we would capture the unframed
-    // first paint — the whole globe — and the card would disagree with the
+    // first paint - the whole globe - and the card would disagree with the
     // map the user was just looking at.
     svg.getAttribute('data-framed') === '1';
 
   while (!ready()) {
     if (Date.now() > deadline) {
       throw new ShareCardError(
-        'The map is still loading — try again in a moment',
+        'The map is still loading - try again in a moment',
       );
     }
     await new Promise((resolve) => setTimeout(resolve, 100));
@@ -258,7 +258,7 @@ export async function renderShareCard(
     Number(svg.getAttribute('height')) || svg.getBoundingClientRect().height;
 
   if (!srcWidth || !srcHeight) {
-    throw new ShareCardError('The map is not ready yet — try again in a moment');
+    throw new ShareCardError('The map is not ready yet - try again in a moment');
   }
   await waitForGeography(svg);
 
@@ -328,7 +328,7 @@ export interface TripContent {
   passenger: string | null;
 }
 
-/** Off-screen canvas id for the trip card — distinct from the map card's. */
+/** Off-screen canvas id for the trip card - distinct from the map card's. */
 export const TRIP_SVG_ID = 'trip-export-canvas';
 
 /** Can this browser share a file, rather than only a link? */
@@ -366,7 +366,7 @@ const TICKET = {
   accent: '#8c491a',
 };
 
-/* Shared ticket chrome — used by the trip card and the map's Ticket style. */
+/* Shared ticket chrome - used by the trip card and the map's Ticket style. */
 
 const TICKET_INSET = 24;
 
@@ -506,7 +506,7 @@ export async function renderTripCard(
   const srcHeight =
     Number(svg.getAttribute('height')) || svg.getBoundingClientRect().height;
   if (!srcWidth || !srcHeight) {
-    throw new ShareCardError('The map is not ready yet — try again in a moment');
+    throw new ShareCardError('The map is not ready yet - try again in a moment');
   }
   await waitForGeography(svg);
   if (document.fonts?.ready) {
@@ -606,7 +606,7 @@ export async function renderTripCard(
 
 /**
  * The domain, bottom-right on every style. The kicker names the product but
- * a stranger seeing the card in a chat has no idea where it lives — the
+ * a stranger seeing the card in a chat has no idea where it lives - the
  * watermark is the card's only actionable pointer back, i.e. the marketing.
  */
 function drawWatermark(ctx: CanvasRenderingContext2D, p: Palette) {
@@ -622,8 +622,8 @@ function drawWatermark(ctx: CanvasRenderingContext2D, p: Palette) {
 
 /*
   Warm and Ink share their geometry rules (2026-08-14 rework): the map block
-  is near-full-bleed at the source's own 2:1 aspect — 1000×500, which
-  contain-fits exactly, so no letterbox can appear inside the block — and the
+  is near-full-bleed at the source's own 2:1 aspect - 1000×500, which
+  contain-fits exactly, so no letterbox can appear inside the block - and the
   leftover card height is distributed evenly between the content blocks
   instead of pooling into one dead band above the facts, which is what
   "small map with gaps" was.
@@ -707,7 +707,7 @@ function drawInk(
   const topPad = 64;
   const bottomReserve = 110;
 
-  // Measure first — same even-gap rule as Warm.
+  // Measure first - same even-gap rule as Warm.
   const heroSize = fitFont(ctx, content.hero.value, inner, 190, display);
   const capSize = fitFont(ctx, content.hero.caption, inner, 30, (s) =>
     body(s, '600'),
@@ -746,7 +746,7 @@ function drawEditorial(
   content: ShareContent,
   p: Palette,
 ) {
-  // Full-bleed band: no rounding, no padding — the point of this one.
+  // Full-bleed band: no rounding, no padding - the point of this one.
   const bandHeight = 620;
   ctx.save();
   ctx.beginPath();

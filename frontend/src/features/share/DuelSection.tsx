@@ -11,7 +11,7 @@ import { extractTokens } from './duelTokens';
  * Duels live on share tokens, not a friend graph (decision 2026-08-13):
  * the challenge link is your share token wearing boxing gloves, an opponent
  * is a pasted link, and a saved duel is a bookmark that dies with either
- * side's token — exactly like the share links it is made of.
+ * side's token - exactly like the share links it is made of.
  */
 
 function DuelSection({ myToken }: { myToken: string }) {
@@ -26,7 +26,7 @@ function DuelSection({ myToken }: { myToken: string }) {
   const handleCopyChallenge = async () => {
     try {
       await navigator.clipboard.writeText(challengeUrl);
-      showToast('Challenge link copied — send it to someone', {
+      showToast('Challenge link copied - send it to someone', {
         tone: 'success',
       });
     } catch {

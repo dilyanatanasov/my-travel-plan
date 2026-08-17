@@ -81,7 +81,7 @@ describe('shareText', () => {
     ];
     const text = shareText(2, guesses, true, 'https://mycontrail.com/daily');
     const lines = text.split('\n');
-    expect(lines[0]).toBe('myContrail daily #2 — 2/6');
+    expect(lines[0]).toBe('myContrail daily #2 - 2/6');
     expect(lines).toHaveLength(4);
     expect(lines[2]).toBe('🟩🟩🟩🟩🟩 🎯');
     expect(lines[3]).toContain('/daily');
