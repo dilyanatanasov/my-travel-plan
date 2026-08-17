@@ -534,15 +534,19 @@ function TravelMap() {
     const countryId = countryByIsoCode.get(openCountryIso);
     if (!countryId) return null;
     const visit = visitByCountryId.get(countryId) ?? null;
-    if (!visit) return null;
+    // No visit is a valid card now (long-press stopped auto-adding): the
+    // name and alpha-2 come from the countries table instead.
+    const country =
+      visit?.country ?? countries.find((c) => c.id === countryId) ?? null;
     return {
+      countryId,
       // Alpha-2, which is what the airports table stores. The map's own key
       // is alpha-3, and joining on it matched nothing.
-      isoAlpha2: visit.country?.isoCode2 ?? null,
+      isoAlpha2: country?.isoCode2 ?? null,
       visit,
-      name: visit.country?.name ?? openCountryIso,
+      name: country?.name ?? openCountryIso,
     };
-  }, [openCountryIso, countryByIsoCode, visitByCountryId]);
+  }, [openCountryIso, countryByIsoCode, visitByCountryId, countries]);
 
   const handleRouteHover = useCallback(
     (route: AggregatedRoute | null, event?: React.MouseEvent) => {
@@ -651,14 +655,20 @@ function TravelMap() {
         journeys={flights}
         onClose={() => setOpenCountryIso(null)}
         onChangeType={(type) => {
-          void updateVisit({
-            id: openCountry.visit.id,
-            data: { visitType: type },
-          });
+          // Picking a type on a country that is not on the map yet is what
+          // adds it - with exactly that type, no silent 'visited' default.
+          if (openCountry.visit) {
+            void updateVisit({
+              id: openCountry.visit.id,
+              data: { visitType: type },
+            });
+          } else {
+            void addVisitForCountry(openCountry.countryId, openCountry.name, type);
+          }
         }}
         onRemove={() => {
           setOpenCountryIso(null);
-          void removeVisitWithUndo(openCountry.visit);
+          if (openCountry.visit) void removeVisitWithUndo(openCountry.visit);
         }}
         onShowJourney={(journeyId) => {
           const journey = flights.find((f) => f.id === journeyId);

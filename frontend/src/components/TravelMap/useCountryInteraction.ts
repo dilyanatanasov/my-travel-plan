@@ -147,10 +147,10 @@ export function useCountryInteraction(options: {
   );
 
   /*
-    Hold a country to open its card, adding it first if it is not yet
-    visited. That gives trip / transit / home a route that does not involve
-    opening a panel - which matters most on a phone, where the panel covers
-    the map you are pointing at.
+    Hold a country to open its card. It no longer auto-adds an unvisited
+    country first (owner feedback, 2026-08-17): holding is how you LOOK at
+    a place, and looking must not write - the card opens unselected and
+    picking a type there is what creates the visit.
   */
   const handleCountryLongPress = useCallback(
     async (isoCode: string) => {
@@ -159,15 +159,10 @@ export function useCountryInteraction(options: {
       if (!countryId) return;
 
       clickConsumedRef.current = true;
-      if (!visitByCountryId.get(countryId)) {
-        await addVisitForCountry(countryId);
-      }
       onOpenCountry(isoCode);
     },
     [
       countryByIsoCode,
-      visitByCountryId,
-      addVisitForCountry,
       hasSelectedJourney,
       replayActive,
       clickConsumedRef,

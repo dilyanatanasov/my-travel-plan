@@ -218,6 +218,35 @@ export function useReplayOrchestration(
     const isoOf = (code: string | null) =>
       code ? alpha2ToAlpha3.get(code) : undefined;
 
+    /*
+      Skip-proof backfill (user report, 2026-08-17): reveals are timers
+      inside a step, and skipping to the next journey clears them - so the
+      skipped stops stayed dark while their track drew anyway. However this
+      step was reached, every EARLIER journey is history: put all its
+      countries on the map now, quietly (no flash - the flash marks a
+      landing, and these planes never landed).
+    */
+    const previousJourneys = replay.played.slice(0, -1);
+    if (previousJourneys.length > 0) {
+      const backfill = new Set<string>();
+      for (const journey of previousJourneys) {
+        for (const leg of journey.legs ?? []) {
+          const dep = isoOf(leg.departureAirport?.countryIso ?? null);
+          const arr = isoOf(leg.arrivalAirport?.countryIso ?? null);
+          if (dep) backfill.add(dep);
+          if (arr) backfill.add(arr);
+        }
+      }
+      if (backfill.size > 0) {
+        for (const iso of backfill) landedBeforeRef.current.add(iso);
+        setRevealedIsos((current) => {
+          const merged = new Set(current);
+          for (const iso of backfill) merged.add(iso);
+          return merged.size === current.size ? current : merged;
+        });
+      }
+    }
+
     // You are already standing in the origin when the journey begins.
     const origin = isoOf(legs[0].departureAirport.countryIso);
     if (origin) reveal(origin);
@@ -235,7 +264,7 @@ export function useReplayOrchestration(
     });
 
     return () => timers.forEach((timer) => window.clearTimeout(timer));
-  }, [replay.isActive, replay.current, alpha2ToAlpha3, photoLegIds]);
+  }, [replay.isActive, replay.current, replay.played, alpha2ToAlpha3, photoLegIds]);
 
   const replayCountryDisplayMap = useMemo(() => {
     const map = new Map<string, CountryDisplayInfo>();

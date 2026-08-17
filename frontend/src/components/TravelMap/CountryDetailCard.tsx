@@ -118,7 +118,13 @@ function CountryDetailCard({
     };
   }, [journeys, isoAlpha2, visit]);
 
-  const currentType: VisitType = visit?.visitType ?? 'trip';
+  /*
+    Null when the country is not on the map yet: long-press stopped
+    auto-adding (owner feedback, 2026-08-17) - the card opens unselected
+    and the pick itself creates the visit. Showing "Visited" as active for
+    a country that was never added would be a lie with a button.
+  */
+  const currentType: VisitType | null = visit?.visitType ?? null;
 
   /*
     Escape closes the card.
@@ -171,7 +177,9 @@ function CountryDetailCard({
               ? lastSeen
                 ? `${formatDate(firstSeen)} – ${formatDate(lastSeen)}`
                 : formatDate(firstSeen)
-              : 'No date recorded'}
+              : visit
+                ? 'No date recorded'
+                : 'Not on your map yet - pick how you know it'}
           </p>
         </div>
         <button
@@ -270,13 +278,16 @@ function CountryDetailCard({
         <p className="text-xs mt-3 leading-relaxed">{visit.notes}</p>
       )}
 
-      <button
-        type="button"
-        onClick={onRemove}
-        className="mt-3 w-full min-h-10 rounded-xl text-sm font-medium text-danger hover:bg-danger-soft focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-400"
-      >
-        Remove {countryName}
-      </button>
+      {/* Nothing to remove until something was added. */}
+      {visit && (
+        <button
+          type="button"
+          onClick={onRemove}
+          className="mt-3 w-full min-h-10 rounded-xl text-sm font-medium text-danger hover:bg-danger-soft focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-400"
+        >
+          Remove {countryName}
+        </button>
+      )}
     </div>
   );
 }

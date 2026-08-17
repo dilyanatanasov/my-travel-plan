@@ -1,4 +1,5 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import TravelMap from '../components/TravelMap';
 import FlightForm from '../components/FlightForm';
 import ImportFlights from '../components/FlightForm/ImportFlights';
@@ -53,6 +54,17 @@ function TravelMapPage() {
   // so the first thing you see is your map.
   const [activeSection, setActiveSection] = useState<SectionId | null>(null);
   const isDesktop = useIsDesktop();
+
+  /*
+    The header logo links to '/', but sections are shell state, not routes -
+    so with a panel open the click "did nothing" (owner report, 2026-08-17).
+    Every navigation pushes a new location.key even to the same path; treat
+    it as "take me to the map" and clear the panel.
+  */
+  const location = useLocation();
+  useEffect(() => {
+    setActiveSection(null);
+  }, [location.key]);
 
   // "Where do they stay the most" - null section means the bare map.
   useSectionDwell(activeSection ?? 'map');

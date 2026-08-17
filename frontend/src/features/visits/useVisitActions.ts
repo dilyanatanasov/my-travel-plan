@@ -4,7 +4,7 @@ import {
   useRemoveVisitMutation,
 } from './visitsApi';
 import { useToast } from '../../components/Toast/ToastProvider';
-import type { Visit } from '../../types';
+import type { Visit, VisitType } from '../../types';
 
 /**
  * Country add/remove with undo and visible failure.
@@ -65,11 +65,16 @@ export function useVisitActions() {
   );
 
   const addVisitForCountry = useCallback(
-    async (countryId: number, countryName?: string) => {
+    async (
+      countryId: number,
+      countryName?: string,
+      visitType?: VisitType,
+    ) => {
       try {
         await addVisit({
           countryId,
           visitedAt: new Date().toISOString().split('T')[0],
+          ...(visitType ? { visitType } : {}),
         }).unwrap();
       } catch {
         showToast(
