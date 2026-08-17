@@ -26,22 +26,31 @@ praised.
    Honest limitation: no traffic data in the table, so it's a heuristic,
    not passenger-volume ordering.
 
-## Deferred — decide/schedule separately
+## Second pass — SHIPPED
 
-5. **"Lived" visit type** — 5th `visitType` for countries you lived in;
-   same shape as the want-to-go addition (enum + tap-cycle + map color +
-   picker). Small migration-free backend change + map/legend work.
-6. **Right-click categorize on desktop** — mirror mobile long-press via
-   `contextmenu` in `useCountryInteraction`. Small, contained.
-7. **Map onboarding tooltip** — one-time hint about tap / long-press /
-   legend affordances. Needs a light design pass (when to show, how to
-   dismiss, localStorage flag).
-8. **OG map snapshot in share unfurls** — per-token OG previews already
-   exist (2026-08-13); the ask is a rendered map image (or "Georgi has
-   visited 16 countries" text) as og:image. Verify what today's unfurl
-   actually shows before scoping.
-9. **Mobile add/edit popups render poorly** — no repro yet; need a
-   screenshot + device from the friend before touching anything.
+5. **"Lived" visit type** — DONE (deployed): plum in all palettes +
+   legend, picker-only like Home, counts as visited everywhere history
+   counts (overview, milestones, continent bars, shares, duels, public
+   map). Bonus fix: continent bars no longer count want-to-go as
+   progress.
+6. **Right-click categorize on desktop** — DONE (deployed): contextmenu
+   on the countries layer mirrors long-press, flat map and globe.
+7. **Map onboarding hint** — DONE: one-time dismissible card ("Tap a
+   country… Hold or right-click for details"), localStorage-gated, armed
+   only after the visits query settles (loading must not read as the
+   first tap), auto-retires on the first real interaction, suppressed
+   while a country card is open, positioned above the legend on phones.
+9. **Mobile add/edit popups** — investigated at 390px (Chromium):
+   Countries panel, add-country dropdown, type selects, and the flight
+   form all render cleanly; the one real collision found (the new hint
+   covering the country card's controls) is fixed. If the friend's
+   glitch persists, it is device-specific — still want their screenshot
+   + phone model. Captures in `2026-08-17_friend-feedback_assets/`.
+
+## Still open
+
+8. **OG map snapshot in share unfurls** — needs the user's share link to
+   check what crawlers currently see before scoping any work.
 
 ## Verification (quick wins)
 Backend jest 100/100 (3 new ranking specs), frontend vitest 98/98,
