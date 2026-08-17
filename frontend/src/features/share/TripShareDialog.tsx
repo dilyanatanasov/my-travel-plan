@@ -244,20 +244,33 @@ function TripShareDialog({
 
   const handleShareVideo = useCallback(async () => {
     if (!videoFile) return;
-    if (canShareFiles(videoFile)) {
-      try {
-        await navigator.share({
-          files: [videoFile],
-          title: 'myContrail trip',
-          text: routeCodes.join(' → '),
-        });
-        return;
-      } catch (shareError) {
-        if ((shareError as Error)?.name === 'AbortError') return;
-      }
+    /*
+      Diagnostic fallbacks (debugging a OnePlus 13 report, 2026-08-17):
+      when this ends in a download, the toast says exactly which gate
+      failed - canShare refusing the file type, or share() throwing what.
+    */
+    if (!canShareFiles(videoFile)) {
+      downloadBlob(videoFile, videoFile.name);
+      showToast(
+        `Saved instead - this browser refuses to share ${videoFile.type || 'this file type'} to apps`,
+        { durationMs: 8000 },
+      );
+      return;
     }
-    downloadBlob(videoFile, videoFile.name);
-    showToast('Video saved - post it from your gallery', { durationMs: 6000 });
+    try {
+      await navigator.share({
+        files: [videoFile],
+        title: 'myContrail trip',
+        text: routeCodes.join(' → '),
+      });
+    } catch (shareError) {
+      const err = shareError as Error;
+      if (err?.name === 'AbortError') return;
+      downloadBlob(videoFile, videoFile.name);
+      showToast(`Saved instead - sharing failed (${err?.name}: ${err?.message})`, {
+        durationMs: 8000,
+      });
+    }
   }, [videoFile, routeCodes, showToast]);
 
   return (
