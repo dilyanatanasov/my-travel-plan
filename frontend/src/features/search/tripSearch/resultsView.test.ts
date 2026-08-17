@@ -68,6 +68,18 @@ describe('sortAndFilterResults', () => {
     expect(view.map((f) => f.itineraryId)).toEqual(['rec', 'other']);
   });
 
+  it('an estimate card never wins "Fastest" on its empty duration', () => {
+    const withEstimate = [
+      ...results,
+      { ...flight('est', 300, 0, [0, 0]), isEstimate: true },
+    ];
+    const view = sortAndFilterResults(withEstimate, judged, {
+      ...DEFAULT_VIEW,
+      sort: 'duration',
+    });
+    expect(view[view.length - 1].itineraryId).toBe('est');
+  });
+
   it('protected-only hides split tickets', () => {
     const view = sortAndFilterResults(results, judged, {
       ...DEFAULT_VIEW,

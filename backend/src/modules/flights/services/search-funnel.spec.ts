@@ -203,6 +203,7 @@ describe('SearchOrchestratorService.runSearch', () => {
     // No airports found → no positioning hubs → the split tier stays
     // inert; its own logic is covered in split-search.spec.ts.
     const airports = { find: jest.fn().mockResolvedValue([]) };
+    const config = { get: jest.fn().mockReturnValue(undefined) };
     const service = new SearchOrchestratorService(
       travelpayouts as never,
       serpapi as never,
@@ -210,6 +211,7 @@ describe('SearchOrchestratorService.runSearch', () => {
       budget as never,
       observations as never,
       airports as never,
+      config as never,
     );
     return { service, observations, travelpayouts, kiwi, budget, appended };
   }
@@ -242,7 +244,7 @@ describe('SearchOrchestratorService.runSearch', () => {
     expect(out.meta.degraded).toBe(true);
   });
 
-  it('a refused budget degrades instead of failing', async () => {
+  it('a refused budget degrades to estimate cards, never to a blank page', async () => {
     const { service, kiwi } = makeOrchestrator({
       cached: cachedSurface,
       kiwiResults: [result('bookable', 320, 800)],
@@ -251,7 +253,14 @@ describe('SearchOrchestratorService.runSearch', () => {
     const out = await service.runSearch(dto);
     expect(kiwi.searchPrecise).not.toHaveBeenCalled();
     expect(out.meta.degraded).toBe(true);
-    expect(out.results).toHaveLength(0);
+    // The surface's date pair survives as an indicative card with a live
+    // search deep link — and estimates never reach the judgement.
+    expect(out.results).toHaveLength(1);
+    expect(out.results[0].isEstimate).toBe(true);
+    expect(out.results[0].pricingOptions[0].deepLink).toContain(
+      'kiwi.com/deep',
+    );
+    expect(out.judgements).toHaveLength(0);
   });
 
   it('streams surface, results and judgement in order', async () => {

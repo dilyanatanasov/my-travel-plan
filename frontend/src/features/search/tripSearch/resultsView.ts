@@ -48,10 +48,14 @@ export function sortAndFilterResults(
     return role === 'recommended' ? 0 : role ? 1 : 2;
   };
 
+  // An estimate card has no real duration; letting its zero win "Fastest"
+  // would crown a card that never flew.
+  const duration = (flight: FlightResultDto) =>
+    flight.isEstimate ? Number.POSITIVE_INFINITY : flight.totalDurationMinutes;
+
   return [...filtered].sort((a, b) => {
     if (view.sort === 'price') return a.lowestPrice - b.lowestPrice;
-    if (view.sort === 'duration')
-      return a.totalDurationMinutes - b.totalDurationMinutes;
+    if (view.sort === 'duration') return duration(a) - duration(b);
     return (
       judgedRank(a.itineraryId) - judgedRank(b.itineraryId) ||
       a.lowestPrice - b.lowestPrice

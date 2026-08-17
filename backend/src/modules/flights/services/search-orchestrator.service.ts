@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { Airport } from '../../airports/entities/airport.entity';
@@ -28,6 +29,8 @@ import {
   composeSurfaceCombos,
   nearestHubCodes,
 } from './split-search.util';
+import { directEstimate, splitEstimate } from './estimate-results.util';
+import { kiwiDeepLink, withAffiliate } from '../providers/affiliate.util';
 
 /** Streaming seam for M3: the SSE layer subscribes, M2 callers ignore it. */
 export type SearchEvent =
@@ -69,7 +72,32 @@ export class SearchOrchestratorService {
     private readonly observations: PriceObservationsService,
     @InjectRepository(Airport)
     private readonly airportRepository: Repository<Airport>,
+    private readonly configService: ConfigService,
   ) {}
+
+  /**
+   * The active precise tier: Kiwi when its key exists, else SerpApi's
+   * Google Flights, else none — in which case the surface's own date
+   * pairs become estimate cards rather than an empty page.
+   */
+  private preciseProvider(): KiwiProvider | SerpapiProvider | null {
+    if (this.kiwi.isConfigured()) return this.kiwi;
+    if (this.serpapi.isConfigured()) return this.serpapi;
+    return null;
+  }
+
+  /** Affiliate-wrapped live-search link for a route + date pair. */
+  private searchLink(
+    origin: string,
+    destination: string,
+    departureDate: string,
+    returnDate?: string | null,
+  ): string {
+    return withAffiliate(
+      kiwiDeepLink(origin, destination, departureDate, returnDate),
+      this.configService.get<string>('TRAVELPAYOUTS_MARKER'),
+    );
+  }
 
   /**
    * A route's surface for a month: history first, then the providers in
@@ -174,9 +202,10 @@ export class SearchOrchestratorService {
     });
     onEvent?.({ type: 'surface', surface, candidates });
 
-    // L2 — pay Kiwi for the candidates, a few at a time, under both caps.
+    // L2 — pay the precise tier for the candidates, batched, under both caps.
     const results: FlightResultDto[] = [];
-    if (this.kiwi.isConfigured() && candidates.length > 0) {
+    const precise = this.preciseProvider();
+    if (precise && candidates.length > 0) {
       for (
         let batchStart = 0;
         batchStart < candidates.length;
@@ -186,16 +215,20 @@ export class SearchOrchestratorService {
           .slice(batchStart, batchStart + MAX_CONCURRENT)
           .filter(() => upstreamCalls < HARD_CALL_CAP);
         if (batch.length === 0) break;
-        if (!(await this.budget.canSpend('kiwi', batch.length))) {
+        if (!(await this.budget.canSpend(precise.name, batch.length))) {
           degraded = true;
           break;
         }
         upstreamCalls += batch.length;
-        await this.budget.record('kiwi', batch.length, this.kiwi.costPerCall);
+        await this.budget.record(
+          precise.name,
+          batch.length,
+          precise.costPerCall,
+        );
 
         const settled = await Promise.allSettled(
           batch.map((candidate) =>
-            this.kiwi.searchPrecise({
+            precise.searchPrecise({
               origin,
               destination,
               departureDate: candidate.departureDate,
@@ -232,7 +265,7 @@ export class SearchOrchestratorService {
                 returnDate: batch[index].returnDate,
                 price: top[0].lowestPrice,
                 currency: top[0].currency,
-                provider: 'kiwi',
+                provider: precise.name,
                 observedAt: new Date().toISOString(),
                 isEstimate: false,
               },
@@ -240,8 +273,28 @@ export class SearchOrchestratorService {
           }
         }
       }
-    } else if (candidates.length > 0) {
-      degraded = true; // surface exists but nothing bookable can be fetched
+    }
+
+    // No live itineraries? The surface's real date pairs become estimate
+    // cards — indicative totals plus affiliate deep links into the live
+    // search for those exact dates. Better a priced date than a blank page.
+    if (results.length === 0 && candidates.length > 0) {
+      if (precise === null) degraded = true;
+      for (const candidate of candidates.slice(0, 5)) {
+        const estimate = directEstimate(
+          origin,
+          destination,
+          candidate,
+          this.searchLink(
+            origin,
+            destination,
+            candidate.departureDate,
+            candidate.returnDate,
+          ),
+        );
+        results.push(estimate);
+        onEvent?.({ type: 'result', result: estimate });
+      }
     }
 
     /*
@@ -253,11 +306,10 @@ export class SearchOrchestratorService {
       does not fly contributes no combos); only the best combo per hub
       spends Kiwi calls.
     */
-    if (this.kiwi.isConfigured() && upstreamCalls + 2 <= HARD_CALL_CAP) {
+    if (upstreamCalls < HARD_CALL_CAP) {
       try {
         const hubs = await this.positioningHubs(origin, destination);
         for (const hub of hubs) {
-          if (upstreamCalls + 2 > HARD_CALL_CAP) break;
           const legA = await this.ensureSurface(
             origin,
             hub,
@@ -280,57 +332,85 @@ export class SearchOrchestratorService {
             k: 1,
           });
           for (const combo of combos) {
-            if (upstreamCalls + 2 > HARD_CALL_CAP) break;
-            if (!(await this.budget.canSpend('kiwi', 2))) {
-              degraded = true;
-              break;
-            }
-            upstreamCalls += 2;
-            await this.budget.record('kiwi', 2, this.kiwi.costPerCall);
+            let composedAny = false;
+            if (
+              precise &&
+              upstreamCalls + 2 <= HARD_CALL_CAP &&
+              (await this.budget.canSpend(precise.name, 2))
+            ) {
+              upstreamCalls += 2;
+              await this.budget.record(precise.name, 2, precise.costPerCall);
 
-            const settled = await Promise.allSettled([
-              this.kiwi.searchPrecise({
-                origin,
-                destination: hub,
-                departureDate: combo.legA.departureDate,
-                returnDate: combo.legA.returnDate,
-                passengers: dto.passengers ?? 1,
-                cabinClass: dto.cabinClass ?? CabinClass.ECONOMY,
-              }),
-              this.kiwi.searchPrecise({
-                origin: hub,
-                destination,
-                departureDate: combo.legB.departureDate,
-                returnDate: combo.legB.returnDate,
-                passengers: dto.passengers ?? 1,
-                cabinClass: dto.cabinClass ?? CabinClass.ECONOMY,
-              }),
-            ]);
-            const [aResults, bResults] = settled.map((outcome) =>
-              outcome.status === 'fulfilled' ? outcome.value : [],
-            );
-
-            const composed = composeSplitResults(hub, aResults, bResults);
-            for (const result of composed) {
-              results.push(result);
-              onEvent?.({ type: 'result', result });
-            }
-            // The composed total is a real, bookable end-to-end price for
-            // the full route; future medians should know it.
-            if (composed[0]) {
-              await this.observations.append([
-                {
+              const settled = await Promise.allSettled([
+                precise.searchPrecise({
                   origin,
-                  destination,
+                  destination: hub,
                   departureDate: combo.legA.departureDate,
                   returnDate: combo.legA.returnDate,
-                  price: composed[0].lowestPrice,
-                  currency: composed[0].currency,
-                  provider: 'kiwi',
-                  observedAt: new Date().toISOString(),
-                  isEstimate: false,
-                },
+                  passengers: dto.passengers ?? 1,
+                  cabinClass: dto.cabinClass ?? CabinClass.ECONOMY,
+                }),
+                precise.searchPrecise({
+                  origin: hub,
+                  destination,
+                  departureDate: combo.legB.departureDate,
+                  returnDate: combo.legB.returnDate,
+                  passengers: dto.passengers ?? 1,
+                  cabinClass: dto.cabinClass ?? CabinClass.ECONOMY,
+                }),
               ]);
+              const [aResults, bResults] = settled.map((outcome) =>
+                outcome.status === 'fulfilled' ? outcome.value : [],
+              );
+
+              // Composition needs real times BOTH ways; SerpApi's one-call
+              // results carry no return leg, so they fall through to the
+              // estimate below rather than composing a guess.
+              const composed = composeSplitResults(hub, aResults, bResults);
+              for (const result of composed) {
+                results.push(result);
+                onEvent?.({ type: 'result', result });
+              }
+              composedAny = composed.length > 0;
+              // The composed total is a real, bookable end-to-end price for
+              // the full route; future medians should know it.
+              if (composed[0]) {
+                await this.observations.append([
+                  {
+                    origin,
+                    destination,
+                    departureDate: combo.legA.departureDate,
+                    returnDate: combo.legA.returnDate,
+                    price: composed[0].lowestPrice,
+                    currency: composed[0].currency,
+                    provider: precise.name,
+                    observedAt: new Date().toISOString(),
+                    isEstimate: false,
+                  },
+                ]);
+              }
+            }
+
+            if (!composedAny) {
+              const estimate = splitEstimate(
+                origin,
+                destination,
+                combo,
+                this.searchLink(
+                  origin,
+                  hub,
+                  combo.legA.departureDate,
+                  combo.legA.returnDate,
+                ),
+                this.searchLink(
+                  hub,
+                  destination,
+                  combo.legB.departureDate,
+                  combo.legB.returnDate,
+                ),
+              );
+              results.push(estimate);
+              onEvent?.({ type: 'result', result: estimate });
             }
           }
         }
@@ -344,7 +424,8 @@ export class SearchOrchestratorService {
     const periodMedian =
       (await this.observations.periodMedian(origin, destination, month)) ??
       median(surface.map((point) => point.price));
-    const front = paretoFront(results);
+    // Estimates carry no durations — judging them would crown a zero.
+    const front = paretoFront(results.filter((result) => !result.isEstimate));
     const judgements = judge(front, periodMedian);
     onEvent?.({ type: 'judgement', judgements });
 

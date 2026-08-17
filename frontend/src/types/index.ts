@@ -315,6 +315,8 @@ export interface FlightResultDto {
     co2Emission?: number;
   };
   selfTransfer?: SelfTransferInfo;
+  /** Built from cached surface prices: dates + indicative total, no times. */
+  isEstimate?: boolean;
 }
 
 export interface FilterStatsDto {

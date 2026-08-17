@@ -11,6 +11,27 @@
 /** Travelpayouts' program id for Kiwi.com custom links. */
 const KIWI_PROMO_ID = '3791';
 
+/**
+ * A Kiwi SEARCH deep link needs no API at all — it is built from the route
+ * and dates, drops the visitor onto Kiwi's live results for exactly that
+ * trip, and (wrapped in the click redirect) still earns the commission.
+ * This is what keeps the affiliate path alive while Kiwi's data APIs stay
+ * closed to apps our size.
+ */
+export function kiwiDeepLink(
+  origin: string,
+  destination: string,
+  departureDate: string,
+  returnDate?: string | null,
+): string {
+  const url = new URL('https://www.kiwi.com/deep');
+  url.searchParams.set('from', origin);
+  url.searchParams.set('to', destination);
+  url.searchParams.set('departure', departureDate);
+  if (returnDate) url.searchParams.set('return', returnDate);
+  return url.toString();
+}
+
 export function withAffiliate(
   url: string,
   marker: string | undefined,

@@ -83,6 +83,12 @@ export interface FlightResultDto {
     hub: string;
     bookings: { label: string; price: number; deepLink: string }[];
   };
+  /**
+   * True when this card is built from the price SURFACE, not a live
+   * itinerary: dates and an indicative total, no flight times or
+   * carriers. The deep link opens the live search for those exact dates.
+   */
+  isEstimate?: boolean;
 }
 
 export interface FlightSearchResultDto {

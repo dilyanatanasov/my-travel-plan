@@ -1,10 +1,17 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
+  FlightLegDto,
+  FlightResultDto,
+} from '../dto/flight-result.dto';
+import { CabinClass } from '../dto/search-flights.dto';
+import {
   FlightProvider,
+  PreciseQuery,
   PricePoint,
   SurfaceQuery,
 } from './flight-provider.interface';
+import { kiwiDeepLink, withAffiliate } from './affiliate.util';
 
 /**
  * SerpApi's Google Flights calendar engine, as the surface's fallback and
@@ -44,6 +51,107 @@ export function mapCalendarRows(
     }));
 }
 
+/** SerpApi's google_flights option rows; only what we read. */
+export interface SerpFlightOption {
+  flights: {
+    departure_airport: { id: string; name?: string; time: string };
+    arrival_airport: { id: string; name?: string; time: string };
+    duration: number; // minutes
+    airline?: string;
+    flight_number?: string;
+    travel_class?: string;
+  }[];
+  layovers?: { id: string; name?: string; duration: number }[];
+  total_duration: number; // minutes, this direction
+  price?: number; // round-trip total when type=1
+}
+
+/**
+ * One Google Flights option → one result. Single-call simplification
+ * (2026-08-16, after Kiwi's API died): the response describes the OUTBOUND
+ * with a round-trip total price; the return options would cost a second
+ * call per result via departure_token, which the free tier cannot afford.
+ * So returnLeg stays undefined, durations compare outbound-to-outbound —
+ * consistent within a search — and the booking button is the affiliate
+ * Kiwi deep link for the exact dates.
+ */
+export function mapGoogleFlights(
+  options: SerpFlightOption[],
+  query: PreciseQuery,
+  deepLink: string,
+  limit = 8,
+): FlightResultDto[] {
+  return options.slice(0, limit).flatMap((option, index) => {
+    const segments = option.flights ?? [];
+    if (segments.length === 0 || !Number.isFinite(option.price)) return [];
+    const first = segments[0];
+    const last = segments[segments.length - 1];
+
+    const carriers = [
+      ...new Map(
+        segments.map((segment) => {
+          const name = segment.airline ?? 'Unknown airline';
+          const code = segment.flight_number?.split(' ')[0] ?? name.slice(0, 2);
+          return [code, { code, name, safetyWarning: 'safe' as const }];
+        }),
+      ).values(),
+    ];
+
+    const outboundLeg: FlightLegDto = {
+      legId: `serp-${index}-${query.departureDate}`,
+      departureAirport: first.departure_airport.id,
+      departureAirportName: first.departure_airport.name ?? first.departure_airport.id,
+      arrivalAirport: last.arrival_airport.id,
+      arrivalAirportName: last.arrival_airport.name ?? last.arrival_airport.id,
+      departureTime: first.departure_airport.time,
+      arrivalTime: last.arrival_airport.time,
+      durationMinutes: option.total_duration,
+      stopCount: segments.length - 1,
+      segments: [],
+      layovers: (option.layovers ?? []).map((layover) => ({
+        airport: layover.id,
+        airportName: layover.name ?? layover.id,
+        durationMinutes: layover.duration,
+      })),
+      carriers,
+    };
+
+    return [
+      {
+        itineraryId: `serp:${query.departureDate}:${index}`,
+        outboundLeg,
+        returnLeg: undefined,
+        totalDurationMinutes: option.total_duration,
+        totalStops: outboundLeg.stopCount,
+        pricingOptions: [
+          {
+            price: option.price!,
+            currency: 'USD',
+            agentName: 'Kiwi.com',
+            deepLink,
+            cabinClass: undefined,
+            fareFamily: undefined,
+          },
+        ],
+        lowestPrice: option.price!,
+        currency: 'USD',
+        safetyWarnings: {
+          hasBannedCarrier: false,
+          hasCautionCarrier: false,
+          carriers: [],
+        },
+      } satisfies FlightResultDto,
+    ];
+  });
+}
+
+const TRAVEL_CLASS: Record<CabinClass, string> = {
+  [CabinClass.ECONOMY]: '1',
+  [CabinClass.PREMIUM_ECONOMY]: '2',
+  [CabinClass.BUSINESS]: '3',
+  [CabinClass.FIRST]: '4',
+};
+
 /** Days in the queried month, clamped to the future (past days can't fly). */
 export function monthDateRange(
   month: string,
@@ -71,6 +179,54 @@ export class SerpapiProvider implements FlightProvider {
 
   isConfigured(): boolean {
     return Boolean(this.apiKey);
+  }
+
+  async searchPrecise(query: PreciseQuery): Promise<FlightResultDto[]> {
+    if (!this.isConfigured()) return [];
+
+    const params = new URLSearchParams({
+      engine: 'google_flights',
+      departure_id: query.origin,
+      arrival_id: query.destination,
+      outbound_date: query.departureDate,
+      type: query.returnDate ? '1' : '2',
+      adults: String(query.passengers),
+      travel_class: TRAVEL_CLASS[query.cabinClass],
+      currency: 'USD',
+      api_key: this.apiKey!,
+    });
+    if (query.returnDate) params.set('return_date', query.returnDate);
+
+    try {
+      const response = await fetch(`https://serpapi.com/search.json?${params}`);
+      if (!response.ok) {
+        this.logger.warn(
+          `google_flights ${response.status} for ${query.origin}-${query.destination}`,
+        );
+        return [];
+      }
+      const body = (await response.json()) as {
+        best_flights?: SerpFlightOption[];
+        other_flights?: SerpFlightOption[];
+      };
+      const deepLink = withAffiliate(
+        kiwiDeepLink(
+          query.origin,
+          query.destination,
+          query.departureDate,
+          query.returnDate,
+        ),
+        this.configService.get<string>('TRAVELPAYOUTS_MARKER'),
+      );
+      return mapGoogleFlights(
+        [...(body.best_flights ?? []), ...(body.other_flights ?? [])],
+        query,
+        deepLink,
+      );
+    } catch (error) {
+      this.logger.warn(`google_flights failed: ${(error as Error).message}`);
+      return [];
+    }
   }
 
   async getPriceSurface(query: SurfaceQuery): Promise<PricePoint[]> {

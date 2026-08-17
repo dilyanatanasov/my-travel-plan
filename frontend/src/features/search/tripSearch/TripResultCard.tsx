@@ -68,6 +68,71 @@ function LegRow({ leg, label }: { leg: FlightLegDto; label: string }) {
 function TripResultCard({ flight, judgement }: TripResultCardProps) {
   const split = flight.selfTransfer;
   const booking = flight.pricingOptions[0];
+
+  /*
+    Estimate cards (born the night Kiwi's data API died): a real date pair
+    and an indicative total from the cached surface, no flight times to
+    show — so the card says the dates, owns up to being an estimate, and
+    the button opens the live search for exactly those dates.
+  */
+  if (flight.isEstimate) {
+    return (
+      <div className="bg-surface border border-line rounded-2xl p-4">
+        <div className="flex flex-wrap items-baseline gap-2 mb-2">
+          <span className="px-2 py-0.5 rounded-full bg-surface-sunken text-ink-muted text-[10px] font-semibold uppercase tracking-wide">
+            Indicative
+          </span>
+          {split && (
+            <span className="px-2 py-0.5 rounded-full bg-surface-sunken text-ink-muted text-[10px] font-semibold uppercase tracking-wide">
+              Self-transfer via {split.hub}
+            </span>
+          )}
+        </div>
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+          <div className="min-w-0 space-y-1">
+            <p className="text-sm font-medium text-ink">
+              {flight.outboundLeg.departureAirport} →{' '}
+              {flight.outboundLeg.arrivalAirport} ·{' '}
+              {formatDay(flight.outboundLeg.departureTime)}
+              {flight.returnLeg &&
+                ` — back ${formatDay(flight.returnLeg.departureTime)}`}
+            </p>
+            <p className="text-xs text-ink-muted">
+              Recently seen at about this price — exact flights and times on
+              the live search.
+              {split &&
+                ' Two separate tickets: a delay on the first isn’t protected on the second.'}
+            </p>
+          </div>
+          <div className="flex-shrink-0 sm:text-right">
+            <p className="text-2xl font-bold text-ink tabular-nums">
+              ~${Math.round(flight.lowestPrice)}
+            </p>
+            <div className="mt-2 flex flex-col gap-1.5">
+              {(split?.bookings ?? (booking ? [
+                {
+                  label: 'See live prices',
+                  price: null,
+                  deepLink: booking.deepLink,
+                },
+              ] : [])).map((ticket) => (
+                <a
+                  key={ticket.label}
+                  href={ticket.deepLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center min-h-9 px-3 rounded-lg bg-brand-600 text-white text-sm font-medium hover:bg-brand-700 whitespace-nowrap"
+                >
+                  {ticket.label}
+                  {ticket.price !== null && ` · ~$${Math.round(ticket.price)}`}
+                </a>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
   const carriers = [
     ...new Set(
       flight.outboundLeg.carriers
