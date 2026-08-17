@@ -150,7 +150,8 @@ function DuelPage() {
   const { ref: mapBoxRef, viewport } = useMapViewport<HTMLDivElement>();
   const { width, height, scale } = viewport;
 
-  const isVisitedType = (t: string) => t === 'trip' || t === 'home';
+  const isVisitedType = (t: string) =>
+    t === 'trip' || t === 'home' || t === 'lived';
 
   const merged = useMemo(() => {
     const display = new Map<string, CountryDisplayInfo>();

@@ -1,4 +1,4 @@
-import {
+﻿import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
@@ -11,7 +11,7 @@ import { Country } from '../../countries/entities/country.entity';
 import { FlightJourney } from '../../flights/entities/flight-journey.entity';
 import { User } from '../../users/entities/user.entity';
 
-export type VisitType = 'trip' | 'transit' | 'home' | 'wishlist';
+export type VisitType = 'trip' | 'transit' | 'home' | 'wishlist' | 'lived';
 export type VisitSource = 'manual' | 'flight';
 
 @Entity('visits')

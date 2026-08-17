@@ -12,7 +12,8 @@ export interface PublicCountryDto {
   isoCode: string;
   isoCode2: string;
   name: string;
-  visitType: 'trip' | 'transit' | 'home';
+  // 'lived' is public history like 'trip'; only wishlist stays private.
+  visitType: 'trip' | 'transit' | 'home' | 'lived';
 }
 
 export interface PublicAirportDto {

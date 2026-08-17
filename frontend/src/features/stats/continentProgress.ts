@@ -26,7 +26,13 @@ export function continentProgress(
 ): ContinentRow[] {
   const visitedIso = new Set(
     visits
-      .filter((visit) => (visit.visitType || 'trip') !== 'transit')
+      .filter((visit) => {
+        const type = visit.visitType || 'trip';
+        // Being there counts: trip, home, lived. Transit does not, and a
+        // wishlist entry never did — the old "everything but transit"
+        // filter quietly counted dreams as progress.
+        return type === 'trip' || type === 'home' || type === 'lived';
+      })
       .map((visit) => visit.country?.isoCode2)
       .filter(Boolean),
   );

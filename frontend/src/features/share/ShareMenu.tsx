@@ -95,7 +95,7 @@ function ShareMenu() {
   const buildCaption = useCallback(() => {
     const visited = visits.filter((visit) => {
       const type = visit.visitType || 'trip';
-      return type === 'trip' || type === 'home';
+      return type === 'trip' || type === 'home' || type === 'lived';
     }).length;
 
     const stats = [`${visited} countries`];

@@ -413,7 +413,7 @@ function TravelMap() {
     const visitedCount = visits.filter((v) => {
       // Default to 'trip' for existing records without visitType
       const type = v.visitType || 'trip';
-      return type === 'trip' || type === 'home';
+      return type === 'trip' || type === 'home' || type === 'lived';
     }).length;
     const transitCount = visits.filter((v) => v.visitType === 'transit').length;
     return {

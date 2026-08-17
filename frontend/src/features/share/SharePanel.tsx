@@ -85,7 +85,7 @@ function SharePanel() {
 
   const countriesCount = visits.filter((visit) => {
     const type = visit.visitType || 'trip';
-    return type === 'trip' || type === 'home';
+    return type === 'trip' || type === 'home' || type === 'lived';
   }).length;
   const hasSomethingToShow =
     countriesCount > 0 || (flightStats?.totalFlights ?? 0) > 0;
@@ -93,7 +93,7 @@ function SharePanel() {
   const content = useMemo<ShareContent>(() => {
     const countries = visits.filter((visit) => {
       const type = visit.visitType || 'trip';
-      return type === 'trip' || type === 'home';
+      return type === 'trip' || type === 'home' || type === 'lived';
     }).length;
 
     const km = Math.round(flightStats?.totalDistanceKm ?? 0);

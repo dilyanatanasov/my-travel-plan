@@ -116,7 +116,11 @@ export class ShareService {
         name: visit.country.name,
         // Safe: the filter above just removed 'wishlist', which is the only
         // VisitType the public DTO deliberately refuses to carry.
-        visitType: (visit.visitType || 'trip') as 'trip' | 'transit' | 'home',
+        visitType: (visit.visitType || 'trip') as
+          | 'trip'
+          | 'transit'
+          | 'home'
+          | 'lived',
       }));
 
     // Aggregate legs into undirected routes so an out-and-back counts as one
@@ -164,7 +168,7 @@ export class ShareService {
 
     const countriesVisited = visits.filter((visit) => {
       const type = visit.visitType || 'trip';
-      return type === 'trip' || type === 'home';
+      return type === 'trip' || type === 'home' || type === 'lived';
     }).length;
 
     return {
@@ -280,7 +284,7 @@ export class ShareService {
     // rule, same as the public map).
     const [countriesVisited, card] = await Promise.all([
       this.visitRepository.count({
-        where: { userId: user.id, visitType: In(['trip', 'home']) },
+        where: { userId: user.id, visitType: In(['trip', 'home', 'lived']) },
       }),
       this.shareCardRepository.findOne({
         where: { userId: user.id },
@@ -350,7 +354,7 @@ export class ShareService {
 
     const countFor = (userId: number) =>
       this.visitRepository.count({
-        where: { userId, visitType: In(['trip', 'home']) },
+        where: { userId, visitType: In(['trip', 'home', 'lived']) },
       });
     const [countA, countB] = await Promise.all([
       countFor(userA.id),
@@ -392,7 +396,7 @@ export class ShareService {
       });
       if (!opponent) continue;
       const countries = await this.visitRepository.count({
-        where: { userId: opponent.id, visitType: In(['trip', 'home']) },
+        where: { userId: opponent.id, visitType: In(['trip', 'home', 'lived']) },
       });
       results.push({
         token: row.opponentToken,

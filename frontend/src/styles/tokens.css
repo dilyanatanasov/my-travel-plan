@@ -70,6 +70,7 @@
   --color-map-route: 140 73 26;
   --color-map-transit: 143 160 115;
   --color-map-wishlist: 95 125 168;
+  --color-map-lived: 150 83 111;
   --color-map-visited: 246 160 107;
   --color-map-land: 227 213 189;
   --color-map-ocean: 245 234 216;
@@ -144,6 +145,7 @@
   --color-map-route: 246 160 107;
   --color-map-transit: 174 191 146;
   --color-map-wishlist: 125 155 196;
+  --color-map-lived: 183 113 146;
   --color-map-visited: 178 98 45;
   --color-map-land: 58 53 45;
   --color-map-ocean: 26 24 23;

@@ -10,6 +10,6 @@ export class UpdateVisitDto {
   notes?: string;
 
   @IsOptional()
-  @IsIn(['trip', 'transit', 'home', 'wishlist'])
-  visitType?: 'trip' | 'transit' | 'home' | 'wishlist';
+  @IsIn(['trip', 'transit', 'home', 'wishlist', 'lived'])
+  visitType?: 'trip' | 'transit' | 'home' | 'wishlist' | 'lived';
 }

@@ -14,6 +14,7 @@ interface CountryListProps {
 const VISIT_TYPE_COLORS: Record<VisitType, { bg: string; text: string }> = {
   home: { bg: 'bg-map-home/10', text: 'text-map-home' },
   trip: { bg: 'bg-map-visited/10', text: 'text-map-visited' },
+  lived: { bg: 'bg-map-lived/15', text: 'text-map-lived' },
   transit: { bg: 'bg-map-transit/20', text: 'text-amber-700' },
   wishlist: { bg: 'bg-map-wishlist/15', text: 'text-map-wishlist' },
 };
@@ -21,6 +22,7 @@ const VISIT_TYPE_COLORS: Record<VisitType, { bg: string; text: string }> = {
 const VISIT_TYPE_LABELS: Record<VisitType, string> = {
   home: 'Home',
   trip: 'Visited',
+  lived: 'Lived',
   transit: 'Transit',
   wishlist: 'Want to go',
 };
@@ -50,9 +52,10 @@ function CountryList({
   const sortedVisits = [...visits].sort((a, b) => {
     const order: Record<VisitType, number> = {
       home: 0,
-      trip: 1,
-      transit: 2,
-      wishlist: 3,
+      lived: 1,
+      trip: 2,
+      transit: 3,
+      wishlist: 4,
     };
     const aType = a.visitType || 'trip';
     const bType = b.visitType || 'trip';
@@ -115,6 +118,7 @@ function CountryList({
                           className={`select-field min-h-11 text-xs pl-2 rounded-lg font-medium ${colors.bg} ${colors.text} border-0 cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-500`}
                         >
                           <option value="trip">Visited</option>
+                          <option value="lived">Lived</option>
                           <option value="transit">Transit</option>
                           <option value="wishlist">Want to go</option>
                           <option value="home">Home</option>

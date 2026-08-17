@@ -24,6 +24,8 @@ interface CountryDetailCardProps {
 
 const TYPE_LABELS: Record<VisitType, string> = {
   trip: 'Visited',
+  // Picker-only, like home: a five-tap cycle would make clearing a chore.
+  lived: 'Lived',
   transit: 'Transit',
   wishlist: 'Want to go',
   home: 'Home',

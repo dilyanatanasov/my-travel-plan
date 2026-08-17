@@ -41,9 +41,9 @@ function overviewStatsCountForMilestones(
 ): number {
   return visits.filter((visit) => {
     const type = visit.visitType || 'trip';
-    // Trips and homes only: transit never counted, and a wishlist entry is
-    // a dream, not a milestone.
-    return type === 'trip' || type === 'home';
+    // Trips, homes and lived-in: transit never counted, and a wishlist
+    // entry is a dream, not a milestone.
+    return type === 'trip' || type === 'home' || type === 'lived';
   }).length;
 }
 
@@ -183,7 +183,7 @@ function TravelMapPage() {
   const overviewStats = useMemo(() => {
     const tripCount = visits.filter((v) => {
       const type = v.visitType || 'trip';
-      return type === 'trip' || type === 'home';
+      return type === 'trip' || type === 'home' || type === 'lived';
     }).length;
     const homeCountry = visits.find((v) => v.visitType === 'home');
     return {

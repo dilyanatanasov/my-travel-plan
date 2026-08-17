@@ -285,6 +285,19 @@ function CountriesLayer({
               }}
               onPointerUp={cancelPress}
               onPointerLeave={cancelPress}
+              /*
+                Desktop mirror of the mobile long-press (friend feedback,
+                2026-08-17): right-click opens the country card instead of
+                the browser menu. pressFired stops the click that some
+                browsers deliver after contextmenu from also cycling.
+              */
+              onContextMenu={(event) => {
+                if (!onCountryLongPress || !isoCode || !clickable) return;
+                event.preventDefault();
+                cancelPress();
+                pressFiredRef.current = true;
+                onCountryLongPress(isoCode);
+              }}
               onMouseEnter={(event) =>
                 onCountryHover?.(geo.properties?.name ?? null, event)
               }

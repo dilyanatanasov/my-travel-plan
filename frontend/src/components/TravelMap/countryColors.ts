@@ -28,6 +28,7 @@ function pick(
   if (visitType === 'home') return state.home;
   if (visitType === 'transit') return state.transit;
   if (visitType === 'wishlist') return state.wishlist;
+  if (visitType === 'lived') return state.lived;
   return state.visited;
 }
 
@@ -41,6 +42,7 @@ export function getCountryColor(
   if (visitType === 'transit') return palette.transit;
   if (visitType === 'home') return palette.home;
   if (visitType === 'wishlist') return palette.wishlist;
+  if (visitType === 'lived') return palette.lived;
   return palette.visited;
 }
 
