@@ -1,29 +1,11 @@
 import { geoDistance } from 'd3-geo';
 
 /**
- * The puzzle uses the 50m-resolution atlas, not the map's 110m one: the
- * coarse tier silently drops microstates - Malta, Andorra, Liechtenstein —
- * which is unacceptable in a guessing game (typing "Malta" and finding
- * nothing reads as broken). ~240KB gzipped, fetched only on /daily, cached
- * per session like the map's own loader. Self-hosted since 2026-08-17
- * (vendored from world-atlas@2): the puzzle must not break with a CDN.
+ * The 50m atlas, shared with the travel map since 2026-08-17 - one world,
+ * one fetch. The fine tier matters here doubly: a guessing game where
+ * typing "Malta" finds nothing reads as broken.
  */
-const GEO_50M_URL = '/geo/countries-50m.json';
-let dailyGeographyPromise: Promise<unknown> | null = null;
-
-export function loadDailyGeography(): Promise<unknown> {
-  dailyGeographyPromise ??= fetch(GEO_50M_URL)
-    .then((response) => {
-      if (!response.ok)
-        throw new Error(`Geography fetch failed: ${response.status}`);
-      return response.json();
-    })
-    .catch((error) => {
-      dailyGeographyPromise = null;
-      throw error;
-    });
-  return dailyGeographyPromise;
-}
+export { loadWorldAtlas as loadDailyGeography } from '../../lib/worldAtlas';
 
 /**
  * The daily country guesser's pure logic (2026-08-14, D6): deterministic
@@ -64,54 +46,9 @@ export function dailyIndex(dateStr: string, count: number): number {
   return Math.abs(hash) % Math.max(count, 1);
 }
 
-/*
-  The atlas abbreviates names - "N. Mariana Is.", "Dominican Rep.",
-  "St. Vincent and Gren." - and nobody types abbreviations (today's
-  answer was unfindable by its own name; owner report, 2026-08-17).
-  Matching happens against the name PLUS an expanded variant, and every
-  query word only needs to appear somewhere, so "northern mariana
-  islands", "mariana", and "north mariana" all find it.
-*/
-const GEO_EXPANSIONS: Record<string, string> = {
-  'is.': 'islands',
-  'n.': 'northern north',
-  's.': 'southern south',
-  'w.': 'western west',
-  'e.': 'eastern east',
-  'dem.': 'democratic',
-  'rep.': 'republic',
-  'fr.': 'french',
-  'eq.': 'equatorial',
-  'st.': 'saint',
-  'herz.': 'herzegovina',
-  'gren.': 'the grenadines',
-  'u.s.': 'united states us',
-  'br.': 'british',
-  'terr.': 'territory',
-  'cent.': 'central',
-  'afr.': 'african',
-};
-
-const stripDiacritics = (text: string) =>
-  text.normalize('NFD').replace(/[̀-ͯ]/g, '');
-
-/** The searchable text for a dataset name: itself + expansions, plain. */
-export function geoSearchText(name: string): string {
-  const lower = name.toLowerCase();
-  const expanded = lower
-    .split(' ')
-    .map((word) => GEO_EXPANSIONS[word] ?? word)
-    .join(' ');
-  return stripDiacritics(`${lower} ${expanded}`);
-}
-
-/** Every query word must appear somewhere in the searchable text. */
-export function matchesGeoName(name: string, query: string): boolean {
-  const words = stripDiacritics(query.toLowerCase()).split(/\s+/).filter(Boolean);
-  if (words.length === 0) return false;
-  const text = geoSearchText(name);
-  return words.every((word) => text.includes(word));
-}
+// Abbreviation-aware name matching lives in lib/geoNames now, shared with
+// the map search and the country selector; re-exported for old importers.
+export { geoSearchText, matchesGeoName } from '../../lib/geoNames';
 
 const ARROWS = ['⬆️', '↗️', '➡️', '↘️', '⬇️', '↙️', '⬅️', '↖️'] as const;
 

@@ -1,7 +1,7 @@
 import { memo, useEffect, useRef, useState } from 'react';
 import { Geographies, Geography } from 'react-simple-maps';
 import { geoBounds, geoCentroid } from 'd3-geo';
-import { numericToAlpha3 } from './isoCodes';
+import { numericToAlpha3, nameToAlpha3 } from './isoCodes';
 import {
   getCountryColor,
   getCountryHoverColor,
@@ -10,37 +10,23 @@ import {
 } from './countryColors';
 import { useMapColors } from '../../theme/mapColors';
 
-export const GEO_URL =
-  // Self-hosted (2026-08-17): the most important pixel on the site must
-  // not depend on a third-party CDN being reachable. Source:
-  // world-atlas@2/countries-110m.json, vendored into public/geo.
-  '/geo/countries-110m.json';
+// The loader and URL live in lib/worldAtlas so the daily puzzle can share
+// the identical world without importing react-simple-maps.
+import { loadWorldAtlas } from '../../lib/worldAtlas';
 
-/*
-  Fetch the world once per page, not once per mount.
-
-  <Geographies geography={url}> refetches whenever it mounts, and the shell
-  unmounts the map to show a full-screen section — so opening Share threw the
-  world away and asked for it again, leaving the share card waiting on a
-  network round trip that the map had already completed. Handing the parsed
-  object to <Geographies> instead skips fetching entirely.
-
-  A module-level promise, so concurrent mounts share one request.
-*/
-let geographyPromise: Promise<unknown> | null = null;
-
-export function loadGeography(): Promise<unknown> {
-  geographyPromise ??= fetch(GEO_URL)
-    .then((response) => {
-      if (!response.ok) throw new Error(`Geography fetch failed: ${response.status}`);
-      return response.json();
-    })
-    .catch((error) => {
-      // Do not cache a failure: the next mount should be able to retry.
-      geographyPromise = null;
-      throw error;
-    });
-  return geographyPromise;
+/**
+ * A feature's alpha-3, by numeric id or - for id-less features like
+ * Kosovo - by name. Undefined means "no country row can ever match":
+ * the shape stays plain land.
+ */
+function geoToAlpha3(geo: {
+  id?: string;
+  properties?: { name?: string };
+}): string | undefined {
+  const byId = numericToAlpha3[String(parseInt(geo.id ?? '', 10))];
+  if (byId) return byId;
+  const name = geo.properties?.name;
+  return name ? nameToAlpha3[name] : undefined;
 }
 
 interface CountriesLayerProps {
@@ -132,7 +118,7 @@ function CountriesLayer({
   const [geography, setGeography] = useState<unknown>(null);
   useEffect(() => {
     let active = true;
-    loadGeography()
+    loadWorldAtlas()
       .then((data) => {
         if (active) setGeography(data);
       })
@@ -171,7 +157,7 @@ function CountriesLayer({
             [[number, number], [number, number]]
           >();
           for (const geo of geographies) {
-            const iso = numericToAlpha3[String(parseInt(geo.id, 10))];
+            const iso = geoToAlpha3(geo);
             if (!iso) continue;
             const centre = geoCentroid(geo as never);
             if (Number.isFinite(centre[0]) && Number.isFinite(centre[1])) {
@@ -191,8 +177,7 @@ function CountriesLayer({
         }
 
         return geographies.map((geo) => {
-          const numericCode = String(parseInt(geo.id, 10));
-          const isoCode = numericToAlpha3[numericCode];
+          const isoCode = geoToAlpha3(geo);
           const displayInfo = isoCode
             ? countryDisplayMap.get(isoCode)
             : undefined;

@@ -199,6 +199,52 @@ export const countriesData = [
   { name: 'Yemen', isoCode: 'YEM', isoCode2: 'YE' },
   { name: 'Zambia', isoCode: 'ZMB', isoCode2: 'ZM' },
   { name: 'Zimbabwe', isoCode: 'ZWE', isoCode2: 'ZW' },
+  /*
+    Bonus places (2026-08-17): ISO territories with their own polygon in the
+    50m atlas. Markable and painted, but is_territory keeps them out of every
+    "X of the world" denominator. Existing databases get the same rows from
+    migration 1787500000000-AddTerritories; keep both lists in step.
+  */
+  { name: 'Northern Mariana Islands', isoCode: 'MNP', isoCode2: 'MP', isTerritory: true },
+  { name: 'U.S. Virgin Islands', isoCode: 'VIR', isoCode2: 'VI', isTerritory: true },
+  { name: 'Guam', isoCode: 'GUM', isoCode2: 'GU', isTerritory: true },
+  { name: 'American Samoa', isoCode: 'ASM', isoCode2: 'AS', isTerritory: true },
+  { name: 'Puerto Rico', isoCode: 'PRI', isoCode2: 'PR', isTerritory: true },
+  { name: 'Pitcairn Islands', isoCode: 'PCN', isoCode2: 'PN', isTerritory: true },
+  { name: 'Falkland Islands', isoCode: 'FLK', isoCode2: 'FK', isTerritory: true },
+  { name: 'Cayman Islands', isoCode: 'CYM', isoCode2: 'KY', isTerritory: true },
+  { name: 'Bermuda', isoCode: 'BMU', isoCode2: 'BM', isTerritory: true },
+  { name: 'Turks and Caicos Islands', isoCode: 'TCA', isoCode2: 'TC', isTerritory: true },
+  { name: 'Niue', isoCode: 'NIU', isoCode2: 'NU', isTerritory: true },
+  { name: 'Cook Islands', isoCode: 'COK', isoCode2: 'CK', isTerritory: true },
+  { name: 'Western Sahara', isoCode: 'ESH', isoCode2: 'EH', isTerritory: true },
+  { name: 'Saint Pierre and Miquelon', isoCode: 'SPM', isoCode2: 'PM', isTerritory: true },
+  { name: 'Wallis and Futuna', isoCode: 'WLF', isoCode2: 'WF', isTerritory: true },
+  { name: 'New Caledonia', isoCode: 'NCL', isoCode2: 'NC', isTerritory: true },
+  { name: 'Greenland', isoCode: 'GRL', isoCode2: 'GL', isTerritory: true },
+  { name: 'Faroe Islands', isoCode: 'FRO', isoCode2: 'FO', isTerritory: true },
+  { name: 'Macao', isoCode: 'MAC', isoCode2: 'MO', isTerritory: true },
+  { name: 'Hong Kong', isoCode: 'HKG', isoCode2: 'HK', isTerritory: true },
+  { name: 'Norfolk Island', isoCode: 'NFK', isoCode2: 'NF', isTerritory: true },
+  { name: 'South Georgia and the South Sandwich Islands', isoCode: 'SGS', isoCode2: 'GS', isTerritory: true },
+  { name: 'British Indian Ocean Territory', isoCode: 'IOT', isoCode2: 'IO', isTerritory: true },
+  { name: 'Saint Helena', isoCode: 'SHN', isoCode2: 'SH', isTerritory: true },
+  { name: 'Anguilla', isoCode: 'AIA', isoCode2: 'AI', isTerritory: true },
+  { name: 'British Virgin Islands', isoCode: 'VGB', isoCode2: 'VG', isTerritory: true },
+  { name: 'Montserrat', isoCode: 'MSR', isoCode2: 'MS', isTerritory: true },
+  { name: 'Jersey', isoCode: 'JEY', isoCode2: 'JE', isTerritory: true },
+  { name: 'Guernsey', isoCode: 'GGY', isoCode2: 'GG', isTerritory: true },
+  { name: 'Isle of Man', isoCode: 'IMN', isoCode2: 'IM', isTerritory: true },
+  { name: 'Aruba', isoCode: 'ABW', isoCode2: 'AW', isTerritory: true },
+  { name: 'Curaçao', isoCode: 'CUW', isoCode2: 'CW', isTerritory: true },
+  { name: 'Saint Martin', isoCode: 'MAF', isoCode2: 'MF', isTerritory: true },
+  { name: 'Saint Barthélemy', isoCode: 'BLM', isoCode2: 'BL', isTerritory: true },
+  { name: 'French Polynesia', isoCode: 'PYF', isoCode2: 'PF', isTerritory: true },
+  { name: 'French Southern Territories', isoCode: 'ATF', isoCode2: 'TF', isTerritory: true },
+  { name: 'Åland Islands', isoCode: 'ALA', isoCode2: 'AX', isTerritory: true },
+  { name: 'Heard Island and McDonald Islands', isoCode: 'HMD', isoCode2: 'HM', isTerritory: true },
+  { name: 'Antarctica', isoCode: 'ATA', isoCode2: 'AQ', isTerritory: true },
+  { name: 'Sint Maarten', isoCode: 'SXM', isoCode2: 'SX', isTerritory: true },
 ];
 
 export async function seedCountries(dataSource: DataSource): Promise<void> {

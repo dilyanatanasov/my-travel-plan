@@ -43,6 +43,9 @@ export function continentProgress(
   }
 
   for (const country of countries) {
+    // Bonus places stay out of continent bars: "3 of 5 in Oceania" counts
+    // sovereign countries, or Oceania balloons with atolls nobody can chase.
+    if (country.isTerritory) continue;
     const continent = getContinent(country.isoCode2);
     // Unmapped territories would otherwise form a meaningless seventh row.
     const bucket = totals.get(continent);

@@ -102,7 +102,9 @@ export class ShareService {
         where: { userId: user.id },
         relations: ['legs', 'legs.departureAirport', 'legs.arrivalAirport'],
       }),
-      this.countryRepository.count(),
+      // Territories are bonus places: painted, never counted. The world's
+      // denominator is sovereign countries only, same rule as the app.
+      this.countryRepository.count({ where: { isTerritory: false } }),
     ]);
 
     const countries = visits
@@ -168,6 +170,9 @@ export class ShareService {
 
     const countriesVisited = visits.filter((visit) => {
       const type = visit.visitType || 'trip';
+      // Not visit.country?.isTerritory === false: numerator and denominator
+      // must apply the same exclusion or a Puerto Rico visit inflates the %.
+      if (visit.country?.isTerritory) return false;
       return type === 'trip' || type === 'home' || type === 'lived';
     }).length;
 
@@ -284,7 +289,11 @@ export class ShareService {
     // rule, same as the public map).
     const [countriesVisited, card] = await Promise.all([
       this.visitRepository.count({
-        where: { userId: user.id, visitType: In(['trip', 'home', 'lived']) },
+        where: {
+          userId: user.id,
+          visitType: In(['trip', 'home', 'lived']),
+          country: { isTerritory: false },
+        },
       }),
       this.shareCardRepository.findOne({
         where: { userId: user.id },

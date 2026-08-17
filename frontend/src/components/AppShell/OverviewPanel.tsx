@@ -10,6 +10,8 @@ interface OverviewPanelProps {
   countries: Country[];
   visits: Visit[];
   tripCount: number;
+  /** Visited bonus places (ISO territories) - shown, never counted. */
+  territoryCount: number;
   transitCount: number;
   worldPercent: number;
   totalCountries: number;
@@ -60,6 +62,7 @@ function OverviewPanel({
   countries,
   visits,
   tripCount,
+  territoryCount,
   transitCount,
   worldPercent,
   totalCountries,
@@ -90,7 +93,13 @@ function OverviewPanel({
       <div className="grid grid-cols-2 gap-3">
         <StatTile
           value={String(tripCount)}
-          label="Countries visited"
+          label={
+            territoryCount > 0
+              ? `Countries visited + ${territoryCount} ${
+                  territoryCount === 1 ? 'territory' : 'territories'
+                }`
+              : 'Countries visited'
+          }
           tone="bg-map-visited/15 text-ink"
         />
         <StatTile

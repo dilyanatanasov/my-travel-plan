@@ -95,9 +95,20 @@ describe('matchesGeoName', () => {
     expect(matchesGeoName('N. Mariana Is.', 'north mariana')).toBe(true);
     expect(matchesGeoName('N. Mariana Is.', 'mariana')).toBe(true);
     expect(matchesGeoName('Dominican Rep.', 'dominican republic')).toBe(true);
-    expect(matchesGeoName('St. Vincent and Gren.', 'saint vincent')).toBe(true);
+    // The atlas's exact spelling - Vin., not Vincent.
+    expect(matchesGeoName('St. Vin. and Gren.', 'saint vincent')).toBe(true);
     expect(matchesGeoName('Bosnia and Herz.', 'herzegovina')).toBe(true);
     expect(matchesGeoName('Eq. Guinea', 'equatorial guinea')).toBe(true);
+    expect(matchesGeoName('Faeroe Is.', 'faroe islands')).toBe(true);
+    expect(matchesGeoName('St-Martin', 'saint martin')).toBe(true);
+  });
+
+  it('finds full database names by their abbreviated forms', () => {
+    // The daily reveals "N. Mariana Is."; the map search must accept that
+    // spelling against the database's full name.
+    expect(matchesGeoName('Northern Mariana Islands', 'n. mariana is.')).toBe(true);
+    expect(matchesGeoName('Northern Mariana Islands', 'northern mariana')).toBe(true);
+    expect(matchesGeoName('Macao', 'macau')).toBe(true);
   });
 
   it('still rejects what genuinely does not match', () => {
@@ -107,6 +118,7 @@ describe('matchesGeoName', () => {
 
   it('ignores diacritics both ways', () => {
     expect(matchesGeoName("Côte d'Ivoire", 'cote')).toBe(true);
+    expect(matchesGeoName('Curaçao', 'curacao')).toBe(true);
   });
 });
 

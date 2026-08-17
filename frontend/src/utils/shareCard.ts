@@ -228,7 +228,7 @@ function drawMapCover(
  * routes - but no land. Checking merely for "a path" passed in that window
  * and produced a card showing flight lines floating over an empty ocean.
  *
- * countries-110m carries ~177 features, so a threshold well above the number
+ * The atlas carries ~240 features, so a threshold well above the number
  * of routes anyone will have distinguishes land from lines without needing to
  * reach inside react-simple-maps.
  *

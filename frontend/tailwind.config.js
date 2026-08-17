@@ -47,6 +47,7 @@ export default {
           visited: token('map-visited'),
           transit: token('map-transit'),
           wishlist: token('map-wishlist'),
+          lived: token('map-lived'),
           land: token('map-land'),
           ocean: token('map-ocean'),
           route: token('map-route'),

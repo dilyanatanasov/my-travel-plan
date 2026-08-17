@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Alpha2, Alpha3, Country, LonLatTuple } from '../../types';
 import { useSearchAirportsQuery } from '../../features/flights/flightsApi';
+import { matchesGeoName } from '../../lib/geoNames';
+import { fallbackCentroids } from './isoCodes';
 import CountryFlag from '../ui/CountryFlag';
 
 export interface SearchTarget {
@@ -77,8 +79,15 @@ function MapSearch({ countries, countryCentroids, onGo }: MapSearchProps) {
 
     for (const country of countries) {
       if (results.length >= MAX_HITS) break;
-      if (!country.name.toLowerCase().includes(term)) continue;
-      const centroid = countryCentroids.get(country.isoCode);
+      // Abbreviation-aware: "n. mariana is." (the daily puzzle's spelling)
+      // and "northern mariana" both find Northern Mariana Islands.
+      if (!matchesGeoName(country.name, term)) continue;
+      // Tuvalu is real even though the atlas has no polygon for it: the
+      // static fallback keeps a country from vanishing from search just
+      // because its atolls are too small to draw.
+      const centroid =
+        countryCentroids.get(country.isoCode) ??
+        fallbackCentroids[country.isoCode];
       if (!centroid) continue;
       results.push({
         key: `c-${country.id}`,

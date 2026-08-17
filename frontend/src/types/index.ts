@@ -28,6 +28,12 @@ export interface Country {
   isoCode: Alpha3;
   /** Alpha-2, matching what airports store. */
   isoCode2: Alpha2;
+  /**
+   * Bonus place: an ISO territory (Puerto Rico, the Faroes). Markable and
+   * painted like a country, excluded from every "of the world" count.
+   * Optional because cached responses from older deploys lack the field.
+   */
+  isTerritory?: boolean;
   createdAt: string;
 }
 

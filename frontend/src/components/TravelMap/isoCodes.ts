@@ -51,4 +51,30 @@ export const numericToAlpha3: Record<string, string> = {
   '474': 'MTQ', '540': 'NCL', '570': 'NIU', '574': 'NFK', '580': 'MNP',
   '612': 'PCN', '630': 'PRI', '638': 'REU', '666': 'SPM', '744': 'SJM',
   '772': 'TKL', '796': 'TCA', '850': 'VIR', '876': 'WLF', '446': 'MAC',
+  // Bonus places (2026-08-17): territories with their own 50m polygon that
+  // the table did not know, so their shapes painted as anonymous land.
+  '239': 'SGS', '86': 'IOT', '654': 'SHN', '660': 'AIA', '92': 'VGB',
+  '500': 'MSR', '832': 'JEY', '831': 'GGY', '833': 'IMN', '533': 'ABW',
+  '531': 'CUW', '663': 'MAF', '652': 'BLM', '258': 'PYF', '260': 'ATF',
+  '248': 'ALA', '334': 'HMD', '10': 'ATA', '534': 'SXM',
+};
+
+/**
+ * Some world-atlas features carry NO id at all - Kosovo among them - so the
+ * numeric join above can never find them and Kosovo has been unpaintable
+ * since day one. Name is the only key those features have. Disputed areas
+ * without an ISO code (Somaliland, N. Cyprus) are deliberately absent: they
+ * stay plain land because there is no country row they could ever join to.
+ */
+export const nameToAlpha3: Record<string, string> = {
+  Kosovo: 'XKX',
+};
+
+/**
+ * Where to fly for countries the atlas cannot answer for: Tuvalu's atolls
+ * are too small even for the 50m tier, so it has no polygon, no centroid,
+ * and search had nothing to aim the camera at.
+ */
+export const fallbackCentroids: Record<string, [number, number]> = {
+  TUV: [179.2, -8.52],
 };

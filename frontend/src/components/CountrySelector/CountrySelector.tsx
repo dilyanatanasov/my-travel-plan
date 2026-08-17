@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Country } from '../../types';
+import { matchesGeoName } from '../../lib/geoNames';
 
 interface CountrySelectorProps {
   countries: Country[];
@@ -16,7 +17,7 @@ function CountrySelector({ countries, visitedCountryIds, onToggleCountry }: Coun
     const searchLower = search.toLowerCase();
     return countries.filter(
       (c) =>
-        c.name.toLowerCase().includes(searchLower) ||
+        matchesGeoName(c.name, searchLower) ||
         c.isoCode.toLowerCase().includes(searchLower)
     );
   }, [countries, search]);

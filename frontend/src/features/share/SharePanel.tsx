@@ -95,8 +95,11 @@ function SharePanel() {
     countriesCount > 0 || (flightStats?.totalFlights ?? 0) > 0;
 
   const content = useMemo<ShareContent>(() => {
+    // Bonus territories stay out of the brag: "21 countries" must survive
+    // a fact-check by the friend it was sent to.
     const countries = visits.filter((visit) => {
       const type = visit.visitType || 'trip';
+      if (visit.country?.isTerritory) return false;
       return type === 'trip' || type === 'home' || type === 'lived';
     }).length;
 

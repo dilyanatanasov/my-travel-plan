@@ -38,12 +38,14 @@ const FLIGHT_NUDGE_KEY = 'mycontrail-flight-nudge-shown';
 
 /** Visited countries, excluding transit - the same rule the Overview uses. */
 function overviewStatsCountForMilestones(
-  visits: { visitType?: string | null }[]
+  visits: { visitType?: string | null; country?: { isTerritory?: boolean } }[]
 ): number {
   return visits.filter((visit) => {
     const type = visit.visitType || 'trip';
     // Trips, homes and lived-in: transit never counted, and a wishlist
-    // entry is a dream, not a milestone.
+    // entry is a dream, not a milestone. Territories are bonus places -
+    // "30 countries" must mean thirty countries.
+    if (visit.country?.isTerritory) return false;
     return type === 'trip' || type === 'home' || type === 'lived';
   }).length;
 }
@@ -204,19 +206,28 @@ function TravelMapPage() {
   useDailyNudge();
 
   const overviewStats = useMemo(() => {
-    const tripCount = visits.filter((v) => {
+    /*
+      Territories are bonus places: markable and painted, but "X of the
+      world" counts sovereign countries on BOTH sides of the fraction, so
+      marking Puerto Rico never moves a percentage whose denominator
+      excludes it. The bonus count gets its own quiet mention instead.
+    */
+    const visited = visits.filter((v) => {
       const type = v.visitType || 'trip';
       return type === 'trip' || type === 'home' || type === 'lived';
-    }).length;
+    });
+    const tripCount = visited.filter((v) => !v.country?.isTerritory).length;
+    const totalCountries = countries.filter((c) => !c.isTerritory).length;
     const homeCountry = visits.find((v) => v.visitType === 'home');
     return {
       tripCount,
+      territoryCount: visited.filter((v) => v.country?.isTerritory).length,
       transitCount: visits.filter((v) => v.visitType === 'transit').length,
       worldPercent:
-        countries.length > 0
-          ? Math.round((tripCount / countries.length) * 1000) / 10
+        totalCountries > 0
+          ? Math.round((tripCount / totalCountries) * 1000) / 10
           : 0,
-      totalCountries: countries.length,
+      totalCountries,
       homeCountry: homeCountry?.country?.name || 'Not set',
     };
   }, [visits, countries]);
@@ -238,6 +249,7 @@ function TravelMapPage() {
             countries={countries}
             visits={visits}
             tripCount={overviewStats.tripCount}
+            territoryCount={overviewStats.territoryCount}
             transitCount={overviewStats.transitCount}
             worldPercent={overviewStats.worldPercent}
             totalCountries={overviewStats.totalCountries}
