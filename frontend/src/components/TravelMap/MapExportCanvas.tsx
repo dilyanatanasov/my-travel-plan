@@ -267,14 +267,14 @@ function MapExportCanvasInner({
               visitCounts={airportVisitCounts}
               highlightedAirports={[]}
               /*
-                A journey export has a handful of airports on a framed map -
-                room enough to say where the plane actually goes ("city
-                names missing", owner 2026-08-17). Forcing the label zoom
-                past both thresholds turns on IATA codes and city names;
-                the whole-map export keeps its quiet dots - every airport
-                labelled at world zoom is a wall of text.
+                A journey export labels its airports with IATA codes -
+                enough to say where the plane goes. City names were tried
+                (labelZoom 8) and read as smudge at card scale ("not very
+                visible, maybe remove"), so the zoom sits between the two
+                thresholds: codes yes, city names no. The whole-map export
+                keeps its quiet dots.
               */
-              labelZoom={journey ? 8 : undefined}
+              labelZoom={journey ? 3 : undefined}
             />
           )}
         </ZoomableGroup>

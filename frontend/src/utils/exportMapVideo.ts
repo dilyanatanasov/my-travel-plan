@@ -316,7 +316,9 @@ export async function renderTripVideo(
   svg: SVGSVGElement,
   trip: TripContent,
   onProgress?: (fraction: number) => void,
-  durationMs = 6000
+  durationMs = 6000,
+  /** Per-leg stop photos, aligned to leg order; null = no photo there. */
+  photos: (HTMLImageElement | null)[] = []
 ): Promise<Blob> {
   const mimeType = pickMimeType();
   if (!mimeType) {
@@ -455,6 +457,68 @@ export async function renderTripVideo(
           ctx.stroke(plane);
           ctx.restore();
         }
+      });
+
+      /*
+        Stop postcards (owner ask, 2026-08-17): a polaroid pops at each
+        arrival as the plane lands - the replay's touchdown memory, on
+        film. Visible ~2.4s with a soft fade both ways, clipped to the
+        strip like everything else.
+      */
+      const legDuration = durationMs / Math.max(cardRoutes.length, 1);
+      photos.forEach((photo, index) => {
+        if (!photo || index >= cardRoutes.length) return;
+        const sinceTouchdown = elapsed - (index + 1) * legDuration;
+        if (sinceTouchdown < 0 || sinceTouchdown > 2400) return;
+        const fade = Math.min(
+          1,
+          sinceTouchdown / 250,
+          (2400 - sinceTouchdown) / 250
+        );
+        const at = cardRoutes[index].points[cardRoutes[index].points.length - 1];
+
+        const frameW = 170;
+        const frameH = 200;
+        const photoSize = 150;
+        // Above the landing point, nudged to stay inside the strip.
+        const px = Math.min(
+          Math.max(at.x - frameW / 2, placement.x + 8),
+          placement.x + placement.w - frameW - 8
+        );
+        const py = Math.min(
+          Math.max(at.y - frameH - 16, placement.y + 8),
+          placement.y + placement.h - frameH - 8
+        );
+
+        ctx.save();
+        ctx.globalAlpha = fade;
+        ctx.translate(px + frameW / 2, py + frameH / 2);
+        ctx.rotate(((index % 2 ? 4 : -4) * Math.PI) / 180);
+        ctx.translate(-frameW / 2, -frameH / 2);
+        ctx.shadowColor = 'rgba(32, 30, 29, 0.35)';
+        ctx.shadowBlur = 14;
+        ctx.fillStyle = '#fffdf9';
+        ctx.fillRect(0, 0, frameW, frameH);
+        ctx.shadowBlur = 0;
+        // Cover-crop the photo into the square window.
+        const scale = Math.max(
+          photoSize / photo.width,
+          photoSize / photo.height
+        );
+        const sw = photoSize / scale;
+        const sh = photoSize / scale;
+        ctx.drawImage(
+          photo,
+          (photo.width - sw) / 2,
+          (photo.height - sh) / 2,
+          sw,
+          sh,
+          10,
+          10,
+          photoSize,
+          photoSize
+        );
+        ctx.restore();
       });
       ctx.restore();
 

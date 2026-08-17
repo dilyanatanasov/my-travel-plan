@@ -16,6 +16,7 @@ import {
 } from '../../utils/exportMapVideo';
 import { useToast } from '../../components/Toast/ToastProvider';
 import { useAuth } from '../auth/authApi';
+import { useGetLegPhotoIdsQuery } from '../flights/flightsApi';
 import { formatJourneyDate } from '../../utils/journeyDate';
 import { track } from '../../lib/analytics';
 import Button from '../../components/ui/Button';
@@ -43,6 +44,11 @@ function TripShareDialog({
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const blobRef = useRef<Blob | null>(null);
   const canExportVideo = useMemo(() => isVideoExportSupported(), []);
+  const { data: photoIds } = useGetLegPhotoIdsQuery();
+  const photoLegSet = useMemo(
+    () => new Set(photoIds?.legIds ?? []),
+    [photoIds],
+  );
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -160,11 +166,42 @@ function TripShareDialog({
       return;
     }
     setVideoProgress(0);
+    const objectUrls: string[] = [];
     try {
       const km = legs.reduce(
         (sum, leg) => sum + (Number(leg.distanceKm) || 0),
         0,
       );
+      /*
+        Stop postcards for the film: the same authed per-leg photos the
+        replay shows, fetched here as images. A missing or failing photo
+        is a null - the video just flies past that stop.
+      */
+      const base = (import.meta.env.VITE_API_URL as string | undefined) ?? '/api';
+      const photos = await Promise.all(
+        legs.map(async (leg) => {
+          if (!leg.id || !photoLegSet.has(leg.id)) return null;
+          try {
+            const response = await fetch(
+              `${base}/flights/legs/${leg.id}/photo`,
+              { credentials: 'include' },
+            );
+            if (!response.ok) return null;
+            const photoBlob = await response.blob();
+            const url = URL.createObjectURL(photoBlob);
+            objectUrls.push(url);
+            return await new Promise<HTMLImageElement>((resolve, reject) => {
+              const image = new Image();
+              image.onload = () => resolve(image);
+              image.onerror = reject;
+              image.src = url;
+            });
+          } catch {
+            return null;
+          }
+        }),
+      );
+
       const blob = await renderTripVideo(
         svg,
         {
@@ -178,6 +215,7 @@ function TripShareDialog({
         // ~2.6s per leg, clamped: one hop stays snappy, a five-leg epic
         // does not drone on.
         Math.min(Math.max(legs.length * 2600, 4000), 10000),
+        photos,
       );
       track('share_render', { style: 'trip-video' });
       const extension = videoFileExtension(blob.type);
@@ -192,8 +230,17 @@ function TripShareDialog({
       );
     } finally {
       setVideoProgress(null);
+      objectUrls.forEach((url) => URL.revokeObjectURL(url));
     }
-  }, [legs, journey, routeCodes, filename, showToast, user?.displayName]);
+  }, [
+    legs,
+    journey,
+    routeCodes,
+    filename,
+    showToast,
+    user?.displayName,
+    photoLegSet,
+  ]);
 
   const handleShareVideo = useCallback(async () => {
     if (!videoFile) return;
@@ -292,26 +339,50 @@ function TripShareDialog({
               : 'Create video ✈️'}
           </Button>
         )}
-        {videoFile && (
-          <div className="flex gap-2">
-            <Button
-              className="flex-1 rounded-xl font-semibold"
-              onClick={handleShareVideo}
-            >
-              Share video
-            </Button>
-            <Button
-              variant="outline"
-              className="flex-1 rounded-xl font-semibold"
-              onClick={() => {
-                downloadBlob(videoFile, videoFile.name);
-                showToast('Video saved', { tone: 'success' });
-              }}
-            >
-              Save video
-            </Button>
-          </div>
-        )}
+        {videoFile &&
+          /*
+            Honest buttons: Share only where this browser can actually hand
+            a video file to other apps. Where it can't (most desktop
+            browsers), offering Share and delivering a download reads as a
+            bug - say Save, and say why.
+          */
+          (canShareFiles(videoFile) ? (
+            <div className="flex gap-2">
+              <Button
+                className="flex-1 rounded-xl font-semibold"
+                onClick={handleShareVideo}
+              >
+                Share video
+              </Button>
+              <Button
+                variant="outline"
+                className="flex-1 rounded-xl font-semibold"
+                onClick={() => {
+                  downloadBlob(videoFile, videoFile.name);
+                  showToast('Video saved', { tone: 'success' });
+                }}
+              >
+                Save video
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-1">
+              <Button
+                fullWidth
+                className="rounded-xl font-semibold"
+                onClick={() => {
+                  downloadBlob(videoFile, videoFile.name);
+                  showToast('Video saved', { tone: 'success' });
+                }}
+              >
+                Save video
+              </Button>
+              <p className="text-[11px] text-ink-subtle text-center">
+                This browser can&rsquo;t hand videos to other apps - open
+                mycontrail.com on your phone to share straight to Instagram.
+              </p>
+            </div>
+          ))}
       </div>
     </div>
   );
