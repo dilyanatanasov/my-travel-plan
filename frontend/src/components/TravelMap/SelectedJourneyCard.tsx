@@ -64,7 +64,7 @@ function SelectedJourneyCard({
           </p>
           <p className="text-xs map-glass-muted mt-0.5">
             {date ? `${date} · ` : ''}
-            {legs.length} {legs.length === 1 ? 'flight' : 'flights'} ·{' '}
+            {legs.length} {legs.length === 1 ? 'leg' : 'legs'} ·{' '}
             {Math.round(distance).toLocaleString()} km
           </p>
           {journey.notes && (
