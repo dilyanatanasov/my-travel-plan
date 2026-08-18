@@ -62,6 +62,8 @@ export interface ReplayState {
   stop: () => void;
   togglePause: () => void;
   next: () => void;
+  /** Step back to the previous journey (owner ask, 2026-08-18). */
+  previous: () => void;
   /** End the replay and restore the finished map. */
   stopReplay: () => void;
 }
@@ -164,6 +166,12 @@ export function useJourneyReplay(journeys: FlightJourney[]): ReplayState {
     advance();
   }, [advance]);
 
+  // The scheduling effect re-arms on index change, so the revisited
+  // journey gets its full window; the first journey is the floor.
+  const previous = useCallback(() => {
+    setIndex((current) => (current > 0 ? current - 1 : current));
+  }, []);
+
   const stopReplay = useCallback(() => {
     clearTimer();
     setIndex(-1);
@@ -199,6 +207,7 @@ export function useJourneyReplay(journeys: FlightJourney[]): ReplayState {
     stop,
     togglePause,
     next,
+    previous,
     stopReplay,
   };
 }

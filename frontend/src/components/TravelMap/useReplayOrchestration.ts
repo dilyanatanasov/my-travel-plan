@@ -230,26 +230,34 @@ export function useReplayOrchestration(
       landing, and these planes never landed).
     */
     const previousJourneys = replay.played.slice(0, -1);
-    if (previousJourneys.length > 0) {
-      const backfill = new Set<string>();
-      for (const journey of previousJourneys) {
-        for (const leg of journey.legs ?? []) {
-          const endpoints = legEndpoints(leg);
-          const dep = isoOf(endpoints?.departure.countryIso ?? null);
-          const arr = isoOf(endpoints?.arrival.countryIso ?? null);
-          if (dep) backfill.add(dep);
-          if (arr) backfill.add(arr);
-        }
-      }
-      if (backfill.size > 0) {
-        for (const iso of backfill) landedBeforeRef.current.add(iso);
-        setRevealedIsos((current) => {
-          const merged = new Set(current);
-          for (const iso of backfill) merged.add(iso);
-          return merged.size === current.size ? current : merged;
-        });
+    const backfill = new Set<string>();
+    for (const journey of previousJourneys) {
+      for (const leg of journey.legs ?? []) {
+        const endpoints = legEndpoints(leg);
+        const dep = isoOf(endpoints?.departure.countryIso ?? null);
+        const arr = isoOf(endpoints?.arrival.countryIso ?? null);
+        if (dep) backfill.add(dep);
+        if (arr) backfill.add(arr);
       }
     }
+    /*
+      SET, not merge (owner ask, 2026-08-18: stepping BACK must un-light
+      the countries only the abandoned journey added). The story so far
+      is exactly the earlier journeys' countries: on a forward step the
+      backfill is a superset of every prior reveal, so nothing is lost -
+      and on a back step the extras fall away, then this journey's own
+      timers re-reveal its stops with their usual flashes.
+    */
+    landedBeforeRef.current = new Set(backfill);
+    setRevealedIsos((current) => {
+      if (
+        current.size === backfill.size &&
+        [...backfill].every((iso) => current.has(iso))
+      ) {
+        return current;
+      }
+      return new Set(backfill);
+    });
 
     // You are already standing in the origin when the journey begins.
     const origin = isoOf(legEndpoints(legs[0])?.departure.countryIso ?? null);

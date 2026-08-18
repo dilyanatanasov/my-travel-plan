@@ -168,6 +168,32 @@ export function useReplayAudio(replayActive: boolean): {
     };
   }, [replayActive, ensureGraph]);
 
+  /*
+    The lounge must not play to a dark screen (owner report, 2026-08-18:
+    "the music doesn't always stop when I close the app or my screen").
+    Browsers deliberately let an AudioContext keep playing in the
+    background - correct for a music app, wrong for a replay soundtrack.
+    Hidden page or pagehide suspends the context; coming back mid-replay
+    resumes it.
+  */
+  useEffect(() => {
+    const suspend = () => {
+      void ctxRef.current?.suspend().catch(() => undefined);
+    };
+    const onVisibility = () => {
+      const ctx = ctxRef.current;
+      if (!ctx) return;
+      if (document.hidden) suspend();
+      else if (replayActive) void ctx.resume().catch(() => undefined);
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('pagehide', suspend);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('pagehide', suspend);
+    };
+  }, [replayActive]);
+
   useEffect(
     () => () => {
       void ctxRef.current?.close().catch(() => undefined);

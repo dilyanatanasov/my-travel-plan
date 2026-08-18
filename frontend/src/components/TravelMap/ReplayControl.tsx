@@ -273,6 +273,19 @@ function ReplayControl({
 
         <button
           type="button"
+          onClick={replay.previous}
+          disabled={replay.index <= 1}
+          aria-label="Previous journey"
+          className={`${buttonClass} disabled:opacity-35`}
+        >
+          <svg {...iconProps}>
+            <path d="M17 5.5v13a1 1 0 01-1.53.85l-8-6.5a1 1 0 010-1.7l8-6.5A1 1 0 0117 5.5z" />
+            <rect x="4.5" y="5" width="2.5" height="14" rx="1" />
+          </svg>
+        </button>
+
+        <button
+          type="button"
           onClick={replay.togglePause}
           aria-label={replay.isPaused ? 'Resume replay' : 'Pause replay'}
           className={buttonClass}
