@@ -340,7 +340,11 @@ export async function renderMapVideo(
           // the render freezes at its last percent with no error. Route
           // any frame crash into the abort path instead (2026-08-18).
           try {
-          const elapsed = now - start;
+          // Clamped: a rAF timestamp is the frame's vsync time and can
+          // PRECEDE the performance.now() that set `start` - a negative
+          // first-frame elapsed indexed sceneData[-1] in the trip film
+          // ("reading 'image'" crash, owner report 2026-08-18).
+          const elapsed = Math.max(0, now - start);
       const t = Math.min(elapsed / durationMs, 1);
       onProgress?.(t);
 
@@ -593,12 +597,14 @@ export async function renderTripVideo(
           if (stopped) return;
           // Same silent-crash trap as the whole-map film (2026-08-18).
           try {
-          const elapsed = now - start;
+          // Clamped - see renderMapVideo: the first rAF timestamp can
+          // precede `start`, and a negative elapsed made this index -1.
+          const elapsed = Math.max(0, now - start);
       const t = Math.min(elapsed / durationMs, 1);
       onProgress?.(t);
 
       const index = Math.min(
-        Math.floor((elapsed / durationMs) * sceneData.length),
+        Math.max(0, Math.floor((elapsed / durationMs) * sceneData.length)),
         sceneData.length - 1
       );
       const scene = sceneData[index];
