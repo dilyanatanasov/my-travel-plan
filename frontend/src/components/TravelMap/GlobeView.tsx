@@ -56,6 +56,9 @@ import {
   type GlobeCamera,
   type PlaneFrame,
 } from './globeUtils';
+import { legEndpoints, legMode } from '../FlightMap/routeUtils';
+import { modeMedium, type TerrainRequest } from '../../lib/terrainRoute';
+import { useTerrainRoutes } from '../../hooks/useTerrainRoutes';
 
 /*
   ZoomPanProvider is exported by react-simple-maps at runtime but missing from
@@ -645,6 +648,35 @@ function GlobeView({
   */
   const [plane, setPlane] = useState<PlaneFrame | null>(null);
 
+  /*
+    Terrain routes for the replayed journey (2026-08-18): the globe has no
+    FlightRoutes layer to warm the cache, so it asks the router itself.
+    The version bump rebuilds the timeline below, swapping the straight
+    interpolators for coast-following ones.
+  */
+  const replayTerrainRequests = useMemo<TerrainRequest[]>(() => {
+    if (!replay.current) return [];
+    return (replay.current.legs ?? []).flatMap((leg) => {
+      const medium = modeMedium(legMode(leg));
+      const endpoints = legEndpoints(leg);
+      if (!medium || !endpoints) return [];
+      return [
+        {
+          from: [
+            Number(endpoints.departure.longitude),
+            Number(endpoints.departure.latitude),
+          ] as [number, number],
+          to: [
+            Number(endpoints.arrival.longitude),
+            Number(endpoints.arrival.latitude),
+          ] as [number, number],
+          medium,
+        },
+      ];
+    });
+  }, [replay]);
+  const terrainVersion = useTerrainRoutes(replayTerrainRequests);
+
   useEffect(() => {
     if (!replay.isActive || !replay.current) {
       setPlane(null);
@@ -678,7 +710,10 @@ function GlobeView({
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [replay.isActive, replay.current, setCamera]);
+    // terrainVersion: a resolved terrain route swaps the leg interpolator,
+    // so the replay clock restarts on the corrected track.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [replay.isActive, replay.current, setCamera, terrainVersion]);
 
   /*
     Horizon culling for point markers: the raw projection maps the hidden

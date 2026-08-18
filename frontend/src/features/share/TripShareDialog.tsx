@@ -12,13 +12,16 @@ import {
 import { downloadBlob } from '../../utils/exportMapImage';
 import {
   renderTripVideo,
+  captureTripScene,
   isVideoExportSupported,
   videoFileExtension,
+  type TripVideoScene,
 } from '../../utils/exportMapVideo';
 import { useToast } from '../../components/Toast/ToastProvider';
 import { useAuth } from '../auth/authApi';
 import { useGetLegPhotoIdsQuery } from '../flights/flightsApi';
-import { legEndpoints } from '../../components/FlightMap/routeUtils';
+import { legEndpoints, legMode } from '../../components/FlightMap/routeUtils';
+import { ensureTerrainWaypoints, modeMedium } from '../../lib/terrainRoute';
 import { formatJourneyDate } from '../../utils/journeyDate';
 import { track } from '../../lib/analytics';
 import Button from '../../components/ui/Button';
@@ -44,6 +47,8 @@ function TripShareDialog({
   const [retryToken, setRetryToken] = useState(0);
   const [videoProgress, setVideoProgress] = useState<number | null>(null);
   const [videoFile, setVideoFile] = useState<File | null>(null);
+  /** While capturing scenes, the export canvas frames one leg at a time. */
+  const [videoFocusLeg, setVideoFocusLeg] = useState<number | null>(null);
   const blobRef = useRef<Blob | null>(null);
   const canExportVideo = useMemo(() => isVideoExportSupported(), []);
   const { data: photoIds } = useGetLegPhotoIdsQuery();
@@ -207,8 +212,64 @@ function TripShareDialog({
         }),
       );
 
+      /*
+        Terrain routes must be IN before any scene is captured: on a cold
+        cache the router answers a beat after first render, and a scene
+        snapped in that beat would film the ferry cutting the straight
+        chord across a cape (self-review, 2026-08-18). Resolved answers
+        return instantly from the module cache.
+      */
+      await Promise.all(
+        legs.map((leg) => {
+          const medium = modeMedium(legMode(leg));
+          const endpoints = legEndpoints(leg);
+          if (!medium || !endpoints) return null;
+          return ensureTerrainWaypoints(
+            [
+              Number(endpoints.departure.longitude),
+              Number(endpoints.departure.latitude),
+            ],
+            [
+              Number(endpoints.arrival.longitude),
+              Number(endpoints.arrival.latitude),
+            ],
+            medium,
+          );
+        }),
+      );
+      // One settle frame so FlightRoutes re-renders with the answers.
+      await new Promise((r) =>
+        requestAnimationFrame(() => requestAnimationFrame(r)),
+      );
+
+      /*
+        The animated camera (2026-08-18): capture one scene per leg by
+        re-aiming the export canvas at that leg and waiting for its
+        framing to settle. The film then cuts between sharp close-ups
+        instead of digitally zooming one blurry continental frame.
+      */
+      const waitForFraming = async () => {
+        await new Promise((r) =>
+          requestAnimationFrame(() => requestAnimationFrame(r)),
+        );
+        const deadline = Date.now() + 15000;
+        while (svg.getAttribute('data-framed') !== '1') {
+          if (Date.now() > deadline) {
+            throw new Error('The map could not frame this leg - try again');
+          }
+          await new Promise((r) => setTimeout(r, 60));
+        }
+      };
+      const scenes: TripVideoScene[] = [];
+      for (let i = 0; i < legs.length; i++) {
+        setVideoFocusLeg(legs[i].legOrder);
+        await waitForFraming();
+        scenes.push(await captureTripScene(svg, i));
+      }
+      setVideoFocusLeg(null);
+
       const blob = await renderTripVideo(
-        svg,
+        scenes,
         {
           routeCodes,
           dateLabel: formatJourneyDate(journey),
@@ -243,6 +304,7 @@ function TripShareDialog({
       );
     } finally {
       setVideoProgress(null);
+      setVideoFocusLeg(null);
       objectUrls.forEach((url) => URL.revokeObjectURL(url));
     }
   }, [
@@ -302,7 +364,12 @@ function TripShareDialog({
       aria-label="Share this trip"
     >
       {/* Off-screen source, framed on this journey only. */}
-      <MapExportCanvas theme="light" journey={journey} svgId={TRIP_SVG_ID} />
+      <MapExportCanvas
+        theme="light"
+        journey={journey}
+        focusLegOrder={videoFocusLeg}
+        svgId={TRIP_SVG_ID}
+      />
 
       <div
         className="w-full max-w-sm bg-surface rounded-2xl shadow-2xl p-4 space-y-3"

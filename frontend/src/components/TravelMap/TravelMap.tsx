@@ -1018,9 +1018,10 @@ function TravelMap() {
             onClick={() => handleGlobeModeChange(true)}
             aria-label="View as globe"
             title="View as globe"
+            /* Globe view is an explore verb - the toggle speaks teal. */
             className="w-11 h-11 flex items-center justify-center map-glass map-glass-hover
-              last:rounded-b-lg focus:outline-none focus-visible:ring-2
-              focus-visible:ring-inset focus-visible:ring-brand-400"
+              text-secondary-text last:rounded-b-lg focus:outline-none focus-visible:ring-2
+              focus-visible:ring-inset focus-visible:ring-secondary-600"
           >
             <svg
               className="w-5 h-5"

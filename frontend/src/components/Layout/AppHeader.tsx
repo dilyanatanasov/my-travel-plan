@@ -47,11 +47,14 @@ function AppHeader() {
             discovery, which is meant to be found — icon-only below sm to
             keep the header inside h-14.
           */}
+          {/* The discovery entry wears the secondary teal (owner,
+              2026-08-18): exploration is a different verb than the
+              terracotta record-keeping actions around it. */}
           <Link
             to="/search"
             aria-label="Where to next? (beta)"
-            className="flex items-center gap-1.5 min-h-11 px-3 rounded-lg border border-line
-              text-sm font-medium text-ink hover:bg-canvas"
+            className="flex items-center gap-1.5 min-h-11 px-3 rounded-lg border border-secondary-600/40
+              bg-secondary-soft/60 text-sm font-medium text-secondary-text hover:bg-secondary-soft"
           >
             <svg
               className="w-4 h-4 flex-shrink-0"
@@ -70,7 +73,7 @@ function AppHeader() {
             {/* Flight search is beta: fares are cached observations, not
                 live quotes — label it so nobody mistakes it for a booking
                 engine. Hidden below sm with the label it qualifies. */}
-            <span className="hidden sm:inline-block px-1.5 py-0.5 rounded-full bg-brand-50 text-brand-700 text-[10px] font-semibold uppercase tracking-wide">
+            <span className="hidden sm:inline-block px-1.5 py-0.5 rounded-full bg-secondary-600 text-white text-[10px] font-semibold uppercase tracking-wide">
               Beta
             </span>
           </Link>

@@ -6,11 +6,22 @@ interface RouteTooltipProps {
   position: { x: number; y: number };
 }
 
+/* The count's noun follows the route's mode - "Flights: 2" over a ferry
+   line was a small lie (self-review, 2026-08-18). */
+const COUNT_LABEL: Record<string, string> = {
+  flight: 'Flights',
+  train: 'Trains',
+  car: 'Drives',
+  bus: 'Buses',
+  ferry: 'Ferries',
+};
+
 function RouteTooltip({ route, position }: RouteTooltipProps) {
   if (!route) return null;
 
   const { departure, arrival, count, totalDistance } = route;
   const avgDistance = Math.round(totalDistance / count);
+  const countLabel = COUNT_LABEL[route.mode ?? 'flight'] ?? 'Journeys';
 
   return (
     <div
@@ -34,7 +45,7 @@ function RouteTooltip({ route, position }: RouteTooltipProps) {
         {/* Stats */}
         <div className="flex gap-4 mt-1.5 text-xs">
           <div>
-            <span className="text-ink-subtle">Flights: </span>
+            <span className="text-ink-subtle">{countLabel}: </span>
             <span className="font-medium">{count}</span>
           </div>
           <div>

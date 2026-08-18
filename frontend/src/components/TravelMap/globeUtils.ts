@@ -2,6 +2,43 @@ import { geoDistance, geoInterpolate } from 'd3-geo';
 import type { FlightJourney, TravelMode } from '../../types';
 import { legFlightSeconds, STOP_PAUSE_SECONDS } from './useJourneyReplay';
 import { legEndpoints, legMode } from '../FlightMap/routeUtils';
+import {
+  modeMedium,
+  terrainWaypointsSync,
+  type LonLat,
+} from '../../lib/terrainRoute';
+
+/**
+ * A great-circle interpolator that follows a waypoint chain (terrain
+ * routes, 2026-08-18): t maps to distance along the whole chain, so the
+ * ship keeps constant speed through every corner it steers around.
+ */
+export function polylineInterpolate(
+  points: LonLat[],
+): (t: number) => [number, number] {
+  const interpolators = [] as ((t: number) => [number, number])[];
+  const lengths: number[] = [];
+  let total = 0;
+  for (let i = 1; i < points.length; i++) {
+    interpolators.push(geoInterpolate(points[i - 1], points[i]));
+    const d = geoDistance(points[i - 1], points[i]);
+    lengths.push(d);
+    total += d;
+  }
+  if (total === 0) return () => points[0];
+  return (t: number) => {
+    const target = Math.max(0, Math.min(1, t)) * total;
+    let covered = 0;
+    for (let i = 0; i < lengths.length; i++) {
+      if (target <= covered + lengths[i] || i === lengths.length - 1) {
+        const local = lengths[i] === 0 ? 0 : (target - covered) / lengths[i];
+        return interpolators[i](Math.max(0, Math.min(1, local)));
+      }
+      covered += lengths[i];
+    }
+    return points[points.length - 1];
+  };
+}
 
 /** d3 rotation, [lambda, phi]. The camera faces [-lambda, -phi]. */
 export type GlobeRotation = [number, number];
@@ -96,10 +133,16 @@ export function buildJourneyTimeline(
 
     const flight = legFlightSeconds(Number(leg.distanceKm) || 0);
     const isLast = i === legs.length - 1;
+    // Surface legs follow their terrain route when the router has one -
+    // the globe ship rounds the same capes the flat map's does.
+    const medium = modeMedium(legMode(leg));
+    const waypoints = medium ? terrainWaypointsSync(from, to, medium) : null;
     segments.push({
       from,
       to,
-      interpolate: geoInterpolate(from, to),
+      interpolate: waypoints
+        ? polylineInterpolate(waypoints)
+        : geoInterpolate(from, to),
       startS: t,
       endS: t + flight,
       pauseEndS: t + flight + (isLast ? 0 : STOP_PAUSE_SECONDS),

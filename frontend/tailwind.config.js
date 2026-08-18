@@ -25,6 +25,13 @@ export default {
         canvas: token('canvas'),
         // Accent text; distinct from brand-600, which is a fill. See tokens.css.
         'brand-text': token('brand-text'),
+        // Secondary teal - accents only, never semantics. See tokens.css.
+        secondary: {
+          600: token('secondary-600'),
+          700: token('secondary-700'),
+        },
+        'secondary-text': token('secondary-text'),
+        'secondary-soft': token('secondary-soft'),
         // Filled panel that always carries white text; see tokens.css.
         'panel-accent': token('panel-accent'),
         surface: {

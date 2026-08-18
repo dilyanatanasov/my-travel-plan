@@ -1,5 +1,6 @@
 import type { Airport, CityRef, FlightJourney, TravelMode } from '../../types';
 import { legMode } from '../FlightMap/routeUtils';
+import { isNearWater } from '../../lib/terrainRoute';
 
 /**
  * Helpers for editing a journey's stop chain (2026-08-14): stops can be
@@ -25,8 +26,8 @@ export const emptyStop = (): EditableStop => ({
   city: null,
 });
 
-/** The modes the UI offers; ferry is schema-ready but not surfaced yet. */
-export const HOP_MODES: TravelMode[] = ['flight', 'train', 'car', 'bus'];
+/** Every mode the schema knows, ferry included (owner, 2026-08-18). */
+export const HOP_MODES: TravelMode[] = ['flight', 'train', 'car', 'bus', 'ferry'];
 
 export const MODE_LABEL: Record<TravelMode, string> = {
   flight: 'Flight',
@@ -231,6 +232,37 @@ export async function resolveFlightEndpoints(
       mode !== 'flight' || (isAirportEnd(next[i]) && isAirportEnd(next[i + 1])),
   );
   return { stops: next, modes: nextModes, conversions, ok };
+}
+
+/**
+ * Ferry endpoints that look landlocked (owner ask, 2026-08-18: ferries
+ * connect coastal places). Checked against the atlas's water within
+ * ~20 km. A WARNING, never a block: the atlas carries no lakes or
+ * rivers, so Lake Geneva's ferries would fail a hard rule - the user
+ * knows their trip better than the raster does.
+ */
+export async function ferryCoastWarnings(
+  stops: EditableStop[],
+  modes: TravelMode[],
+): Promise<string[]> {
+  const flagged = new Set<string>();
+  for (let i = 0; i < modes.length; i++) {
+    if (modes[i] !== 'ferry') continue;
+    for (const stop of [stops[i], stops[i + 1]]) {
+      if (!stop) continue;
+      const place = stop.kind === 'city' ? stop.city : stop.airport;
+      if (!place) continue;
+      const near = await isNearWater(
+        [Number(place.longitude), Number(place.latitude)],
+        20,
+      );
+      // null = could not tell; only a confident "no water" warns.
+      if (near === false) {
+        flagged.add(stop.kind === 'city' ? place.name : (place as Airport).iataCode);
+      }
+    }
+  }
+  return [...flagged];
 }
 
 /** loopStatus for the mixed-mode chain, keyed on stop identity. */

@@ -133,6 +133,60 @@ body {
   animation: vehicle-beam-flicker 1.1s ease-in-out infinite;
 }
 
+/* The ferry's wake: foam strokes drift astern and dissolve, staggered
+   so the water always seems to be churning. Units are glyph-space (the
+   sprite's own 24-unit box), so the trail scales with the vehicle. */
+@keyframes ferry-wake-drift {
+  0% {
+    transform: translateX(0);
+    opacity: 0.85;
+  }
+  100% {
+    transform: translateX(-7px);
+    opacity: 0;
+  }
+}
+
+.ferry-wake {
+  animation: ferry-wake-drift 1.3s linear infinite;
+}
+
+.ferry-wake-b {
+  animation-delay: -0.45s;
+}
+
+.ferry-wake-c {
+  animation-delay: -0.9s;
+}
+
+/* The steam (owner ask, 2026-08-18 ":D"): puffs balloon astern of the
+   funnel and dissolve. transform-box makes scale grow each puff around
+   its own centre rather than the glyph origin. */
+@keyframes ferry-steam-drift {
+  0% {
+    transform: translateX(0) scale(0.7);
+    opacity: 0.8;
+  }
+  100% {
+    transform: translateX(-7px) scale(1.8);
+    opacity: 0;
+  }
+}
+
+.ferry-steam {
+  animation: ferry-steam-drift 1.6s linear infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.ferry-steam-b {
+  animation-delay: -0.53s;
+}
+
+.ferry-steam-c {
+  animation-delay: -1.07s;
+}
+
 /*
   The loading mark (ContrailLoader): the brand arc draws origin-to-
   destination, the dot pops on arrival, the trail fades, repeat. The dot
@@ -216,9 +270,16 @@ body {
   .plane-light-strobe,
   .vehicle-headlight,
   .vehicle-beam,
+  .ferry-wake,
+  .ferry-steam,
   .contrail-loader-arc,
   .contrail-loader-dot {
     animation: none;
+  }
+
+  .ferry-wake,
+  .ferry-steam {
+    opacity: 0.3;
   }
 
   .plane-light-strobe {

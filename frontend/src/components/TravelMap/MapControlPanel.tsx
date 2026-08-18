@@ -1,7 +1,12 @@
 import { memo } from 'react';
 import type { Airport } from '../../types';
 import type { FlightFilters } from '../FlightMap/filterTypes';
-import { DEFAULT_FILTERS, DISTANCE_RANGES, ROUTE_TYPES } from '../FlightMap/filterTypes';
+import {
+  DEFAULT_FILTERS,
+  DISTANCE_RANGES,
+  ROUTE_TYPES,
+  TRAVEL_KINDS,
+} from '../FlightMap/filterTypes';
 import { ALL_CONTINENTS, type Continent } from '../FlightMap/continentUtils';
 import { countActiveFilters } from '../FlightMap/filterUtils';
 
@@ -42,7 +47,7 @@ const fieldLabelClass = 'block text-xs font-medium map-glass-muted mb-1';
  */
 const MAP_VIEWS = [
   { id: 'all', label: 'Everything', settings: { showCountries: true, showFlights: true, showAirports: true } },
-  { id: 'flights', label: 'Flights', settings: { showCountries: false, showFlights: true, showAirports: true } },
+  { id: 'flights', label: 'Journeys', settings: { showCountries: false, showFlights: true, showAirports: true } },
   { id: 'countries', label: 'Countries', settings: { showCountries: true, showFlights: false, showAirports: false } },
 ] as const;
 
@@ -185,8 +190,10 @@ function MapControlPanel({
             <span className="sm:hidden">Layers &amp; filters</span>
             <span className="hidden sm:inline">Map layers &amp; filters</span>
           </span>
+          {/* Active-filter accents are teal: "the view is filtered" is a
+              different message than the terracotta action color. */}
           {activeCount > 0 && (
-            <span className="inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full bg-brand-600 text-white text-xs font-semibold">
+            <span className="inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full bg-secondary-600 text-white text-xs font-semibold">
               {activeCount}
             </span>
           )}
@@ -368,6 +375,30 @@ function MapControlPanel({
                     ))}
                   </select>
                 </div>
+
+                <div>
+                  <label htmlFor="filter-travel-kind" className={fieldLabelClass}>
+                    Travelled by
+                  </label>
+                  <select
+                    id="filter-travel-kind"
+                    value={filters.travelKind ?? 'all'}
+                    onChange={(e) =>
+                      onFiltersChange({
+                        ...filters,
+                        travelKind: e.target
+                          .value as FlightFilters['travelKind'],
+                      })
+                    }
+                    className={selectClass}
+                  >
+                    {TRAVEL_KINDS.map((kind) => (
+                      <option key={kind.value} value={kind.value}>
+                        {kind.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               <div>
@@ -381,10 +412,10 @@ function MapControlPanel({
                         type="button"
                         onClick={() => handleContinentToggle(continent)}
                         aria-pressed={isActive}
-                        className={`min-h-11 px-3 text-sm rounded-lg border transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500 ${
+                        className={`min-h-11 px-3 text-sm rounded-lg border transition-colors focus:outline-none focus:ring-2 focus:ring-secondary-600 ${
                           isActive
-                            ? 'bg-brand-500 text-white border-brand-500'
-                            : 'map-glass-field hover:border-brand-400'
+                            ? 'bg-secondary-600 text-white border-secondary-600'
+                            : 'map-glass-field hover:border-secondary-600/60'
                         }`}
                       >
                         {continent}
@@ -398,7 +429,7 @@ function MapControlPanel({
                 <button
                   type="button"
                   onClick={() => onFiltersChange(DEFAULT_FILTERS)}
-                  className="min-h-11 text-sm text-brand-text hover:text-brand-800 font-medium focus:outline-none focus:ring-2 focus:ring-brand-500 rounded-lg px-2 -mx-2"
+                  className="min-h-11 text-sm text-secondary-text hover:text-secondary-700 font-medium focus:outline-none focus:ring-2 focus:ring-secondary-600 rounded-lg px-2 -mx-2"
                 >
                   Clear all filters ({activeCount})
                 </button>

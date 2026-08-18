@@ -11,9 +11,13 @@
  * than by position or exact header.
  */
 
+import type { TravelMode } from '../../types';
+
 export interface ParsedLeg {
   from: string;
   to: string;
+  /** Absent means flight - the overwhelmingly common export. */
+  mode?: TravelMode;
 }
 
 export interface ParsedJourney {
@@ -37,7 +41,20 @@ const FIELD_ALIASES: Record<string, string[]> = {
   to: ['to', 'destination', 'arrival', 'arr', 'arrivalairport', 'destinationairport', 'toairport', 'arrairport'],
   date: ['date', 'departuredate', 'depdate', 'flightdate', 'localdepartured', 'departed'],
   notes: ['notes', 'note', 'comment', 'comments', 'airline', 'flight'],
+  mode: ['mode', 'transport', 'travelmode', 'vehicle', 'by', 'transporttype'],
 };
+
+/** "Train", "rail", "drive"… → the schema's mode; unknowns mean flight. */
+export function parseMode(value: string): TravelMode | undefined {
+  const v = normalise(value);
+  if (!v) return undefined;
+  if (['train', 'rail', 'railway'].includes(v)) return 'train';
+  if (['car', 'drive', 'driving', 'road', 'auto'].includes(v)) return 'car';
+  if (['bus', 'coach'].includes(v)) return 'bus';
+  if (['ferry', 'boat', 'ship'].includes(v)) return 'ferry';
+  if (['flight', 'plane', 'air', 'fly'].includes(v)) return 'flight';
+  return undefined;
+}
 
 const normalise = (value: string) =>
   value.toLowerCase().replace(/[^a-z]/g, '');
@@ -141,7 +158,7 @@ export function parseFlightsCsv(text: string): ParseResult {
   const result: ParseResult = {
     journeys: [],
     errors: [],
-    mapping: { from: null, to: null, date: null, notes: null },
+    mapping: { from: null, to: null, date: null, notes: null, mode: null },
     totalRows: 0,
   };
 
@@ -170,12 +187,14 @@ export function parseFlightsCsv(text: string): ParseResult {
   const toIdx = indexOf('to');
   const dateIdx = indexOf('date');
   const notesIdx = indexOf('notes');
+  const modeIdx = indexOf('mode');
 
   result.mapping = {
     from: fromIdx === -1 ? null : headers[fromIdx],
     to: toIdx === -1 ? null : headers[toIdx],
     date: dateIdx === -1 ? null : headers[dateIdx],
     notes: notesIdx === -1 ? null : headers[notesIdx],
+    mode: modeIdx === -1 ? null : headers[modeIdx],
   };
 
   if (fromIdx === -1 || toIdx === -1) {
@@ -217,7 +236,13 @@ export function parseFlightsCsv(text: string): ParseResult {
 
     flat.push({
       date: dateIdx === -1 ? undefined : parseDate(cells[dateIdx] ?? ''),
-      legs: [{ from, to }],
+      legs: [
+        {
+          from,
+          to,
+          mode: modeIdx === -1 ? undefined : parseMode(cells[modeIdx] ?? ''),
+        },
+      ],
       notes: notesIdx === -1 ? undefined : cells[notesIdx]?.slice(0, 200) || undefined,
       rows: [rowNumber],
     });

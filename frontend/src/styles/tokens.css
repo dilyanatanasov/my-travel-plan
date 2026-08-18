@@ -45,6 +45,18 @@
   --color-brand-800: 100 51 18;
   --color-brand-900: 64 35 16;
 
+  /*
+    Secondary — deep teal, terracotta's split-complement and the classic
+    vintage-airline pairing (owner decision, 2026-08-18). Same role split
+    as brand: -600 is a fill that carries white, -text reads on cream,
+    -soft is a tinted surface. Reserved for accents (Where to next,
+    active filters), never for semantics - greens keep meaning success.
+  */
+  --color-secondary-600: 31 111 107;
+  --color-secondary-700: 23 88 85;
+  --color-secondary-text: 21 82 79;
+  --color-secondary-soft: 209 231 229;
+
   /* Surfaces — cream ground, lighter cards sitting on it. */
   --color-canvas: 245 234 216;
   --color-surface: 249 244 237;
@@ -135,6 +147,14 @@
   --color-brand-text: 240 166 122;
   --color-brand-700: 246 160 107;
   --color-brand-800: 255 198 165;
+
+  /* Secondary teal, dark rungs: the fill stays mid-toned for white
+     text (same AA lesson as brand-600 above); text lifts to read on
+     dark surfaces; soft deepens into a tinted panel. */
+  --color-secondary-600: 42 122 117;
+  --color-secondary-700: 127 181 176;
+  --color-secondary-text: 137 190 185;
+  --color-secondary-soft: 30 51 49;
 
   /*
     Map semantics on light panels: brighter, matching what the dark map

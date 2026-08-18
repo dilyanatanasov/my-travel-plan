@@ -199,6 +199,119 @@ export function calculateArcPath(
 }
 
 /**
+ * A polyline with rounded corners (terrain routes, 2026-08-18): straight
+ * runs between waypoints, each interior corner cut with a small quadratic
+ * so the ship steers around a cape rather than ricocheting off it. Radius
+ * is in map user units, so the rounding scales with the map like the
+ * route itself, and is clamped to half of each adjoining segment.
+ */
+export function roundedPolylinePath(
+  points: [number, number][],
+  radius = 4,
+): string {
+  if (points.length < 2) return '';
+  if (points.length === 2)
+    return `M ${points[0][0]} ${points[0][1]} L ${points[1][0]} ${points[1][1]}`;
+
+  let d = `M ${points[0][0]} ${points[0][1]}`;
+  for (let i = 1; i < points.length - 1; i++) {
+    const prev = points[i - 1];
+    const corner = points[i];
+    const next = points[i + 1];
+    const inLen = Math.hypot(corner[0] - prev[0], corner[1] - prev[1]);
+    const outLen = Math.hypot(next[0] - corner[0], next[1] - corner[1]);
+    if (inLen === 0 || outLen === 0) continue;
+    const r = Math.min(radius, inLen / 2, outLen / 2);
+    const inX = corner[0] - ((corner[0] - prev[0]) / inLen) * r;
+    const inY = corner[1] - ((corner[1] - prev[1]) / inLen) * r;
+    const outX = corner[0] + ((next[0] - corner[0]) / outLen) * r;
+    const outY = corner[1] + ((next[1] - corner[1]) / outLen) * r;
+    d += ` L ${inX} ${inY} Q ${corner[0]} ${corner[1]} ${outX} ${outY}`;
+  }
+  const last = points[points.length - 1];
+  d += ` L ${last[0]} ${last[1]}`;
+  return d;
+}
+
+/**
+ * A wavy stroke along a waypoint chain (owner ask, 2026-08-18: "watter
+ * can be wavy") - the ferry's trail signature. The chain is resampled at
+ * half-wavelength intervals and each half-wave bows to alternating sides
+ * with a quadratic. Only the DRAWN trail waves; the ship itself sails
+ * the smooth path, or it would wobble its heading the whole crossing.
+ */
+export function wavyPolylinePath(
+  points: [number, number][],
+  amplitude = 1.6,
+  wavelength = 9,
+): string {
+  if (points.length < 2) return '';
+  const half = Math.max(wavelength / 2, 0.001);
+
+  // Resample the chain at half-wave spacing, carrying the remainder
+  // across corners so the rhythm never stutters at a waypoint.
+  const samples: [number, number][] = [points[0]];
+  let carried = 0;
+  for (let i = 1; i < points.length; i++) {
+    const [ax, ay] = points[i - 1];
+    const [bx, by] = points[i];
+    const segLen = Math.hypot(bx - ax, by - ay);
+    if (segLen === 0) continue;
+    let along = half - carried;
+    while (along < segLen) {
+      const t = along / segLen;
+      samples.push([ax + (bx - ax) * t, ay + (by - ay) * t]);
+      along += half;
+    }
+    carried = segLen - (along - half);
+  }
+  const last = points[points.length - 1];
+  const tail = samples[samples.length - 1];
+  if (Math.hypot(last[0] - tail[0], last[1] - tail[1]) < half * 0.35)
+    samples[samples.length - 1] = last;
+  else samples.push(last);
+
+  if (samples.length < 3)
+    return `M ${points[0][0]} ${points[0][1]} L ${last[0]} ${last[1]}`;
+
+  let d = `M ${samples[0][0]} ${samples[0][1]}`;
+  for (let i = 1; i < samples.length; i++) {
+    const [ax, ay] = samples[i - 1];
+    const [bx, by] = samples[i];
+    const len = Math.hypot(bx - ax, by - ay);
+    if (len === 0) continue;
+    const side = i % 2 === 0 ? 1 : -1;
+    const nx = (-(by - ay) / len) * amplitude * side;
+    const ny = ((bx - ax) / len) * amplitude * side;
+    d += ` Q ${(ax + bx) / 2 + nx} ${(ay + by) / 2 + ny} ${bx} ${by}`;
+  }
+  return d;
+}
+
+/** Projected length of a waypoint chain - the screenLen a polyline leg
+    contributes to the replay timeline. */
+export function polylineScreenLength(points: [number, number][]): number {
+  let total = 0;
+  for (let i = 1; i < points.length; i++) {
+    total += Math.hypot(
+      points[i][0] - points[i - 1][0],
+      points[i][1] - points[i - 1][1],
+    );
+  }
+  return total;
+}
+
+/**
+ * Drop a path's leading "M x y" so it can be spliced onto the previous
+ * leg's path. Works for the Q-arcs and the rounded polylines alike: what
+ * remains always starts with a drawing command (Q or L) that continues
+ * from the previous leg's endpoint.
+ */
+export function stripLeadingMove(pathD: string): string {
+  return pathD.replace(/^M[^A-Za-z]*/, '');
+}
+
+/**
  * Calculate stroke width based on flight count
  * Maps count to a range of 1-4 pixels
  */

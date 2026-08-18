@@ -1,8 +1,20 @@
-import { memo } from 'react';
+import { memo, useMemo } from 'react';
 import { useMapContext, useZoomPanContext } from 'react-simple-maps';
 import type { AggregatedRoute } from './routeUtils';
-import { calculateArcPath, getStrokeWidth, getZoomAdjustedSize } from './routeUtils';
+import {
+  calculateArcPath,
+  getStrokeWidth,
+  getZoomAdjustedSize,
+  roundedPolylinePath,
+  wavyPolylinePath,
+} from './routeUtils';
 import { useMapColors } from '../../theme/mapColors';
+import {
+  modeMedium,
+  terrainWaypointsSync,
+  type TerrainRequest,
+} from '../../lib/terrainRoute';
+import { useTerrainRoutes } from '../../hooks/useTerrainRoutes';
 
 interface FlightRoutesProps {
   routes: AggregatedRoute[];
@@ -34,6 +46,34 @@ function FlightRoutes({
   const { projection } = useMapContext();
   const { k: zoom } = useZoomPanContext();
 
+  /*
+    Terrain-aware geometry (2026-08-18): ferries steer around coastlines,
+    land modes around water. The hook re-renders this layer when the
+    router answers; until then the straight chord below stands in.
+  */
+  const terrainRequests = useMemo<TerrainRequest[]>(
+    () =>
+      routes.flatMap((route) => {
+        const medium = modeMedium(route.mode ?? 'flight');
+        if (!medium) return [];
+        return [
+          {
+            from: [
+              Number(route.departure.longitude),
+              Number(route.departure.latitude),
+            ] as [number, number],
+            to: [
+              Number(route.arrival.longitude),
+              Number(route.arrival.latitude),
+            ] as [number, number],
+            medium,
+          },
+        ];
+      }),
+    [routes],
+  );
+  useTerrainRoutes(terrainRequests);
+
   return (
     <g className="flight-routes">
       {routes.map((route) => {
@@ -49,12 +89,50 @@ function FlightRoutes({
         // Land routes are straight dashed chords - things on the ground
         // do not bow through the sky, and the dash is the overland
         // signature everywhere (highlight, export video, shared map).
-        const isLand = (route.mode ?? 'flight') !== 'flight';
-        const pathD = calculateArcPath(
+        const mode = route.mode ?? 'flight';
+        const isLand = mode !== 'flight';
+        const isFerry = mode === 'ferry';
+        let pathD = calculateArcPath(
           from as [number, number],
           to as [number, number],
           isLand ? 0 : 0.2
         );
+        // Ferries follow the water, land modes the land - when the
+        // terrain router has an answer, the chord becomes a rounded
+        // polyline threading the coastline.
+        const medium = modeMedium(mode);
+        let chainPoints: [number, number][] = [
+          from as [number, number],
+          to as [number, number],
+        ];
+        if (medium) {
+          const waypoints = terrainWaypointsSync(
+            [Number(route.departure.longitude), Number(route.departure.latitude)],
+            [Number(route.arrival.longitude), Number(route.arrival.latitude)],
+            medium,
+          );
+          if (waypoints) {
+            const projected = waypoints.map((point) => projection(point));
+            if (projected.every((p): p is [number, number] => Boolean(p))) {
+              pathD = roundedPolylinePath(projected);
+              chainPoints = projected;
+            }
+          }
+        }
+        /*
+          Trail signatures (owner ask, 2026-08-18): air solid, land
+          dotted, water wavy. The wave is drawn geometry, so the ferry's
+          visible line undulates while a smooth twin keeps carrying
+          data-travel-mode for the video sampler - a wavy motion path
+          would wobble the ship's heading.
+        */
+        const wavyD = isFerry
+          ? wavyPolylinePath(
+              chainPoints,
+              getZoomAdjustedSize(1.7, zoom),
+              getZoomAdjustedSize(10, zoom),
+            )
+          : null;
         const baseStrokeWidth = getStrokeWidth(route.count, maxCount, sizeScale);
         const isHovered = hoveredRouteKey === route.key;
         const strokeWidth = getZoomAdjustedSize(
@@ -79,25 +157,43 @@ function FlightRoutes({
               onMouseLeave={() => onHover(null)}
               onClick={() => onSelect?.(route)}
             />
+            {/* The smooth path always exists: hidden under a wavy ferry
+                trail, it stays the honest track the video sampler reads. */}
             <path
               d={pathD}
               fill="none"
               data-travel-mode={route.mode ?? 'flight'}
               stroke={isHovered ? colors.routeHighlight : colors.route}
-              strokeWidth={strokeWidth}
+              strokeWidth={wavyD ? 0 : strokeWidth}
               strokeLinecap="round"
               strokeDasharray={
-                isLand
-                  ? `${getZoomAdjustedSize(5, zoom)} ${getZoomAdjustedSize(4, zoom)}`
+                isLand && !isFerry
+                  ? `0.1 ${getZoomAdjustedSize(4.5, zoom)}`
                   : undefined
               }
-              strokeOpacity={faded ? 0.1 : isHovered ? 1 : 0.65}
+              strokeOpacity={wavyD ? 0 : faded ? 0.1 : isHovered ? 1 : 0.65}
               pointerEvents="none"
               style={{
                 transition:
                   'stroke 0.15s, stroke-width 0.15s, stroke-opacity 0.15s',
               }}
             />
+            {wavyD && (
+              <path
+                d={wavyD}
+                data-decorative="true"
+                fill="none"
+                stroke={isHovered ? colors.routeHighlight : colors.route}
+                strokeWidth={strokeWidth}
+                strokeLinecap="round"
+                strokeOpacity={faded ? 0.1 : isHovered ? 1 : 0.65}
+                pointerEvents="none"
+                style={{
+                  transition:
+                    'stroke 0.15s, stroke-width 0.15s, stroke-opacity 0.15s',
+                }}
+              />
+            )}
           </g>
         );
       })}
