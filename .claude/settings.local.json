@@ -266,7 +266,8 @@
       "PowerShell($conn = Get-NetTCPConnection -LocalPort 5174 -State Listen -ErrorAction SilentlyContinue | Select-Object -First 1; if \\($conn\\) { Stop-Process -Id $conn.OwningProcess -Force -Confirm:$false }; Set-Location C:/Users/dilya/my-travel-pans/frontend; npx tsc --noEmit; if \\($?\\) { npm run build 2>&1 | Select-Object -Last 1; npm run lint 2>&1 | Select-Object -Last 1 })",
       "PowerShell(Select-String *)",
       "Bash(docker --version)",
-      "PowerShell(Set-Location C:/Users/dilya/my-travel-pans/frontend; npx tsc --noEmit; Write-Output \"tsc exit: $LASTEXITCODE\"; npx vitest run 2>&1 | Select-Object -Last 6)"
+      "PowerShell(Set-Location C:/Users/dilya/my-travel-pans/frontend; npx tsc --noEmit; Write-Output \"tsc exit: $LASTEXITCODE\"; npx vitest run 2>&1 | Select-Object -Last 6)",
+      "Bash(npx jest *)"
     ],
     "deny": [],
     "ask": []

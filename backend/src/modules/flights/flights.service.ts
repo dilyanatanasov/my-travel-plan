@@ -638,7 +638,20 @@ export class FlightsService {
       await this.createVisitsFromLegs(userId, legs, airportMap, id, undefined);
     }
 
-    await this.journeyRepository.save(journey);
+    /*
+      Targeted column update, NOT save(journey): legs is cascade:true and
+      eager, so saving the loaded journey after a route replacement
+      re-inserted its STALE legs beside the fresh ones - duplicate
+      (journey, legOrder), a 500 on the first save and success on retry
+      (owner report, 2026-08-18). The scalar fields are all this step
+      ever meant to persist.
+    */
+    await this.journeyRepository.update(id, {
+      journeyDate: journey.journeyDate,
+      datePrecision: journey.datePrecision,
+      isRoundTrip: journey.isRoundTrip,
+      notes: journey.notes,
+    });
     return this.findOne(userId, id);
   }
 

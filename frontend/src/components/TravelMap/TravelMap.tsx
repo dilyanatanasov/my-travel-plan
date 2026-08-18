@@ -52,12 +52,14 @@ const MIN_ZOOM = 1;
  * 24, raised twice from the original 8.
  *
  * Eight filled the screen with a continent; sixteen pulled apart a cluster
- * of European airports; twenty-four is for reading one metro area's routes.
- * The topology is world-atlas 110m, so coastlines are frankly polygonal up
- * here — an accepted trade, since what you are reading at this range is the
- * routes and the airport labels, not the shape of a bay.
+ * of European airports; twenty-four was for reading one metro area's
+ * routes. Land travel raised it again (owner, 2026-08-18): a 35 km
+ * Geneva-Annecy drive needs sixty-ish before its line is comfortably
+ * clickable. The 50m topology holds up better at this range than the
+ * old 110m did at twenty-four, and what you are reading up here is the
+ * routes and stop labels, not the shape of a bay.
  */
-const MAX_ZOOM = 24;
+const MAX_ZOOM = 64;
 
 /**
  * Slightly west of centre on desktop, so the landmass sits right of the
