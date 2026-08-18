@@ -47,6 +47,9 @@ function TripShareDialog({
   const [error, setError] = useState<string | null>(null);
   const [retryToken, setRetryToken] = useState(0);
   const [videoProgress, setVideoProgress] = useState<number | null>(null);
+  /** Which pipeline stage the video is in - "0%" alone hid which of the
+      five pre-render steps was stuck (owner report, 2026-08-18). */
+  const [videoStage, setVideoStage] = useState<string | null>(null);
   const [videoFile, setVideoFile] = useState<File | null>(null);
   /** While capturing scenes, the export canvas frames one leg at a time. */
   const [videoFocusLeg, setVideoFocusLeg] = useState<number | null>(null);
@@ -178,6 +181,24 @@ function TripShareDialog({
     }
     setVideoProgress(0);
     /*
+      Stage labels + per-stage timeouts + a breadcrumb trail (owner
+      report, 2026-08-18: a long journey sat at "0%" with no clue which
+      step was stuck). Every await below is visible in the button,
+      bounded in time, logged to the console with timings, and named in
+      the error toast when it fails - debuggable ON PROD, no dev tools
+      required to know which stage died.
+    */
+    const startedAt = performance.now();
+    const stageLog: string[] = [];
+    const stage = (label: string) => {
+      const at = ((performance.now() - startedAt) / 1000).toFixed(1);
+      stageLog.push(`${label} @${at}s`);
+       
+      console.info(`[trip-video] ${label} (+${at}s)`);
+      setVideoStage(label);
+    };
+    stage('Preparing the map');
+    /*
       The same readiness the card render waits for (owner repro,
       2026-08-18): data-framed settles from airport coordinates before
       the world atlas has downloaded, so a quick "Create video" on a
@@ -188,6 +209,7 @@ function TripShareDialog({
       await waitForGeography(svg);
     } catch (geoError) {
       setVideoProgress(null);
+      setVideoStage(null);
       showToast(
         geoError instanceof Error
           ? geoError.message
@@ -204,9 +226,11 @@ function TripShareDialog({
       );
       /*
         Stop postcards for the film: the same authed per-leg photos the
-        replay shows, fetched here as images. A missing or failing photo
-        is a null - the video just flies past that stop.
+        replay shows, fetched here as images. A missing, failing or SLOW
+        photo is a null - the video just flies past that stop rather
+        than hanging the whole render on one request.
       */
+      stage('Fetching stop photos');
       const base = (import.meta.env.VITE_API_URL as string | undefined) ?? '/api';
       const photos = await Promise.all(
         legs.map(async (leg) => {
@@ -214,7 +238,7 @@ function TripShareDialog({
           try {
             const response = await fetch(
               `${base}/flights/legs/${leg.id}/photo`,
-              { credentials: 'include' },
+              { credentials: 'include', signal: AbortSignal.timeout(8000) },
             );
             if (!response.ok) return null;
             const photoBlob = await response.blob();
@@ -237,26 +261,33 @@ function TripShareDialog({
         cache the router answers a beat after first render, and a scene
         snapped in that beat would film the ferry cutting the straight
         chord across a cape (self-review, 2026-08-18). Resolved answers
-        return instantly from the module cache.
+        return instantly from the module cache. Time-capped: a marathon
+        route computation must not hold the film hostage - an unrouted
+        leg draws its straight chord, which is exactly what the map
+        shows in that state too.
       */
-      await Promise.all(
-        legs.map((leg) => {
-          const medium = modeMedium(legMode(leg));
-          const endpoints = legEndpoints(leg);
-          if (!medium || !endpoints) return null;
-          return ensureTerrainWaypoints(
-            [
-              Number(endpoints.departure.longitude),
-              Number(endpoints.departure.latitude),
-            ],
-            [
-              Number(endpoints.arrival.longitude),
-              Number(endpoints.arrival.latitude),
-            ],
-            medium,
-          );
-        }),
-      );
+      stage('Plotting routes');
+      await Promise.race([
+        Promise.all(
+          legs.map((leg) => {
+            const medium = modeMedium(legMode(leg));
+            const endpoints = legEndpoints(leg);
+            if (!medium || !endpoints) return null;
+            return ensureTerrainWaypoints(
+              [
+                Number(endpoints.departure.longitude),
+                Number(endpoints.departure.latitude),
+              ],
+              [
+                Number(endpoints.arrival.longitude),
+                Number(endpoints.arrival.latitude),
+              ],
+              medium,
+            );
+          }),
+        ),
+        new Promise((resolve) => setTimeout(resolve, 15000)),
+      ]);
       // One settle frame so FlightRoutes re-renders with the answers.
       await new Promise((r) =>
         requestAnimationFrame(() => requestAnimationFrame(r)),
@@ -268,26 +299,30 @@ function TripShareDialog({
         framing to settle. The film then cuts between sharp close-ups
         instead of digitally zooming one blurry continental frame.
       */
-      const waitForFraming = async () => {
+      const waitForFraming = async (legNumber: number) => {
         await new Promise((r) =>
           requestAnimationFrame(() => requestAnimationFrame(r)),
         );
         const deadline = Date.now() + 15000;
         while (svg.getAttribute('data-framed') !== '1') {
           if (Date.now() > deadline) {
-            throw new Error('The map could not frame this leg - try again');
+            throw new Error(
+              `The map could not frame leg ${legNumber} of ${legs.length} - try again`,
+            );
           }
           await new Promise((r) => setTimeout(r, 60));
         }
       };
       const scenes: TripVideoScene[] = [];
       for (let i = 0; i < legs.length; i++) {
+        stage(`Framing leg ${i + 1} of ${legs.length}`);
         setVideoFocusLeg(legs[i].legOrder);
-        await waitForFraming();
+        await waitForFraming(i + 1);
         scenes.push(await captureTripScene(svg, i));
       }
       setVideoFocusLeg(null);
 
+      stage('Recording flight');
       const blob = await renderTripVideo(
         scenes,
         {
@@ -316,14 +351,21 @@ function TripShareDialog({
       const shareType = blob.type.split(';')[0] || 'video/mp4';
       setVideoFile(new File([blob], videoName, { type: shareType }));
     } catch (videoError) {
-      showToast(
+      const lastStage = stageLog[stageLog.length - 1] ?? 'start';
+      const message =
         videoError instanceof Error
           ? videoError.message
-          : 'Could not create the video',
-        { tone: 'error' },
-      );
+          : 'Could not create the video';
+      // The toast names the dying stage; the console keeps the whole
+      // trail with timings; Umami gets an event - three places to
+      // debug a prod failure without a repro (owner ask, 2026-08-18).
+       
+      console.error('[trip-video] failed:', message, '| trail:', stageLog.join(' → '));
+      track('video_error', { stage: lastStage.split(' @')[0] });
+      showToast(`${message} (failed at: ${lastStage})`, { tone: 'error' });
     } finally {
       setVideoProgress(null);
+      setVideoStage(null);
       setVideoFocusLeg(null);
       objectUrls.forEach((url) => URL.revokeObjectURL(url));
     }
@@ -455,7 +497,9 @@ function TripShareDialog({
             disabled={!previewUrl || videoProgress !== null}
           >
             {videoProgress !== null
-              ? `Recording flight… ${Math.round(videoProgress * 100)}%`
+              ? videoStage === 'Recording flight' || videoStage === null
+                ? `Recording flight… ${Math.round(videoProgress * 100)}%`
+                : `${videoStage}…`
               : 'Create video ✈️'}
           </Button>
         )}
