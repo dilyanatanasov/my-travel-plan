@@ -138,20 +138,37 @@ body {
   destination, the dot pops on arrival, the trail fades, repeat. The dot
   scales around its own centre via transform-box.
 */
-/* Choreography (owner notes, 2026-08-18): the line draws bottom-up from
-   the origin ring FIRST, the destination dot lands exactly when the line
-   arrives, holds a beat, then both fade and the flight repeats. */
+/*
+  Choreography (owner notes, 2026-08-18): a breath at the origin, then
+  the line grows bottom-up - accelerating gently, decelerating into
+  arrival - the dot lands with a soft overshoot exactly as the line
+  gets there, the full mark holds, and everything fades before the next
+  flight. Segment easings live on the FROM frame of each segment; the
+  1.02 offset tucks the round line cap inside the gap so nothing peeks
+  out while "hidden".
+*/
 @keyframes contrail-loader-arc {
-  0% {
-    stroke-dashoffset: 1;
-    opacity: 1;
+  /* Fully transparent through the rest beat: a round line cap pokes
+     past the path end while the dash is parked, and it floated as a
+     lone nub at the destination (filmstrip frame 1). */
+  0%,
+  7% {
+    stroke-dashoffset: 1.02;
+    opacity: 0;
+    animation-timing-function: linear;
   }
-  58%,
-  86% {
+  8% {
+    stroke-dashoffset: 0.995;
+    opacity: 1;
+    animation-timing-function: cubic-bezier(0.45, 0, 0.15, 1);
+  }
+  60%,
+  84% {
     stroke-dashoffset: 0;
     opacity: 1;
+    animation-timing-function: ease-in;
   }
-  97%,
+  96%,
   100% {
     stroke-dashoffset: 0;
     opacity: 0;
@@ -160,20 +177,23 @@ body {
 
 @keyframes contrail-loader-dot {
   0%,
-  57% {
+  58% {
     transform: scale(0);
     opacity: 0;
+    animation-timing-function: cubic-bezier(0.2, 0, 0.3, 1.4);
   }
   66% {
-    transform: scale(1.3);
+    transform: scale(1.25);
     opacity: 1;
+    animation-timing-function: ease-out;
   }
   72%,
-  86% {
+  84% {
     transform: scale(1);
     opacity: 1;
+    animation-timing-function: ease-in;
   }
-  97%,
+  96%,
   100% {
     transform: scale(1);
     opacity: 0;
@@ -193,15 +213,25 @@ body {
   animation: contrail-loader-appear 0.2s ease-out 0.35s forwards;
 }
 
+/*
+  Static state matches the keyframes' 0% and the animations share the
+  shell's 0.35s delay: without that the flight started during the
+  invisible beat and the line seemed to APPEAR mid-draw instead of
+  growing (owner note). linear, so the line grows at constant speed.
+*/
 .contrail-loader-arc {
   stroke-dasharray: 1;
-  animation: contrail-loader-arc 2.2s ease-in-out infinite;
+  stroke-dashoffset: 1.02;
+  opacity: 0;
+  animation: contrail-loader-arc 2.6s linear 0.35s infinite;
 }
 
 .contrail-loader-dot {
   transform-box: fill-box;
   transform-origin: center;
-  animation: contrail-loader-dot 2.2s ease-in-out infinite;
+  transform: scale(0);
+  opacity: 0;
+  animation: contrail-loader-dot 2.6s linear 0.35s infinite;
 }
 
 /*
@@ -233,6 +263,18 @@ body {
 
   .vehicle-beam {
     opacity: 0.15;
+  }
+
+  /* Without animation the static hidden states would erase the mark:
+     park it fully drawn instead. */
+  .contrail-loader-arc {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+
+  .contrail-loader-dot {
+    transform: scale(1);
+    opacity: 1;
   }
 }
 
