@@ -133,6 +133,12 @@ function FlightRoutes({
               getZoomAdjustedSize(10, zoom),
             )
           : null;
+        // Trail colors by medium: terracotta air, gold ground, blue sea.
+        const modeColor = isFerry
+          ? colors.routeSea
+          : isLand
+            ? colors.routeLand
+            : colors.route;
         const baseStrokeWidth = getStrokeWidth(route.count, maxCount, sizeScale);
         const isHovered = hoveredRouteKey === route.key;
         const strokeWidth = getZoomAdjustedSize(
@@ -163,7 +169,7 @@ function FlightRoutes({
               d={pathD}
               fill="none"
               data-travel-mode={route.mode ?? 'flight'}
-              stroke={isHovered ? colors.routeHighlight : colors.route}
+              stroke={isHovered ? colors.routeHighlight : modeColor}
               strokeWidth={wavyD ? 0 : strokeWidth}
               strokeLinecap="round"
               strokeDasharray={
@@ -183,7 +189,7 @@ function FlightRoutes({
                 d={wavyD}
                 data-decorative="true"
                 fill="none"
-                stroke={isHovered ? colors.routeHighlight : colors.route}
+                stroke={isHovered ? colors.routeHighlight : modeColor}
                 strokeWidth={strokeWidth}
                 strokeLinecap="round"
                 strokeOpacity={faded ? 0.1 : isHovered ? 1 : 0.65}

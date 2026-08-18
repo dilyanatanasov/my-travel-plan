@@ -41,6 +41,15 @@ export interface MapPalette {
   /** Lived there — deeper than a visit, still history. A muted plum. */
   lived: string;
   route: string;
+  /**
+   * Trail colors by medium (owner ask, 2026-08-18): flights keep the
+   * original terracotta `route`, ground runs gold, water runs blue -
+   * with the dotted/wavy signatures, a mixed map sorts itself at a
+   * glance. Both derive from the theme: deep enough to read on cream,
+   * lifted for the dark ocean.
+   */
+  routeLand: string;
+  routeSea: string;
   routeHighlight: string;
   /**
    * Outline around the replay aircraft. Was the ocean colour, which on the
@@ -79,6 +88,8 @@ const DARK: MapPalette = {
   wishlist: '#5a7ba6',
   lived: '#a05a7c',
   route: '#f6a06b',
+  routeLand: '#e3c05a',
+  routeSea: '#7fa8d4',
   routeHighlight: '#ffe1d0',
   planeOutline: '#1a1817',
   selected: '#e8836a',
@@ -122,6 +133,8 @@ const LIGHT: MapPalette = {
   wishlist: '#7d9bc4',
   lived: '#96536f',
   route: '#8c491a',
+  routeLand: '#a1770e',
+  routeSea: '#3e6f9e',
   routeHighlight: '#402310',
   planeOutline: '#f6a06b',
   selected: '#a82d26',

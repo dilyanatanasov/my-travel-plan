@@ -13,8 +13,11 @@ import {
   extractUniqueAirports,
   countAirportVisits,
   legEndpoints,
+  legFramingPoints,
   legMode,
 } from '../FlightMap/routeUtils';
+import { modeMedium, type TerrainRequest } from '../../lib/terrainRoute';
+import { useTerrainRoutes } from '../../hooks/useTerrainRoutes';
 import FlightRoutes from '../FlightMap/FlightRoutes';
 import AirportMarkers from '../FlightMap/AirportMarkers';
 import CountriesLayer from './CountriesLayer';
@@ -224,24 +227,50 @@ function MapExportCanvasInner({
   );
   const hasCountries = !journey && countryDisplayMap.size > 0;
 
+  /*
+    The framing must know the terrain routes (owner report, 2026-08-18):
+    fitting endpoints alone cropped the ferry's detour around the cape
+    out of the share. The hook re-renders when the router answers, and
+    legFramingPoints folds the waypoints into every fit below.
+  */
+  const terrainRequests = useMemo<TerrainRequest[]>(() => {
+    if (!journey) return [];
+    return (journey.legs ?? []).flatMap((leg) => {
+      const medium = modeMedium(legMode(leg));
+      const endpoints = legEndpoints(leg);
+      if (!medium || !endpoints) return [];
+      return [
+        {
+          from: [
+            Number(endpoints.departure.longitude),
+            Number(endpoints.departure.latitude),
+          ] as [number, number],
+          to: [
+            Number(endpoints.arrival.longitude),
+            Number(endpoints.arrival.latitude),
+          ] as [number, number],
+          medium,
+        },
+      ];
+    });
+  }, [journey]);
+  const terrainVersion = useTerrainRoutes(terrainRequests);
+
   const framing = useMemo(() => {
-    // Scene capture: one leg fills the frame - its own endpoints only.
+    // Scene capture: one leg fills the frame - endpoints plus its
+    // terrain waypoints, so a routed detour stays inside the shot.
     if (journey && focusLegOrder != null) {
       const leg = (journey.legs ?? []).find(
         (l) => l.legOrder === focusLegOrder,
       );
-      const endpoints = leg ? legEndpoints(leg) : null;
-      if (endpoints) {
-        return fitToPoints(
-          [
-            [Number(endpoints.departure.longitude), Number(endpoints.departure.latitude)],
-            [Number(endpoints.arrival.longitude), Number(endpoints.arrival.latitude)],
-          ],
-          { maxZoom: 48, fill: 0.6 },
-        );
+      const scenePoints = leg ? legFramingPoints(leg) : [];
+      if (scenePoints.length > 0) {
+        return fitToPoints(scenePoints as LonLat[], { maxZoom: 48, fill: 0.6 });
       }
     }
-    const points: LonLat[] = airports.map((a) => [a.longitude, a.latitude]);
+    const points: LonLat[] = journey
+      ? (journey.legs ?? []).flatMap((leg) => legFramingPoints(leg) as LonLat[])
+      : airports.map((a) => [a.longitude, a.latitude]);
     if (!journey) {
       for (const [iso, info] of countryDisplayMap) {
         if (info.visitType === 'transit') continue;
@@ -257,7 +286,16 @@ function MapExportCanvasInner({
     return journey
       ? fitToPoints(points, { maxZoom: 48, fill: 0.72 })
       : fitToPoints(points, { maxZoom: 3.2, fill: 0.82 });
-  }, [airports, countryDisplayMap, countryCentroids, journey, focusLegOrder]);
+    // terrainVersion: resolved waypoints change what must stay in frame.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    airports,
+    countryDisplayMap,
+    countryCentroids,
+    journey,
+    focusLegOrder,
+    terrainVersion,
+  ]);
 
   /*
     ZoomableGroup applies zoom/center when the props CHANGE, not on mount.

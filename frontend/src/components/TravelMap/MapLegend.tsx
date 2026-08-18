@@ -40,13 +40,42 @@ function MapLegend({ showFlights, stats }: MapLegendProps) {
 
         {showFlights && (
           <>
+            {/* Three trail kinds since the ferry docked (2026-08-18):
+                terracotta air, gold dotted ground, blue wavy sea. */}
             <li className="flex items-center gap-1.5">
               <span
                 className="w-5 h-0.5 rounded flex-shrink-0"
                 style={{ backgroundColor: colors.route }}
                 aria-hidden="true"
               />
-              <span className="map-glass-muted">Route</span>
+              <span className="map-glass-muted">Air</span>
+            </li>
+            <li className="flex items-center gap-1.5">
+              <span
+                className="w-5 h-0.5 flex-shrink-0"
+                style={{
+                  backgroundImage: `radial-gradient(circle, ${colors.routeLand} 42%, transparent 46%)`,
+                  backgroundSize: '5px 2px',
+                }}
+                aria-hidden="true"
+              />
+              <span className="map-glass-muted">Land</span>
+            </li>
+            <li className="flex items-center gap-1.5">
+              <svg
+                className="w-5 h-2 flex-shrink-0"
+                viewBox="0 0 20 8"
+                aria-hidden="true"
+              >
+                <path
+                  d="M1 4 Q3.5 1 6 4 Q8.5 7 11 4 Q13.5 1 16 4 Q17.5 5.8 19 4"
+                  fill="none"
+                  stroke={colors.routeSea}
+                  strokeWidth="1.6"
+                  strokeLinecap="round"
+                />
+              </svg>
+              <span className="map-glass-muted">Sea</span>
             </li>
             <li className="flex items-center gap-1.5">
               <span

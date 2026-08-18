@@ -149,7 +149,20 @@ export function buildJourneyTimeline(
       mode: legMode(leg),
     });
     t = segments[segments.length - 1].pauseEndS;
-    maxLegDeg = Math.max(maxLegDeg, geoDistance(from, to) * DEG);
+    // The framing span is the leg's widest reach: a terrain detour can
+    // swing far outside the endpoints' own chord, and the camera must
+    // hold all of it (owner report, 2026-08-18).
+    let legDeg = geoDistance(from, to) * DEG;
+    if (waypoints) {
+      for (const point of waypoints) {
+        legDeg = Math.max(
+          legDeg,
+          geoDistance(from, point) * DEG,
+          geoDistance(point, to) * DEG,
+        );
+      }
+    }
+    maxLegDeg = Math.max(maxLegDeg, legDeg);
   }
 
   if (segments.length === 0) return null;

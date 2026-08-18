@@ -150,6 +150,14 @@ function applyTrailDash(
   if (mode !== 'flight' && mode !== 'ferry') ctx.setLineDash([0.1, dotGap]);
 }
 
+/** The film's trail hues (owner ask, 2026-08-18): flights keep their
+    original light blue, ground runs yellow, water a deeper blue. */
+function trailColor(mode: RouteMode): string {
+  if (mode === 'ferry') return '#2563eb';
+  if (mode !== 'flight') return '#eab308';
+  return '#60a5fa';
+}
+
 function serializeWithoutRoutes(
   svg: SVGSVGElement,
   width: number,
@@ -327,7 +335,7 @@ export async function renderMapVideo(
           ctx.lineTo(trailPoints[i].x, trailPoints[i].y);
         }
         ctx.lineTo(head.x, head.y);
-        ctx.strokeStyle = '#60a5fa';
+        ctx.strokeStyle = trailColor(route.mode);
         ctx.lineWidth = 2;
         ctx.lineCap = 'round';
         ctx.globalAlpha = 0.85;

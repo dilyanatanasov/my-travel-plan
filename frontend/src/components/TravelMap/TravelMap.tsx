@@ -14,7 +14,13 @@ import {
 } from '../../features/flights/flightsApi';
 import PostcardMarker from './PostcardMarker';
 import { useUpdateVisitMutation } from '../../features/visits/visitsApi';
-import { aggregateRoutes, extractUniqueAirports, countAirportVisits, legEndpoints } from '../FlightMap/routeUtils';
+import {
+  aggregateRoutes,
+  extractUniqueAirports,
+  countAirportVisits,
+  legEndpoints,
+  legFramingPoints,
+} from '../FlightMap/routeUtils';
 import { applyFilters, extractFilterOptions } from '../FlightMap/filterUtils';
 import { DEFAULT_FILTERS, type FlightFilters } from '../FlightMap/filterTypes';
 import FlightRoutes from '../FlightMap/FlightRoutes';
@@ -537,12 +543,12 @@ function TravelMap() {
       map's MAX_ZOOM.
     */
     const frameLeg = (leg: (typeof legs)[number]) => {
-      const endpoints = legEndpoints(leg);
-      if (!endpoints) return;
-      const points: LonLat[] = [
-        [Number(endpoints.departure.longitude), Number(endpoints.departure.latitude)],
-        [Number(endpoints.arrival.longitude), Number(endpoints.arrival.latitude)],
-      ];
+      // Endpoints plus terrain waypoints: the camera must hold the
+      // ferry's detour around the cape, not just its ports. Read at
+      // frame time, so a route resolving mid-replay is picked up by
+      // the next leg's framing.
+      const points = legFramingPoints(leg) as LonLat[];
+      if (points.length === 0) return;
       const framing = fitToPoints(points, { maxZoom: MAX_ZOOM, fill: 0.55 });
       if (!framing) return;
       setCenter(framing.center);

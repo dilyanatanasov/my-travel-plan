@@ -485,7 +485,7 @@ function FlightCard({
               <div key={index}>
                 {/* The hop's mode, between its two stops. */}
                 {index > 0 && (
-                  <div className="flex items-center gap-1 ml-8 mb-1.5">
+                  <div className="flex flex-wrap items-center gap-1 ml-8 mb-1.5">
                     {HOP_MODES.map((mode) => (
                       <button
                         key={mode}

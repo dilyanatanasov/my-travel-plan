@@ -214,21 +214,27 @@ function RouteBuilder({ onSubmit, isLoading }: RouteBuilderProps) {
           <div key={index}>
             {/* The hop's mode, between its two stops. */}
             {index > 0 && (
-              <div className="flex items-center gap-1 ml-10 mb-2">
+              /* Five chips outgrew a phone row when the ferry docked
+                 (owner report, 2026-08-18): icon-only below sm - the
+                 title/aria-label keep the names - labels return where
+                 there's room, and flex-wrap is the safety net. */
+              <div className="flex flex-wrap items-center gap-1 ml-10 mb-2">
                 {HOP_MODES.map((mode) => (
                   <button
                     key={mode}
                     type="button"
                     aria-pressed={modes[index - 1] === mode}
+                    title={MODE_LABEL[mode]}
+                    aria-label={MODE_LABEL[mode]}
                     onClick={() => setMode(index - 1, mode)}
-                    className={`min-h-8 px-2.5 rounded-full text-xs font-medium transition-colors inline-flex items-center gap-1.5 ${
+                    className={`min-h-8 px-2 sm:px-2.5 rounded-full text-xs font-medium transition-colors inline-flex items-center gap-1.5 ${
                       modes[index - 1] === mode
                         ? 'bg-brand-600 text-white'
                         : 'bg-surface-sunken text-ink-muted hover:text-ink'
                     }`}
                   >
                     <ModeIcon mode={mode} className="w-4 h-4" />
-                    {MODE_LABEL[mode]}
+                    <span className="hidden sm:inline">{MODE_LABEL[mode]}</span>
                   </button>
                 ))}
               </div>

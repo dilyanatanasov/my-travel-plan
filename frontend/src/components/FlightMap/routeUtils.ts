@@ -1,4 +1,5 @@
 import type { FlightJourney, FlightLeg, Airport, TravelMode } from '../../types';
+import { modeMedium, terrainWaypointsSync } from '../../lib/terrainRoute';
 
 /*
   Land travel (2026-08-17): a leg's endpoint is an airport OR a city.
@@ -39,6 +40,30 @@ export function legEndpoints(
 
 export function legMode(leg: FlightLeg): TravelMode {
   return leg.travelMode ?? 'flight';
+}
+
+/**
+ * The geographic points a camera must keep in frame for this leg: the
+ * endpoints, plus the terrain route's waypoints when the router has
+ * them (owner report, 2026-08-18: framing on endpoints alone cropped
+ * the ferry's detour around the cape out of the share). Reads the
+ * module cache synchronously - callers that must not race the router
+ * pair this with useTerrainRoutes/ensureTerrainWaypoints.
+ */
+export function legFramingPoints(leg: FlightLeg): [number, number][] {
+  const endpoints = legEndpoints(leg);
+  if (!endpoints) return [];
+  const from: [number, number] = [
+    Number(endpoints.departure.longitude),
+    Number(endpoints.departure.latitude),
+  ];
+  const to: [number, number] = [
+    Number(endpoints.arrival.longitude),
+    Number(endpoints.arrival.latitude),
+  ];
+  const medium = modeMedium(legMode(leg));
+  const waypoints = medium ? terrainWaypointsSync(from, to, medium) : null;
+  return waypoints ?? [from, to];
 }
 
 
