@@ -50,7 +50,10 @@ export interface GlobeCamera {
 }
 
 export const MIN_GLOBE_ZOOM = 1;
-export const MAX_GLOBE_ZOOM = 8;
+// 8 → 24 (owner ask, 2026-08-18): the flat map allows 64, and at 8 a
+// short drive or a coastal ferry never filled the globe's frame. The
+// 50m atlas stays legible well past this on the flat map already.
+export const MAX_GLOBE_ZOOM = 24;
 
 const DEG = 180 / Math.PI;
 
@@ -95,6 +98,10 @@ interface TimelineSegment {
   pauseEndS: number;
   /** The leg's vehicle - a mixed trip swaps glyphs at each stop. */
   mode: TravelMode;
+  /** This leg's own camera: close for a drive, wide for an ocean
+      crossing - the globe's version of the flat replay's per-leg
+      framing (owner, 2026-08-18). */
+  zoomTarget: number;
 }
 
 export interface JourneyTimeline {
@@ -113,6 +120,18 @@ export interface JourneyTimeline {
  * globe exists: the flat map's screen-space quadratic arcs are wrong on a
  * sphere, both in shape and in where the horizon should cut them.
  */
+/*
+  Frame a leg's span at roughly a third of the visible disk: 60° of
+  great-circle arc across a 180° hemisphere. Clamped so a short hop
+  never slams into the ground and a transpacific haul never zooms out
+  past the whole globe.
+*/
+function zoomForLegDeg(legDeg: number): number {
+  return clampGlobeZoom(
+    Math.max(1.15, Math.min(MAX_GLOBE_ZOOM, 60 / Math.max(legDeg, 0.4))),
+  );
+}
+
 export function buildJourneyTimeline(
   journey: FlightJourney,
 ): JourneyTimeline | null {
@@ -137,18 +156,6 @@ export function buildJourneyTimeline(
     // the globe ship rounds the same capes the flat map's does.
     const medium = modeMedium(legMode(leg));
     const waypoints = medium ? terrainWaypointsSync(from, to, medium) : null;
-    segments.push({
-      from,
-      to,
-      interpolate: waypoints
-        ? polylineInterpolate(waypoints)
-        : geoInterpolate(from, to),
-      startS: t,
-      endS: t + flight,
-      pauseEndS: t + flight + (isLast ? 0 : STOP_PAUSE_SECONDS),
-      mode: legMode(leg),
-    });
-    t = segments[segments.length - 1].pauseEndS;
     // The framing span is the leg's widest reach: a terrain detour can
     // swing far outside the endpoints' own chord, and the camera must
     // hold all of it (owner report, 2026-08-18).
@@ -162,23 +169,28 @@ export function buildJourneyTimeline(
         );
       }
     }
+    segments.push({
+      from,
+      to,
+      interpolate: waypoints
+        ? polylineInterpolate(waypoints)
+        : geoInterpolate(from, to),
+      startS: t,
+      endS: t + flight,
+      pauseEndS: t + flight + (isLast ? 0 : STOP_PAUSE_SECONDS),
+      mode: legMode(leg),
+      zoomTarget: zoomForLegDeg(legDeg),
+    });
+    t = segments[segments.length - 1].pauseEndS;
     maxLegDeg = Math.max(maxLegDeg, legDeg);
   }
 
   if (segments.length === 0) return null;
 
-  /*
-    Frame the longest leg at roughly a third of the visible disk: 60° of
-    great-circle arc across a 180° hemisphere. Clamped so a short hop never
-    slams into the ground and a transpacific haul never zooms out past the
-    whole globe.
-  */
-  // The short-leg allowance rose from 3 to the mode's own max (land
-  // travel, 2026-08-18): a 35 km drive earns a close camera on the
-  // globe too. The distance formula still rules long hauls.
-  const zoomTarget = clampGlobeZoom(
-    Math.max(1.15, Math.min(MAX_GLOBE_ZOOM, 60 / Math.max(maxLegDeg, 0.4))),
-  );
+  // The journey-wide target frames the LONGEST leg - the safe wide shot
+  // the camera starts from; each segment then carries its own closer
+  // target (owner, 2026-08-18: the globe now swoops per leg too).
+  const zoomTarget = zoomForLegDeg(maxLegDeg);
 
   return { segments, totalS: t, zoomTarget };
 }
@@ -195,6 +207,8 @@ export interface PlaneFrame {
   done: boolean;
   /** The current leg's vehicle - the glyph the globe should draw. */
   mode: TravelMode;
+  /** The current leg's own camera zoom - the globe swoops per leg. */
+  zoomTarget: number;
 }
 
 /** Points per leg for the contrail. Coarse is fine — geoPath resamples. */
@@ -240,11 +254,18 @@ export function samplePlaneFrame(
         trail,
         done: false,
         mode: seg.mode,
+        zoomTarget: seg.zoomTarget,
       };
     }
     sampleArc(seg.interpolate, 1, trail);
     if (t < seg.pauseEndS) {
-      // On the ground at an intermediate stop.
+      // On the ground at an intermediate stop. Halfway through the
+      // pause the camera starts breathing toward the NEXT leg's
+      // framing, so the glide lands as the vehicle departs - the
+      // flat replay's mid-pause re-aim, spherical edition.
+      const index = segments.indexOf(seg);
+      const next = segments[index + 1];
+      const midPause = seg.endS + (seg.pauseEndS - seg.endS) / 2;
       return {
         position: seg.to,
         ahead: seg.interpolate(1.001),
@@ -252,6 +273,7 @@ export function samplePlaneFrame(
         trail,
         done: false,
         mode: seg.mode,
+        zoomTarget: next && t >= midPause ? next.zoomTarget : seg.zoomTarget,
       };
     }
   }
@@ -264,6 +286,7 @@ export function samplePlaneFrame(
     trail,
     done: t >= timeline.totalS,
     mode: last.mode,
+    zoomTarget: last.zoomTarget,
   };
 }
 

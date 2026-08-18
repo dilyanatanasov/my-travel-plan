@@ -703,7 +703,9 @@ function GlobeView({
       const frame = samplePlaneFrame(timeline, t);
       setPlane(frame);
       setCamera((current) =>
-        chaseCamera(current, frame.position, timeline.zoomTarget, dt),
+        // Each leg brings its own zoom: swoop in for the drive, pull
+        // back for the crossing (owner, 2026-08-18).
+        chaseCamera(current, frame.position, frame.zoomTarget, dt),
       );
       // Once parked, stop looping; the plane waits out the settle pause.
       if (!frame.done) raf = requestAnimationFrame(tick);

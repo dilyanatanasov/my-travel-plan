@@ -19,6 +19,24 @@ registerServiceWorker();
 // No-op unless VITE_UMAMI_URL + VITE_UMAMI_WEBSITE_ID are set (prod only).
 initAnalytics();
 
+/*
+  Self-heal from a stale deploy (owner report, 2026-08-18: "recording
+  doesn't work" on a session whose cached shell referenced chunk files a
+  newer deploy had replaced). Vite fires vite:preloadError when a lazy
+  chunk 404s; one reload fetches the fresh shell and every hash lines up
+  again. The sessionStorage guard stops a reload loop if the failure is
+  something else (offline, a genuinely missing file).
+*/
+const RELOAD_KEY = 'contrail:chunk-reload';
+window.addEventListener('vite:preloadError', (event) => {
+  if (sessionStorage.getItem(RELOAD_KEY)) return;
+  sessionStorage.setItem(RELOAD_KEY, '1');
+  event.preventDefault();
+  window.location.reload();
+});
+// A load that survives 15s was healed - re-arm for the next deploy.
+window.setTimeout(() => sessionStorage.removeItem(RELOAD_KEY), 15000);
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <Provider store={store}>
