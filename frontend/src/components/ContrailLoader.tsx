@@ -23,7 +23,7 @@ function ContrailLoader({
     <span
       role="status"
       aria-label={label}
-      className="inline-flex contrail-loader-shell"
+      className="inline-flex flex-col items-center gap-3 contrail-loader-shell"
     >
       <svg
         viewBox="10 10 44 44"
@@ -54,6 +54,9 @@ function ContrailLoader({
           strokeWidth="2.8"
         />
       </svg>
+      <span className="text-sm text-ink-muted" aria-hidden="true">
+        {label}
+      </span>
     </span>
   );
 
