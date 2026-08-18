@@ -93,6 +93,29 @@ export function moveStop<T>(stops: T[], index: number, direction: -1 | 1): T[] {
 }
 
 /**
+ * Reorder a stop AND keep its arrival mode attached (owner report,
+ * 2026-08-18: "Annecy by car" stayed glued to the bottom row when the
+ * stop moved). A stop's arrival mode is modes[stop - 1]; swapping two
+ * neighbouring stops swaps their arrival modes with them. The first
+ * stop has no arrival, so a swap involving position 0 moves stops only.
+ */
+export function moveStopWithModes(
+  stops: EditableStop[],
+  modes: TravelMode[],
+  index: number,
+  direction: -1 | 1,
+): { stops: EditableStop[]; modes: TravelMode[] } {
+  const target = index + direction;
+  const nextStops = moveStop(stops, index, direction);
+  if (nextStops === stops) return { stops, modes };
+  const low = Math.min(index, target);
+  if (low < 1) return { stops: nextStops, modes };
+  const nextModes = [...modes];
+  [nextModes[low - 1], nextModes[low]] = [nextModes[low], nextModes[low - 1]];
+  return { stops: nextStops, modes: nextModes };
+}
+
+/**
  * Whether the chain is a closed loop. 'unknown' while either end is still
  * empty — the honesty rule only fires on what the user has actually said,
  * never on a row they are mid-way through editing.
@@ -155,18 +178,33 @@ export async function syncStopsWithMode(
  * endpoints resolve to their airports where possible. Needed because
  * modes DEFAULT to flight - nobody clicks the chip they already have,
  * so the chip-click sync alone never fires on the common "drove to
- * Mostar, flew home" ending. `ok` is false when some flight hop still
- * lacks an airport on either end after the sweep.
+ * Mostar, flew home" ending.
+ *
+ * Second rule (owner report, 2026-08-18, the Annecy case): a "flight"
+ * hop between a CITY WITH NO AIRPORT and an airport is obviously the
+ * ground transfer to that airport - you drove from Annecy to Geneva
+ * and flew from there. Such hops flip to 'car' instead of erroring.
+ * Only a flight hop between two unresolvable cities stays not-ok.
  */
 export async function resolveFlightEndpoints(
   stops: EditableStop[],
   modes: TravelMode[],
   resolveAirport: (city: CityRef) => Promise<Airport | null>,
-): Promise<{ stops: EditableStop[]; conversions: string[]; ok: boolean }> {
+): Promise<{
+  stops: EditableStop[];
+  modes: TravelMode[];
+  conversions: string[];
+  ok: boolean;
+}> {
   const next = [...stops];
+  const nextModes = [...modes];
   const conversions: string[] = [];
-  for (let i = 0; i < modes.length; i++) {
-    if (modes[i] !== 'flight') continue;
+
+  const isAirportEnd = (stop: EditableStop | undefined): boolean =>
+    stop?.kind === 'airport' && stop.airport !== null;
+
+  for (let i = 0; i < nextModes.length; i++) {
+    if (nextModes[i] !== 'flight') continue;
     for (const index of [i, i + 1]) {
       const stop = next[index];
       if (stop?.kind === 'city' && stop.city) {
@@ -177,16 +215,22 @@ export async function resolveFlightEndpoints(
         }
       }
     }
+    // Still a city on exactly one end: the ground-transfer reading.
+    const depAir = isAirportEnd(next[i]);
+    const arrAir = isAirportEnd(next[i + 1]);
+    if (depAir !== arrAir) {
+      const cityEnd = depAir ? next[i + 1] : next[i];
+      if (cityEnd?.kind === 'city' && cityEnd.city) {
+        nextModes[i] = 'car';
+        conversions.push(`${cityEnd.city.name} hop marked as a drive`);
+      }
+    }
   }
-  const ok = modes.every(
+  const ok = nextModes.every(
     (mode, i) =>
-      mode !== 'flight' ||
-      (next[i]?.kind === 'airport' &&
-        next[i].airport !== null &&
-        next[i + 1]?.kind === 'airport' &&
-        next[i + 1].airport !== null),
+      mode !== 'flight' || (isAirportEnd(next[i]) && isAirportEnd(next[i + 1])),
   );
-  return { stops: next, conversions, ok };
+  return { stops: next, modes: nextModes, conversions, ok };
 }
 
 /** loopStatus for the mixed-mode chain, keyed on stop identity. */

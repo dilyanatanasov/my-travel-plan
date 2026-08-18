@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   moveStop,
+  moveStopWithModes,
   loopStatus,
   syncStopsWithMode,
   resolveFlightEndpoints,
@@ -123,14 +124,23 @@ describe('resolveFlightEndpoints', () => {
     const result = await resolveFlightEndpoints(stops, ['flight'], resolver);
     expect(result.ok).toBe(true);
     expect(result.stops[0].airport).toBe(omo);
+    expect(result.modes).toEqual(['flight']);
     expect(result.conversions).toEqual(['Mostar → OMO']);
   });
 
-  it('reports not-ok when a flight endpoint city has no airport', async () => {
+  it('the Annecy rule: a no-airport city hop to an airport becomes a drive', async () => {
     const stops = [cityStop(nowhere), airportStop(airport(1))];
     const result = await resolveFlightEndpoints(stops, ['flight'], resolver);
+    expect(result.ok).toBe(true);
+    expect(result.modes).toEqual(['car']);
+    expect(result.stops[0].kind).toBe('city');
+    expect(result.conversions).toEqual(['Nowhere hop marked as a drive']);
+  });
+
+  it('still refuses a flight between two airportless cities', async () => {
+    const stops = [cityStop(nowhere), cityStop({ ...nowhere, id: 9 })];
+    const result = await resolveFlightEndpoints(stops, ['flight'], resolver);
     expect(result.ok).toBe(false);
-    expect(result.conversions).toEqual([]);
   });
 
   it('leaves land hops entirely alone', async () => {
@@ -138,6 +148,38 @@ describe('resolveFlightEndpoints', () => {
     const result = await resolveFlightEndpoints(stops, ['car'], resolver);
     expect(result.ok).toBe(true);
     expect(result.stops[0].kind).toBe('city');
+    expect(result.modes).toEqual(['car']);
+  });
+});
+
+describe('moveStopWithModes', () => {
+  const stop = (id: number): EditableStop => ({
+    kind: 'airport',
+    airport: airport(id),
+    city: null,
+  });
+
+  it('keeps a stop’s arrival mode attached when it moves', () => {
+    // A ✈ B 🚗 C: moving C before B must keep "arrived by car" on C.
+    const { stops, modes } = moveStopWithModes(
+      [stop(1), stop(2), stop(3)],
+      ['flight', 'car'],
+      2,
+      -1,
+    );
+    expect(stops.map((s) => s.airport?.id)).toEqual([1, 3, 2]);
+    expect(modes).toEqual(['car', 'flight']);
+  });
+
+  it('moves stops only when the first position is involved', () => {
+    const { stops, modes } = moveStopWithModes(
+      [stop(1), stop(2), stop(3)],
+      ['flight', 'car'],
+      0,
+      1,
+    );
+    expect(stops.map((s) => s.airport?.id)).toEqual([2, 1, 3]);
+    expect(modes).toEqual(['flight', 'car']);
   });
 });
 

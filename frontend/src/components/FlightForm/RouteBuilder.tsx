@@ -72,7 +72,10 @@ function RouteBuilder({ onSubmit, isLoading }: RouteBuilderProps) {
 
   const addLeg = () => {
     setStops((current) => [...current, emptyStop()]);
-    setModes((current) => [...current, 'flight']);
+    // The new hop inherits the previous one's mode (owner, 2026-08-18):
+    // after driving out to Annecy, the hop back is a drive too - and an
+    // all-flight chain still begets flights.
+    setModes((current) => [...current, current[current.length - 1] ?? 'flight']);
   };
 
   const removeLeg = (index: number) => {
@@ -99,9 +102,11 @@ function RouteBuilder({ onSubmit, isLoading }: RouteBuilderProps) {
     if (!isValid) return;
 
     // Flight hops ending in a chosen city resolve to that city's airport
-    // right here - modes default to flight, so no chip click ever fires
-    // the sync on the common "drove there, flew home" chain.
+    // right here - and a city with no airport turns its hop into the
+    // drive it obviously was (the Annecy rule). Modes default to flight,
+    // so no chip click ever fires the sync on these chains.
     let chainStops = stops;
+    let chainModes = modes;
     if (flightHopViolation) {
       const resolved = await resolveFlightEndpoints(
         stops,
@@ -116,12 +121,13 @@ function RouteBuilder({ onSubmit, isLoading }: RouteBuilderProps) {
         return;
       }
       chainStops = resolved.stops;
+      chainModes = resolved.modes;
       setStops(chainStops);
+      setModes(chainModes);
       if (resolved.conversions.length > 0) {
-        showToast(
-          `Picked the airport for the flight: ${resolved.conversions.join(', ')}`,
-          { key: 'stop-kind-sync' },
-        );
+        showToast(`Adjusted for you: ${resolved.conversions.join(', ')}`, {
+          key: 'stop-kind-sync',
+        });
       }
     }
 
@@ -138,7 +144,7 @@ function RouteBuilder({ onSubmit, isLoading }: RouteBuilderProps) {
       : undefined;
 
     const base = { journeyDate, datePrecision, isRoundTrip, notes: notes || undefined };
-    const allFlight = modes.every((mode) => mode === 'flight');
+    const allFlight = chainModes.every((mode) => mode === 'flight');
     const allAirports = chainStops.every((stop) => stop.kind === 'airport');
     if (allFlight && allAirports) {
       // The legacy shape keeps the server's ground-transfer typo guard.
@@ -151,7 +157,7 @@ function RouteBuilder({ onSubmit, isLoading }: RouteBuilderProps) {
             ? { airportId: stop.airport!.id }
             : { cityId: stop.city!.id },
         ),
-        modes,
+        modes: chainModes,
       });
     }
 

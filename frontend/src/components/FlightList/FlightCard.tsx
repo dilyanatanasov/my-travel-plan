@@ -14,7 +14,7 @@ import {
   type EditableStop,
   emptyStop,
   journeyToStops,
-  moveStop,
+  moveStopWithModes,
   stopFilled,
   stopIdentity,
   stopLoopStatus,
@@ -107,7 +107,20 @@ function FlightCard({
 
   const addStop = () => {
     applyStops([...editStops, emptyStop()]);
-    setEditModes((current) => [...current, 'flight']);
+    // The new hop inherits the previous one's mode - drove out, likely
+    // driving on; all-flight chains still beget flights.
+    setEditModes((current) => [
+      ...current,
+      current[current.length - 1] ?? 'flight',
+    ]);
+  };
+
+  /* Arrows move the stop AND its arrival mode - "Annecy by car" travels
+     with Annecy instead of sticking to the row (owner report). */
+  const moveEditStop = (index: number, direction: -1 | 1) => {
+    const moved = moveStopWithModes(editStops, editModes, index, direction);
+    applyStops(moved.stops);
+    setEditModes(moved.modes);
   };
 
   const resolveAirport = useAirportForCity();
@@ -168,8 +181,10 @@ function FlightCard({
       return;
     }
     // Same submit-time sweep as the add form: flight hops resolve their
-    // city endpoints to airports where possible before complaining.
+    // city endpoints to airports, and an airportless city's hop becomes
+    // the drive it obviously was (the Annecy rule).
     let chainStops = editStops;
+    let chainModes = editModes;
     if (flightHopViolation) {
       const resolved = await resolveFlightEndpoints(
         editStops,
@@ -184,23 +199,24 @@ function FlightCard({
         return;
       }
       chainStops = resolved.stops;
+      chainModes = resolved.modes;
       applyStops(chainStops);
+      setEditModes(chainModes);
       if (resolved.conversions.length > 0) {
-        showToast(
-          `Picked the airport for the flight: ${resolved.conversions.join(', ')}`,
-          { key: 'stop-kind-sync' },
-        );
+        showToast(`Adjusted for you: ${resolved.conversions.join(', ')}`, {
+          key: 'stop-kind-sync',
+        });
       }
     }
     const original = journeyToStops(journey);
     const identity = (stops: EditableStop[], modes: TravelMode[]) =>
       stops.map(stopIdentity).join('>') + '|' + modes.join(',');
     const routeChanged =
-      identity(chainStops, editModes) !==
+      identity(chainStops, chainModes) !==
       identity(original.stops, original.modes);
     // The legacy shape keeps the server's ground-transfer typo guard.
     const allFlightAirports =
-      editModes.every((mode) => mode === 'flight') &&
+      chainModes.every((mode) => mode === 'flight') &&
       chainStops.every((stop) => stop.kind === 'airport');
     const routePayload = routeChanged
       ? allFlightAirports
@@ -211,7 +227,7 @@ function FlightCard({
                 ? { airportId: stop.airport!.id }
                 : { cityId: stop.city!.id },
             ),
-            modes: editModes,
+            modes: chainModes,
           }
       : {};
     try {
@@ -473,7 +489,7 @@ function FlightCard({
                   <div className="flex flex-col flex-shrink-0">
                     <button
                       type="button"
-                      onClick={() => applyStops(moveStop(editStops, index, -1))}
+                      onClick={() => moveEditStop(index, -1)}
                       disabled={index === 0}
                       aria-label="Move this stop earlier"
                       title="Move earlier"
@@ -485,7 +501,7 @@ function FlightCard({
                     </button>
                     <button
                       type="button"
-                      onClick={() => applyStops(moveStop(editStops, index, 1))}
+                      onClick={() => moveEditStop(index, 1)}
                       disabled={index === editStops.length - 1}
                       aria-label="Move this stop later"
                       title="Move later"
