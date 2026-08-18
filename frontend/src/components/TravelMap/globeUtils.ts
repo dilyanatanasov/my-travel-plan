@@ -169,13 +169,15 @@ export function samplePlaneFrame(
 
   for (const seg of segments) {
     if (t < seg.endS) {
-      // In flight on this leg. Grounded vehicles do not climb.
+      // Under way on this leg. Every vehicle swells to cruise size
+      // mid-leg - the "altitude" is a visibility device, and a train
+      // held at ground size was invisible (owner, 2026-08-18).
       const f = Math.max(0, (t - seg.startS) / (seg.endS - seg.startS));
       sampleArc(seg.interpolate, f, trail);
       return {
         position: seg.interpolate(f),
         ahead: seg.interpolate(Math.min(f + 0.01, 1.001)),
-        altitude: seg.mode === 'flight' ? altitudeAt(f) : 1,
+        altitude: altitudeAt(f),
         trail,
         done: false,
         mode: seg.mode,

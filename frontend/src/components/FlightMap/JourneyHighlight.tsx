@@ -180,10 +180,9 @@ function JourneyHighlight({
     contrailValues,
     legWindows,
   } = buildFlightTimeline(
-    drawn.map(({ leg, mode, screenLen }) => ({
+    drawn.map(({ leg, screenLen }) => ({
       screenLen,
       distanceKm: Number(leg.distanceKm) || 0,
-      grounded: mode !== 'flight',
     })),
     { legDurationSeconds, ambientLegSeconds: legDuration },
   );

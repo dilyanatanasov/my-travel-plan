@@ -24,8 +24,6 @@ export interface TimelineLeg {
   screenLen: number;
   /** Great-circle distance, used for per-leg speed in replay mode. */
   distanceKm: number;
-  /** Land leg (train/car/bus): no climb, the vehicle stays ground-sized. */
-  grounded?: boolean;
 }
 
 export interface FlightTimeline {
@@ -73,10 +71,13 @@ export function buildFlightTimeline(
       start: Number((t / totalSeconds).toFixed(4)),
       end: Number(((t + legT) / totalSeconds).toFixed(4)),
     });
-    // A train does not climb: grounded legs hold scale 1 through the
-    // same keyTimes so the lists stay parallel.
-    const cruise = d.grounded ? '1' : CRUISE_SCALE;
-    altitudeValuesArr.push(cruise, cruise, '1');
+    /*
+      Land legs swell to the same cruise size as the plane. Realism said
+      "a train does not climb" and held them at 1 - and the owner could
+      not see the train at all (2026-08-18). The mid-leg swell is a
+      VISIBILITY device, not an altitude claim; every vehicle deserves it.
+    */
+    altitudeValuesArr.push(CRUISE_SCALE, CRUISE_SCALE, '1');
     altitudeKeyTimesArr.push(
       ((t + 0.3 * legT) / totalSeconds).toFixed(4),
       ((t + 0.7 * legT) / totalSeconds).toFixed(4),
