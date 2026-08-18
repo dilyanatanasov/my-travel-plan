@@ -384,6 +384,16 @@ function MapExportCanvasInner({
                 keeps its quiet dots.
               */
               labelZoom={journey ? 3 : undefined}
+              /*
+                The ticket draws this 1600px render at ~0.6x into the
+                card strip, which made stop names squint-size in the trip
+                video (owner report, 2026-08-18) - the earlier "smudge"
+                verdict on card labels was this exact shrink. 2.4 rather
+                than the bare reciprocal (1.7): the card is watched at
+                phone size, so map type should sit near the ticket's own
+                caption size, not the live map's whisper.
+              */
+              labelScale={journey ? 2.4 : 1}
             />
           )}
         </ZoomableGroup>

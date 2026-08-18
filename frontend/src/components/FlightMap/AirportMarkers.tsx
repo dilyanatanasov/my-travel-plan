@@ -33,6 +33,13 @@ interface AirportMarkersProps {
    * instead; sizes keep using the context.
    */
   labelZoom?: number;
+  /**
+   * Multiplies label type size. The ticket surfaces draw this layer's
+   * 1600px render at ~0.6x into the card strip, which shrank city names
+   * to squint size in the trip video (owner report, 2026-08-18) - they
+   * pass the reciprocal here so names land at full size.
+   */
+  labelScale?: number;
 }
 
 function AirportMarkers({
@@ -45,6 +52,7 @@ function AirportMarkers({
   labelsFromZoom = 2.5,
   cityNamesFromZoom = 4.5,
   labelZoom,
+  labelScale = 1,
 }: AirportMarkersProps) {
   const { map: colors } = useMapColors();
   const { projection } = useMapContext();
@@ -105,11 +113,10 @@ function AirportMarkers({
         const strokeWidth = getZoomAdjustedSize(0.7 * sizeScale, zoom);
         const highlightOffset = getZoomAdjustedSize(3, zoom);
         const highlightStroke = getZoomAdjustedSize(2, zoom);
-        const fontSize = getZoomAdjustedSize(
-          isPopping ? 12 : isHighlighted ? 11 : 10,
-          zoom,
-        );
-        const labelOffset = radius + getZoomAdjustedSize(6, zoom);
+        const fontSize =
+          getZoomAdjustedSize(isPopping ? 12 : isHighlighted ? 11 : 10, zoom) *
+          labelScale;
+        const labelOffset = radius + getZoomAdjustedSize(6 * labelScale, zoom);
         // A popping arrival announces the city even at world zoom — that is
         // the "you have landed in…" moment.
         const label =
@@ -184,7 +191,7 @@ function AirportMarkers({
                 fontWeight={isHighlighted || isPopping ? 700 : 600}
                 fill={colors.label}
                 stroke={colors.ocean}
-                strokeWidth={getZoomAdjustedSize(2.5, zoom)}
+                strokeWidth={getZoomAdjustedSize(2.5 * labelScale, zoom)}
                 paintOrder="stroke"
                 strokeLinejoin="round"
                 style={{ pointerEvents: 'none' }}

@@ -140,6 +140,44 @@ function wavyTrailPoints(
   });
 }
 
+/*
+  Recording reliability (owner report, 2026-08-18: "sometimes it renders
+  sometimes it doesn't"). The film is driven by requestAnimationFrame
+  into a MediaRecorder, and when the tab loses visibility - a switched
+  tab, a dimming phone screen - the browser throttles both and the
+  render silently stalls or ships an empty file. These guards turn that
+  silent failure into an honest error, and a screen wake lock keeps the
+  phone awake for the render's duration in the first place.
+*/
+function armRecordingGuards(onAbort: (error: MapExportError) => void): () => void {
+  type WakeLockNavigator = Navigator & {
+    wakeLock?: { request: (type: 'screen') => Promise<{ release: () => Promise<void> }> };
+  };
+  let wakeLock: { release: () => Promise<void> } | null = null;
+  (navigator as WakeLockNavigator).wakeLock
+    ?.request('screen')
+    .then((lock) => {
+      wakeLock = lock;
+    })
+    .catch(() => {
+      /* best effort - a denied lock just means the old behaviour */
+    });
+  const onVisibility = () => {
+    if (document.hidden) {
+      onAbort(
+        new MapExportError(
+          'The render stopped because the page went into the background - keep this tab visible and try again',
+        ),
+      );
+    }
+  };
+  document.addEventListener('visibilitychange', onVisibility);
+  return () => {
+    document.removeEventListener('visibilitychange', onVisibility);
+    void wakeLock?.release().catch(() => {});
+  };
+}
+
 /** Land trails are dotted, water waves, air stays solid - one place so
     both film renderers speak the same language as the map. */
 function applyTrailDash(
@@ -285,9 +323,20 @@ export async function renderMapVideo(
   const start = performance.now();
   recorder.start();
 
-  await new Promise<void>((resolve) => {
-    const frame = (now: number) => {
-      const elapsed = now - start;
+  let stopped = false;
+  let abortRender: (error: Error) => void = () => {};
+  const abortion = new Promise<never>((_, reject) => {
+    abortRender = reject;
+  });
+  const releaseGuards = armRecordingGuards((error) => abortRender(error));
+
+  try {
+    await Promise.race([
+      abortion,
+      new Promise<void>((resolve) => {
+        const frame = (now: number) => {
+          if (stopped) return;
+          const elapsed = now - start;
       const t = Math.min(elapsed / durationMs, 1);
       onProgress?.(t);
 
@@ -366,18 +415,28 @@ export async function renderMapVideo(
 
       drawCaption(ctx, caption, width, height, captionHeight);
 
-      if (elapsed < durationMs + HOLD_MS) {
+          if (elapsed < durationMs + HOLD_MS) {
+            requestAnimationFrame(frame);
+          } else {
+            resolve();
+          }
+        };
         requestAnimationFrame(frame);
-      } else {
-        resolve();
-      }
-    };
-    requestAnimationFrame(frame);
-  });
+      }),
+    ]);
+  } finally {
+    stopped = true;
+    releaseGuards();
+    recorder.stop();
+    stream.getTracks().forEach((track) => track.stop());
+  }
 
-  recorder.stop();
-  stream.getTracks().forEach((track) => track.stop());
-  return finished;
+  const blob = await finished;
+  if (blob.size === 0)
+    throw new MapExportError(
+      'The recording came out empty - keep this tab visible and try again',
+    );
+  return blob;
 }
 
 /*
@@ -498,9 +557,20 @@ export async function renderTripVideo(
   const start = performance.now();
   recorder.start();
 
-  await new Promise<void>((resolve) => {
-    const frame = (now: number) => {
-      const elapsed = now - start;
+  let stopped = false;
+  let abortRender: (error: Error) => void = () => {};
+  const abortion = new Promise<never>((_, reject) => {
+    abortRender = reject;
+  });
+  const releaseGuards = armRecordingGuards((error) => abortRender(error));
+
+  try {
+    await Promise.race([
+      abortion,
+      new Promise<void>((resolve) => {
+        const frame = (now: number) => {
+          if (stopped) return;
+          const elapsed = now - start;
       const t = Math.min(elapsed / durationMs, 1);
       onProgress?.(t);
 
@@ -633,16 +703,26 @@ export async function renderTripVideo(
       }
       ctx.restore();
 
-      if (elapsed < durationMs + HOLD_MS) {
+          if (elapsed < durationMs + HOLD_MS) {
+            requestAnimationFrame(frame);
+          } else {
+            resolve();
+          }
+        };
         requestAnimationFrame(frame);
-      } else {
-        resolve();
-      }
-    };
-    requestAnimationFrame(frame);
-  });
+      }),
+    ]);
+  } finally {
+    stopped = true;
+    releaseGuards();
+    recorder.stop();
+    stream.getTracks().forEach((track) => track.stop());
+  }
 
-  recorder.stop();
-  stream.getTracks().forEach((track) => track.stop());
-  return finished;
+  const blob = await finished;
+  if (blob.size === 0)
+    throw new MapExportError(
+      'The recording came out empty - keep this tab visible and try again',
+    );
+  return blob;
 }
