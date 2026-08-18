@@ -914,7 +914,17 @@ function TravelMap() {
       )}
 
       {!replay.isActive && (
-      <div className="absolute top-3 left-3 right-3 md:right-auto md:w-[30rem] z-30 flex flex-col gap-2">
+      <div
+        /*
+          Search + layers yield to an open country card on phones (owner,
+          2026-08-18): a well-travelled country's card reaches the top of
+          a small screen, and two glass stacks fighting is worse than one
+          briefly stepping aside. Desktop keeps both - different corners.
+        */
+        className={`absolute top-3 left-3 right-3 md:right-auto md:w-[30rem] z-30 flex-col gap-2 ${
+          countryDetailCard ? 'hidden md:flex' : 'flex'
+        }`}
+      >
         <MapSearch
           countries={countries}
           countryCentroids={countryCentroids}

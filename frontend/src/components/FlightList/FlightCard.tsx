@@ -60,6 +60,8 @@ function FlightCard({
   const [isEditing, setIsEditing] = useState(false);
   /** Mobile ⋯ menu: share/edit/delete collapse below sm (2026-08-14). */
   const [menuOpen, setMenuOpen] = useState(false);
+  /** Opens upward when the trigger sits near the viewport's bottom. */
+  const [menuUp, setMenuUp] = useState(false);
   const [updateFlight, { isLoading: isSaving }] = useUpdateFlightMutation();
   const { showToast } = useToast();
   const initialParts = journeyDateParts(journey);
@@ -326,7 +328,13 @@ function FlightCard({
         */}
         <div className="relative sm:hidden">
           <button
-            onClick={() => setMenuOpen((open) => !open)}
+            onClick={(event) => {
+              // Open upward when the card sits near the fold, so no option
+              // hides below the scroll (owner report, 2026-08-18).
+              const rect = event.currentTarget.getBoundingClientRect();
+              setMenuUp(window.innerHeight - rect.bottom < 190);
+              setMenuOpen((open) => !open);
+            }}
             aria-label="More actions"
             aria-expanded={menuOpen}
             className="p-2 text-ink-subtle hover:text-ink hover:bg-surface-sunken rounded-lg transition-colors"
@@ -352,7 +360,11 @@ function FlightCard({
                 onClick={() => setMenuOpen(false)}
                 className="fixed inset-0 z-10 cursor-default"
               />
-              <div className="absolute right-0 top-10 z-20 min-w-36 bg-surface border border-line rounded-lg shadow-lg py-1">
+              <div
+                className={`absolute right-0 z-20 min-w-36 bg-surface border border-line rounded-lg shadow-lg py-1 ${
+                  menuUp ? 'bottom-10' : 'top-10'
+                }`}
+              >
                 {onShare && (
                   <button
                     onClick={() => {

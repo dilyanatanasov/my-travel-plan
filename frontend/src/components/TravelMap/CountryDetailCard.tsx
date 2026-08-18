@@ -166,7 +166,7 @@ function CountryDetailCard({
       tabIndex={-1}
       role="dialog"
       aria-label={`${countryName} details`}
-      className="map-glass rounded-2xl border shadow-xl p-4 w-full max-w-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+      className="map-glass rounded-2xl border shadow-xl p-4 w-full max-w-sm max-h-[calc(100dvh-8rem)] overflow-y-auto overscroll-contain focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
@@ -248,10 +248,10 @@ function CountryDetailCard({
             {touchingJourneys.length}{' '}
             {touchingJourneys.length === 1 ? 'journey' : 'journeys'} through here
           </p>
-          {/* Capped: a well-travelled country would otherwise push the actions
-              off a phone screen. */}
-          <ul className="mt-1.5 space-y-1">
-            {touchingJourneys.slice(0, 4).map((journey) => (
+          {/* Scrolls instead of capping (owner, 2026-08-18): every journey
+              is reachable, and the fixed box keeps the actions on screen. */}
+          <ul className="mt-1.5 space-y-1 max-h-36 overflow-y-auto overscroll-contain pr-1">
+            {touchingJourneys.map((journey) => (
               <li key={journey.id}>
                 <button
                   type="button"
@@ -268,11 +268,6 @@ function CountryDetailCard({
               </li>
             ))}
           </ul>
-          {touchingJourneys.length > 4 && (
-            <p className="text-[11px] map-glass-muted mt-1">
-              and {touchingJourneys.length - 4} more
-            </p>
-          )}
         </div>
       )}
 
