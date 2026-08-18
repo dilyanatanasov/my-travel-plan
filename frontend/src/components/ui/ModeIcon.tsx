@@ -27,7 +27,8 @@ export function ModeIcon({ mode, className = 'w-4 h-4' }: ModeIconProps) {
       fill="currentColor"
       aria-hidden="true"
     >
-      <path d={MODE_PATHS[mode]} />
+      {/* evenodd: the top-view windshield bands are cutouts. */}
+      <path d={MODE_PATHS[mode]} fillRule="evenodd" />
     </svg>
   );
 }

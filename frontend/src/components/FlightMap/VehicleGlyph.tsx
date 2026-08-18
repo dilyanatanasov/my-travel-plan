@@ -5,6 +5,8 @@ import {
   HEADLIGHT_BEAM_COLOR,
   BEAM_LENGTH,
   BEAM_SPREAD,
+  HALO_WIDTH,
+  HALO_INNER_WIDTH,
 } from '../../lib/planeSprite';
 import type { TravelMode } from '../../types';
 import PlaneGlyph from './PlaneGlyph';
@@ -42,9 +44,18 @@ function VehicleGlyph({ mode, transform, fill, outline }: VehicleGlyphProps) {
       ))}
       <path
         d={VEHICLE_PATHS[mode]}
-        fill={fill}
+        fill="none"
         stroke={outline}
-        strokeWidth={1.8}
+        strokeWidth={HALO_WIDTH}
+        strokeLinejoin="round"
+        opacity={0.95}
+      />
+      <path
+        d={VEHICLE_PATHS[mode]}
+        fill={fill}
+        fillRule="evenodd"
+        stroke={outline}
+        strokeWidth={HALO_INNER_WIDTH}
         strokeLinejoin="round"
       />
       {lights.map((light, index) => (

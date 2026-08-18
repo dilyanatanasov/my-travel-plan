@@ -64,34 +64,32 @@ export function planeLightAlphas(timeMs: number): {
   silhouettes with wheels as subpaths: recognisable at 13px, honest at
   video scale.
 */
+/*
+  Top view, like the plane (owner decision, 2026-08-18, picked from the
+  design sheet): one perspective for the whole fleet. Windshield bands
+  are CUTOUTS - render these with fill-rule evenodd or the glass
+  disappears. The train's couplings are wider than the halo ring so its
+  three cars never fuse into one pill.
+*/
 export const VEHICLE_PATHS: Record<'train' | 'car' | 'bus' | 'ferry', string> = {
-  // A locomotive pulling two wagons (owner ask, 2026-08-18): the gaps
-  // between the bodies are what make it read as a train and not a bus.
   train:
-    'M14 8.2 Q14 7.4 14.8 7.4 L18 7.4 Q20.2 7.4 21.6 9.4 L22.3 10.6 ' +
-    'Q22.7 11.3 22.7 12.1 L22.7 14.4 Q22.7 15.2 21.9 15.2 L14.8 15.2 ' +
-    'Q14 15.2 14 14.4 Z ' +
-    'M8 8.6 Q8 7.9 8.7 7.9 L12.5 7.9 Q13.2 7.9 13.2 8.6 L13.2 14.5 ' +
-    'Q13.2 15.2 12.5 15.2 L8.7 15.2 Q8 15.2 8 14.5 Z ' +
-    'M2.2 8.6 Q2.2 7.9 2.9 7.9 L6.7 7.9 Q7.4 7.9 7.4 8.6 L7.4 14.5 ' +
-    'Q7.4 15.2 6.7 15.2 L2.9 15.2 Q2.2 15.2 2.2 14.5 Z ' +
-    'M14.7 15.7 a1.3 1.3 0 1 0 2.6 0 a1.3 1.3 0 1 0 -2.6 0 ' +
-    'M18.7 15.7 a1.3 1.3 0 1 0 2.6 0 a1.3 1.3 0 1 0 -2.6 0 ' +
-    'M8.2 15.7 a1.2 1.2 0 1 0 2.4 0 a1.2 1.2 0 1 0 -2.4 0 ' +
-    'M10.8 15.7 a1.2 1.2 0 1 0 2.4 0 a1.2 1.2 0 1 0 -2.4 0 ' +
-    'M2.4 15.7 a1.2 1.2 0 1 0 2.4 0 a1.2 1.2 0 1 0 -2.4 0 ' +
-    'M5 15.7 a1.2 1.2 0 1 0 2.4 0 a1.2 1.2 0 1 0 -2.4 0',
+    'M16.4 9.2 L20 9.2 Q22.8 9.2 22.8 12 Q22.8 14.8 20 14.8 L16.4 14.8 Z ' +
+    'M19.4 9.9 L20.2 10.5 L20.2 13.5 L19.4 14.1 Z ' +
+    'M9.4 9.2 L13.8 9.2 Q14.2 9.2 14.2 9.6 L14.2 14.4 Q14.2 14.8 13.8 14.8 ' +
+    'L9.4 14.8 Q9 14.8 9 14.4 L9 9.6 Q9 9.2 9.4 9.2 Z ' +
+    'M1.6 9.2 L6.2 9.2 Q6.6 9.2 6.6 9.6 L6.6 14.4 Q6.6 14.8 6.2 14.8 ' +
+    'L1.6 14.8 Q1.2 14.8 1.2 14.4 L1.2 9.6 Q1.2 9.2 1.6 9.2 Z',
   car:
-    'M2.6 14.6 L3.2 11.6 Q3.4 10.5 4.5 10.5 L8.4 10.5 L10.9 7.7 Q11.3 7.2 12 7.2 ' +
-    'L15.8 7.2 Q16.6 7.2 17 7.9 L18.6 10.5 L20.4 11 Q21.2 11.2 21.2 12.1 ' +
-    'L21.2 13.6 Q21.2 14.6 20.2 14.6 Z ' +
-    'M5.2 15 a1.8 1.8 0 1 0 3.6 0 a1.8 1.8 0 1 0 -3.6 0 ' +
-    'M14.8 15 a1.8 1.8 0 1 0 3.6 0 a1.8 1.8 0 1 0 -3.6 0',
+    'M5 8.2 L18.2 8.2 Q21.4 8.2 21.4 12 Q21.4 15.8 18.2 15.8 L5 15.8 ' +
+    'Q3.4 15.8 3.4 12 Q3.4 8.2 5 8.2 Z ' +
+    'M14.4 9 L16.2 9.8 L16.2 14.2 L14.4 15 Z ' +
+    'M9.4 9 L7.8 9.8 L7.8 14.2 L9.4 15 Z ' +
+    'M13.7 8.3 L14.9 7 L15.6 7.6 L14.5 8.5 Z ' +
+    'M13.7 15.7 L14.9 17 L15.6 16.4 L14.5 15.5 Z',
   bus:
-    'M2.6 8.2 Q2.6 7.2 3.6 7.2 L19.8 7.2 Q21.4 7.2 21.4 8.8 L21.4 14.2 ' +
-    'Q21.4 15.2 20.4 15.2 L3.6 15.2 Q2.6 15.2 2.6 14.2 Z ' +
-    'M4.9 15.6 a1.7 1.7 0 1 0 3.4 0 a1.7 1.7 0 1 0 -3.4 0 ' +
-    'M15.7 15.6 a1.7 1.7 0 1 0 3.4 0 a1.7 1.7 0 1 0 -3.4 0',
+    'M3.2 9.2 L20 9.2 Q22.4 9.2 22.4 12 Q22.4 14.8 20 14.8 L3.2 14.8 ' +
+    'Q1.8 14.8 1.8 12 Q1.8 9.2 3.2 9.2 Z ' +
+    'M19 9.9 L19.8 10.5 L19.8 13.5 L19 14.1 Z',
   ferry:
     'M2.5 13 L21.5 13 L19 16.5 Q18.6 17 18 17 L6 17 Q5.4 17 5 16.5 Z ' +
     'M8 12 L8 9.3 Q8 8.5 8.8 8.5 L15.2 8.5 Q16 8.5 16 9.3 L16 12 Z',
@@ -107,14 +105,14 @@ export const VEHICLE_PATHS: Record<'train' | 'car' | 'bus' | 'ferry', string> = 
 export const VEHICLE_LIGHTS: Partial<
   Record<'train' | 'car' | 'bus' | 'ferry', { x: number; y: number }[]>
 > = {
-  train: [{ x: 22.2, y: 12 }],
+  train: [{ x: 22.6, y: 12 }],
   car: [
-    { x: 21.1, y: 11.8 },
-    { x: 21.1, y: 13.5 },
+    { x: 21.1, y: 10.3 },
+    { x: 21.1, y: 13.7 },
   ],
   bus: [
-    { x: 21.3, y: 11.6 },
-    { x: 21.3, y: 13.6 },
+    { x: 22.1, y: 10.8 },
+    { x: 22.1, y: 13.2 },
   ],
 };
 
@@ -134,6 +132,17 @@ export function headlightAlphas(timeMs: number): { lamp: number; beam: number } 
   };
 }
 
+/*
+  Halo geometry (owner pick, 2026-08-18): every vehicle wears a wide
+  sticker-style ring in the outline color plus a thin inner stroke,
+  which stays visible over selected countries where the old single
+  stroke dissolved. The outline color remains theme-aware (the ocean
+  tone): a light ring around ink on the light map, a dark ring around
+  the pale glyph on the dark one - same contrast logic, both themes.
+*/
+export const HALO_WIDTH = 3.4;
+export const HALO_INNER_WIDTH = 0.7;
+
 export interface PlaneSpriteOptions {
   x: number;
   y: number;
@@ -142,6 +151,7 @@ export interface PlaneSpriteOptions {
   /** Multiplier on the 24-unit box. */
   scale: number;
   fill: string;
+  /** The halo ring color - theme-aware, usually the ocean tone. */
   outline: string;
   /** Frame clock for the lights; freezes them when omitted. */
   timeMs?: number;
@@ -183,10 +193,15 @@ export function drawPlaneSprite(
   ctx.rotate(angle);
   ctx.scale(scale, scale);
   ctx.translate(-12, -12);
-  ctx.fillStyle = fill;
+  ctx.lineJoin = 'round';
   ctx.strokeStyle = outline;
-  ctx.lineWidth = 0.9;
+  ctx.globalAlpha = 0.95;
+  ctx.lineWidth = HALO_WIDTH;
+  ctx.stroke(glyph);
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = fill;
   ctx.fill(glyph);
+  ctx.lineWidth = HALO_INNER_WIDTH;
   ctx.stroke(glyph);
 
   const alphas = planeLightAlphas(timeMs);
@@ -241,10 +256,16 @@ export function drawVehicleSprite(
   ctx.rotate(angle);
   ctx.scale(scale, scale);
   ctx.translate(-12, -12);
-  ctx.fillStyle = fill;
+  ctx.lineJoin = 'round';
   ctx.strokeStyle = outline;
-  ctx.lineWidth = 0.9;
-  ctx.fill(glyph);
+  ctx.globalAlpha = 0.95;
+  ctx.lineWidth = HALO_WIDTH;
+  ctx.stroke(glyph);
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = fill;
+  // evenodd: the windshield bands are cutouts, not decoration.
+  ctx.fill(glyph, 'evenodd');
+  ctx.lineWidth = HALO_INNER_WIDTH;
   ctx.stroke(glyph);
 
   // Headlights: beam cones first (under the lamps), then the lamps.
