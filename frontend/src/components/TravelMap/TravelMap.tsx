@@ -54,6 +54,7 @@ import { useSearchLanding } from './useSearchLanding';
 import { useCountryInteraction } from './useCountryInteraction';
 import ReplayControl from './ReplayControl';
 import GlobeView from './GlobeView';
+import RouteChooser from './RouteChooser';
 import type { AggregatedRoute } from '../FlightMap/routeUtils';
 import { fitToPoints, type LonLat } from './fitBounds';
 
@@ -362,6 +363,31 @@ function TravelMap() {
     if (consumed || wasDragRef.current) return;
     setSelectedJourney(null);
   }, []);
+
+  /*
+    The tap chooser (owner pick, 2026-08-18): a tap where several route
+    hit strokes stack opens a "which did you mean" popover instead of
+    selecting whichever painted last - including the country buried
+    under the bundle.
+  */
+  const [routeChooser, setRouteChooser] = useState<{
+    candidates: AggregatedRoute[];
+    point: { x: number; y: number };
+    countryIso: string | null;
+  } | null>(null);
+
+  const handleAmbiguousTap = useCallback(
+    (
+      candidates: AggregatedRoute[],
+      point: { x: number; y: number },
+      countryIso: string | null,
+    ) => {
+      if (wasDragRef.current || replay.isActive) return;
+      clickConsumedRef.current = true;
+      setRouteChooser({ candidates, point, countryIso });
+    },
+    [replay.isActive],
+  );
 
   const handleSelectRoute = useCallback((route: AggregatedRoute) => {
     if (wasDragRef.current) return;
@@ -862,6 +888,7 @@ function TravelMap() {
                 hoveredRouteKey={selectedJourney ? null : hoveredRoute?.key || null}
                 onHover={selectedJourney ? () => undefined : handleRouteHover}
                 onSelect={handleSelectRoute}
+                onAmbiguous={handleAmbiguousTap}
                 sizeScale={markerScale}
                 faded={Boolean(selectedJourney) || replay.isActive}
               />
@@ -1087,7 +1114,34 @@ function TravelMap() {
       {/* Hover-only. On touch the route's details are in the card instead. */}
       {canHover && (
         <>
-          <RouteTooltip route={hoveredRoute} position={tooltipPosition} />
+          {/* The hover tooltip yields while the chooser is open - it sat
+              exactly on top of the chooser's first row. */}
+          {!routeChooser && (
+            <RouteTooltip route={hoveredRoute} position={tooltipPosition} />
+          )}
+          {routeChooser && !replay.isActive && (
+            <RouteChooser
+              candidates={routeChooser.candidates}
+              point={routeChooser.point}
+              countryName={
+                routeChooser.countryIso
+                  ? (countries.find(
+                      (country) => country.isoCode === routeChooser.countryIso,
+                    )?.name ?? null)
+                  : null
+              }
+              onPickRoute={(route) => {
+                setRouteChooser(null);
+                handleSelectRoute(route);
+              }}
+              onPickCountry={() => {
+                const iso = routeChooser.countryIso;
+                setRouteChooser(null);
+                if (iso) handleCountryClick(iso);
+              }}
+              onClose={() => setRouteChooser(null)}
+            />
+          )}
           {!hoveredRoute && (
             <CountryTooltip name={hoveredCountry} position={tooltipPosition} />
           )}
