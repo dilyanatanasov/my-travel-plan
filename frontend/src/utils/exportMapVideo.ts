@@ -330,39 +330,84 @@ export async function renderMapVideo(
 const TICKET_TRAIL = '#8c491a';
 const TICKET_PLANE = '#a82d26';
 
-export async function renderTripVideo(
+/**
+ * One leg's scene for the animated camera (2026-08-18): a backdrop
+ * framed on that leg alone plus its sampled route in the backdrop's own
+ * canvas space. The film cuts between scenes - sharp per-leg close-ups
+ * instead of one continental frame where a short drive is a speck.
+ */
+export interface TripVideoScene {
+  image: HTMLImageElement;
+  points: { x: number; y: number }[];
+  mode: RouteMode;
+}
+
+/**
+ * Capture the CURRENT framing of the trip export SVG as one scene,
+ * keeping only the leg at `legIndex` (journey-mode routes render in leg
+ * order). Call after re-aiming the canvas via focusLegOrder and waiting
+ * for data-framed.
+ */
+export async function captureTripScene(
   svg: SVGSVGElement,
+  legIndex: number,
+): Promise<TripVideoScene> {
+  const width = Number(svg.getAttribute('width')) || svg.getBoundingClientRect().width;
+  const height = Number(svg.getAttribute('height')) || svg.getBoundingClientRect().height;
+  const routes = sampleRoutes(svg);
+  const route = routes[legIndex] ?? routes[routes.length - 1];
+  if (!route) {
+    throw new MapExportError('The map is not ready yet - try again in a moment');
+  }
+  const image = await loadImage(
+    `data:image/svg+xml;charset=utf-8,${encodeURIComponent(
+      serializeWithoutRoutes(svg, width, height, true)
+    )}`
+  );
+  return { image, points: route.points, mode: route.mode };
+}
+
+/**
+ * Render the boarding-pass trip film with an animated camera
+ * (2026-08-18): one SCENE per leg, each framed on that leg alone, cut
+ * together with short crossfades. A 35 km drive finally fills the strip
+ * instead of hiding as a speck on the continental frame. Within each
+ * scene the vehicle travels the first ~72% of the slice and the last
+ * stretch holds at the arrival - which is where that leg's postcard
+ * pops, exactly like the replay's ground pause.
+ */
+const SCENE_FADE_MS = 300;
+const SCENE_TRAVEL_FRACTION = 0.72;
+
+export async function renderTripVideo(
+  scenes: TripVideoScene[],
   trip: TripContent,
   onProgress?: (fraction: number) => void,
   durationMs = 6000,
-  /** Per-leg stop photos, aligned to leg order; null = no photo there. */
+  /** Per-leg stop photos, aligned to scene order; null = no photo there. */
   photos: (HTMLImageElement | null)[] = []
 ): Promise<Blob> {
   const mimeType = pickMimeType();
   if (!mimeType) {
     throw new MapExportError('Your browser cannot record video');
   }
-  const width = Number(svg.getAttribute('width')) || svg.getBoundingClientRect().width;
-  const height = Number(svg.getAttribute('height')) || svg.getBoundingClientRect().height;
-  if (!width || !height || !svg.querySelector('path')) {
+  if (scenes.length === 0) {
     throw new MapExportError('The map is not ready yet - try again in a moment');
   }
 
-  const routes = sampleRoutes(svg);
-  const backdrop = await loadImage(
-    `data:image/svg+xml;charset=utf-8,${encodeURIComponent(
-      serializeWithoutRoutes(svg, width, height, true)
-    )}`
-  );
   const { canvas: template, placement } = await renderTripCardTemplate(
     trip,
-    backdrop
+    scenes[0].image
   );
 
-  // Source-space route points, pre-mapped into the strip once.
-  const cardRoutes = routes.map((route) => ({
-    mode: route.mode,
-    points: route.points.map((p) => ({
+  // Every scene shares the export canvas dimensions, so one placement
+  // maps them all: source point p -> (dx + p.x * scale, dy + p.y * scale).
+  const sceneData = scenes.map((scene) => ({
+    mode: scene.mode,
+    image: scene.image,
+    drawW: scene.image.width * placement.scale,
+    drawH: scene.image.height * placement.scale,
+    points: scene.points.map((p) => ({
       x: placement.dx + p.x * placement.scale,
       y: placement.dy + p.y * placement.scale,
     })),
@@ -388,6 +433,7 @@ export async function renderTripVideo(
     recorder.onerror = () => reject(new MapExportError('Recording failed'));
   });
 
+  const sliceMs = durationMs / sceneData.length;
   const start = performance.now();
   recorder.start();
 
@@ -396,6 +442,13 @@ export async function renderTripVideo(
       const elapsed = now - start;
       const t = Math.min(elapsed / durationMs, 1);
       onProgress?.(t);
+
+      const index = Math.min(
+        Math.floor((elapsed / durationMs) * sceneData.length),
+        sceneData.length - 1
+      );
+      const scene = sceneData[index];
+      const timeInScene = elapsed - index * sliceMs;
 
       ctx.drawImage(template, 0, 0);
 
@@ -412,124 +465,109 @@ export async function renderTripVideo(
       ctx.closePath();
       ctx.clip();
 
-      cardRoutes.forEach((route, index) => {
-        // Replay-style: leg i owns its slice, the next waits for touchdown.
-        const local = t * cardRoutes.length - index;
-        if (local <= 0) return;
-        const progress = easeInOut(Math.min(local, 1));
-        const points = route.points;
-        const n = points.length;
+      // The active scene's backdrop replaces the template's baked one.
+      ctx.drawImage(scene.image, placement.dx, placement.dy, scene.drawW, scene.drawH);
 
-        /*
-          Fractional position, not Math.floor: snapping the head to sampled
-          points made the plane hop point-to-point ("not so smooth"). The
-          head lerps between samples; the trail follows it exactly.
-        */
-        const exact = progress * (n - 1);
-        const i0 = Math.min(Math.floor(exact), n - 2);
-        const frac = exact - i0;
-        const head = {
-          x: points[i0].x + (points[i0 + 1].x - points[i0].x) * frac,
-          y: points[i0].y + (points[i0 + 1].y - points[i0].y) * frac,
-        };
+      // The vehicle travels early, then the arrival holds for the
+      // postcard beat - the film's version of the replay ground pause.
+      const travelMs = sliceMs * SCENE_TRAVEL_FRACTION;
+      const progress = easeInOut(Math.min(timeInScene / travelMs, 1));
+      const points = scene.points;
+      const n = points.length;
+      const exact = progress * (n - 1);
+      const i0 = Math.min(Math.floor(exact), n - 2);
+      const frac = exact - i0;
+      const head = {
+        x: points[i0].x + (points[i0 + 1].x - points[i0].x) * frac,
+        y: points[i0].y + (points[i0 + 1].y - points[i0].y) * frac,
+      };
 
-        ctx.beginPath();
-        ctx.moveTo(points[0].x, points[0].y);
-        for (let i = 1; i <= i0; i++) {
-          ctx.lineTo(points[i].x, points[i].y);
+      ctx.beginPath();
+      ctx.moveTo(points[0].x, points[0].y);
+      for (let i = 1; i <= i0; i++) {
+        ctx.lineTo(points[i].x, points[i].y);
+      }
+      ctx.lineTo(head.x, head.y);
+      ctx.strokeStyle = TICKET_TRAIL;
+      ctx.lineWidth = 3;
+      ctx.lineCap = 'round';
+      ctx.globalAlpha = 0.9;
+      if (scene.mode !== 'flight') ctx.setLineDash([9, 7]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.globalAlpha = 1;
+
+      if (progress < 1) {
+        const ahead = points[Math.min(i0 + 2, n - 1)];
+        const behind = points[Math.max(i0 - 1, 0)];
+        drawVehicleSprite(ctx, scene.mode, {
+          x: head.x,
+          y: head.y,
+          angle: Math.atan2(ahead.y - behind.y, ahead.x - behind.x),
+          scale: 1.8,
+          fill: TICKET_PLANE,
+          outline: '#f8f0e1',
+          timeMs: elapsed,
+          beacon: { color: TICKET_PLANE },
+        });
+      }
+
+      // This scene's postcard, during the arrival hold.
+      const photo = photos[index];
+      const holdMs = sliceMs - travelMs;
+      const sinceTouchdown = timeInScene - travelMs;
+      if (photo && sinceTouchdown > 0) {
+        const window = Math.min(2400, holdMs + (index === sceneData.length - 1 ? HOLD_MS : 0));
+        if (sinceTouchdown <= window) {
+          const fade = Math.min(1, sinceTouchdown / 250, (window - sinceTouchdown) / 250);
+          const at = points[n - 1];
+          const frameW = 170;
+          const frameH = 200;
+          const photoSize = 150;
+          const px = Math.min(
+            Math.max(at.x - frameW / 2, placement.x + 8),
+            placement.x + placement.w - frameW - 8
+          );
+          const py = Math.min(
+            Math.max(at.y - frameH - 16, placement.y + 8),
+            placement.y + placement.h - frameH - 8
+          );
+          ctx.save();
+          ctx.globalAlpha = Math.max(fade, 0);
+          ctx.translate(px + frameW / 2, py + frameH / 2);
+          ctx.rotate(((index % 2 ? 4 : -4) * Math.PI) / 180);
+          ctx.translate(-frameW / 2, -frameH / 2);
+          ctx.shadowColor = 'rgba(32, 30, 29, 0.35)';
+          ctx.shadowBlur = 14;
+          ctx.fillStyle = '#fffdf9';
+          ctx.fillRect(0, 0, frameW, frameH);
+          ctx.shadowBlur = 0;
+          const scale = Math.max(photoSize / photo.width, photoSize / photo.height);
+          const sw = photoSize / scale;
+          const sh = photoSize / scale;
+          ctx.drawImage(
+            photo,
+            (photo.width - sw) / 2,
+            (photo.height - sh) / 2,
+            sw,
+            sh,
+            10,
+            10,
+            photoSize,
+            photoSize
+          );
+          ctx.restore();
         }
-        ctx.lineTo(head.x, head.y);
-        ctx.strokeStyle = TICKET_TRAIL;
-        ctx.lineWidth = 3;
-        ctx.lineCap = 'round';
-        ctx.globalAlpha = 0.9;
-        if (route.mode !== 'flight') ctx.setLineDash([9, 7]);
-        ctx.stroke();
-        ctx.setLineDash([]);
+      }
+
+      // Crossfade into the next scene's backdrop at the boundary.
+      const untilCut = sliceMs - timeInScene;
+      if (index < sceneData.length - 1 && untilCut < SCENE_FADE_MS) {
+        const next = sceneData[index + 1];
+        ctx.globalAlpha = 1 - untilCut / SCENE_FADE_MS;
+        ctx.drawImage(next.image, placement.dx, placement.dy, next.drawW, next.drawH);
         ctx.globalAlpha = 1;
-
-        if (progress < 1) {
-          // Heading over a small window, not one sample pair - single-pair
-          // angles twitched on dense arcs. The beacon answers "a bit hard
-          // to track"; the sprite brings the nav lights with it - and on
-          // a mixed trip the vehicle changes at each stop, ticket ink on
-          // all of them.
-          const ahead = points[Math.min(i0 + 2, n - 1)];
-          const behind = points[Math.max(i0 - 1, 0)];
-          drawVehicleSprite(ctx, route.mode, {
-            x: head.x,
-            y: head.y,
-            angle: Math.atan2(ahead.y - behind.y, ahead.x - behind.x),
-            scale: 1.8,
-            fill: TICKET_PLANE,
-            outline: '#f8f0e1',
-            timeMs: elapsed,
-            beacon: { color: TICKET_PLANE },
-          });
-        }
-      });
-
-      /*
-        Stop postcards (owner ask, 2026-08-17): a polaroid pops at each
-        arrival as the plane lands - the replay's touchdown memory, on
-        film. Visible ~2.4s with a soft fade both ways, clipped to the
-        strip like everything else.
-      */
-      const legDuration = durationMs / Math.max(cardRoutes.length, 1);
-      photos.forEach((photo, index) => {
-        if (!photo || index >= cardRoutes.length) return;
-        const sinceTouchdown = elapsed - (index + 1) * legDuration;
-        if (sinceTouchdown < 0 || sinceTouchdown > 2400) return;
-        const fade = Math.min(
-          1,
-          sinceTouchdown / 250,
-          (2400 - sinceTouchdown) / 250
-        );
-        const at = cardRoutes[index].points[cardRoutes[index].points.length - 1];
-
-        const frameW = 170;
-        const frameH = 200;
-        const photoSize = 150;
-        // Above the landing point, nudged to stay inside the strip.
-        const px = Math.min(
-          Math.max(at.x - frameW / 2, placement.x + 8),
-          placement.x + placement.w - frameW - 8
-        );
-        const py = Math.min(
-          Math.max(at.y - frameH - 16, placement.y + 8),
-          placement.y + placement.h - frameH - 8
-        );
-
-        ctx.save();
-        ctx.globalAlpha = fade;
-        ctx.translate(px + frameW / 2, py + frameH / 2);
-        ctx.rotate(((index % 2 ? 4 : -4) * Math.PI) / 180);
-        ctx.translate(-frameW / 2, -frameH / 2);
-        ctx.shadowColor = 'rgba(32, 30, 29, 0.35)';
-        ctx.shadowBlur = 14;
-        ctx.fillStyle = '#fffdf9';
-        ctx.fillRect(0, 0, frameW, frameH);
-        ctx.shadowBlur = 0;
-        // Cover-crop the photo into the square window.
-        const scale = Math.max(
-          photoSize / photo.width,
-          photoSize / photo.height
-        );
-        const sw = photoSize / scale;
-        const sh = photoSize / scale;
-        ctx.drawImage(
-          photo,
-          (photo.width - sw) / 2,
-          (photo.height - sh) / 2,
-          sw,
-          sh,
-          10,
-          10,
-          photoSize,
-          photoSize
-        );
-        ctx.restore();
-      });
+      }
       ctx.restore();
 
       if (elapsed < durationMs + HOLD_MS) {

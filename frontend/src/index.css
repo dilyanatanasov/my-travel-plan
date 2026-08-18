@@ -133,6 +133,31 @@ body {
   animation: vehicle-beam-flicker 1.1s ease-in-out infinite;
 }
 
+/* The ferry's wake: foam strokes drift astern and dissolve, staggered
+   so the water always seems to be churning. */
+@keyframes ferry-wake-drift {
+  0% {
+    transform: translateX(0);
+    opacity: 0.55;
+  }
+  100% {
+    transform: translateX(-7px);
+    opacity: 0;
+  }
+}
+
+.ferry-wake {
+  animation: ferry-wake-drift 1.3s linear infinite;
+}
+
+.ferry-wake-b {
+  animation-delay: -0.45s;
+}
+
+.ferry-wake-c {
+  animation-delay: -0.9s;
+}
+
 /*
   The loading mark (ContrailLoader): the brand arc draws origin-to-
   destination, the dot pops on arrival, the trail fades, repeat. The dot
@@ -216,9 +241,14 @@ body {
   .plane-light-strobe,
   .vehicle-headlight,
   .vehicle-beam,
+  .ferry-wake,
   .contrail-loader-arc,
   .contrail-loader-dot {
     animation: none;
+  }
+
+  .ferry-wake {
+    opacity: 0.3;
   }
 
   .plane-light-strobe {

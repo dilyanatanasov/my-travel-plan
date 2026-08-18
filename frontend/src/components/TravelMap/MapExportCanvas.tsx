@@ -68,6 +68,13 @@ interface MapExportCanvasProps {
    * visit colours) — framed on its own legs.
    */
   journey?: FlightJourney;
+  /**
+   * Frame ONE leg instead of the whole journey (animated video camera,
+   * 2026-08-18): the video captures a scene per leg, so a 35 km drive
+   * gets its own sharp close-up instead of a speck on the continental
+   * frame. 1-based legOrder; null/undefined frames the whole journey.
+   */
+  focusLegOrder?: number | null;
   /** Distinct id so a trip canvas cannot collide with the map-card one. */
   svgId?: string;
 }
@@ -76,6 +83,7 @@ function MapExportCanvas({
   theme,
   height = EXPORT_HEIGHT,
   journey,
+  focusLegOrder,
   svgId,
 }: MapExportCanvasProps) {
   const outer = useTheme();
@@ -91,7 +99,12 @@ function MapExportCanvas({
     <ThemeContext.Provider
       value={{ ...outer, resolved: theme ?? outer.resolved }}
     >
-      <MapExportCanvasInner height={height} journey={journey} svgId={svgId} />
+      <MapExportCanvasInner
+        height={height}
+        journey={journey}
+        focusLegOrder={focusLegOrder}
+        svgId={svgId}
+      />
     </ThemeContext.Provider>
   );
 }
@@ -99,10 +112,12 @@ function MapExportCanvas({
 function MapExportCanvasInner({
   height,
   journey,
+  focusLegOrder,
   svgId,
 }: {
   height: number;
   journey?: FlightJourney;
+  focusLegOrder?: number | null;
   svgId?: string;
 }) {
   const { map: colors } = useMapColors();
@@ -210,6 +225,22 @@ function MapExportCanvasInner({
   const hasCountries = !journey && countryDisplayMap.size > 0;
 
   const framing = useMemo(() => {
+    // Scene capture: one leg fills the frame - its own endpoints only.
+    if (journey && focusLegOrder != null) {
+      const leg = (journey.legs ?? []).find(
+        (l) => l.legOrder === focusLegOrder,
+      );
+      const endpoints = leg ? legEndpoints(leg) : null;
+      if (endpoints) {
+        return fitToPoints(
+          [
+            [Number(endpoints.departure.longitude), Number(endpoints.departure.latitude)],
+            [Number(endpoints.arrival.longitude), Number(endpoints.arrival.latitude)],
+          ],
+          { maxZoom: 48, fill: 0.6 },
+        );
+      }
+    }
     const points: LonLat[] = airports.map((a) => [a.longitude, a.latitude]);
     if (!journey) {
       for (const [iso, info] of countryDisplayMap) {
@@ -226,7 +257,7 @@ function MapExportCanvasInner({
     return journey
       ? fitToPoints(points, { maxZoom: 48, fill: 0.72 })
       : fitToPoints(points, { maxZoom: 3.2, fill: 0.82 });
-  }, [airports, countryDisplayMap, countryCentroids, journey]);
+  }, [airports, countryDisplayMap, countryCentroids, journey, focusLegOrder]);
 
   /*
     ZoomableGroup applies zoom/center when the props CHANGE, not on mount.

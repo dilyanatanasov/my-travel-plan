@@ -25,8 +25,8 @@ export const emptyStop = (): EditableStop => ({
   city: null,
 });
 
-/** The modes the UI offers; ferry is schema-ready but not surfaced yet. */
-export const HOP_MODES: TravelMode[] = ['flight', 'train', 'car', 'bus'];
+/** Every mode the schema knows, ferry included (owner, 2026-08-18). */
+export const HOP_MODES: TravelMode[] = ['flight', 'train', 'car', 'bus', 'ferry'];
 
 export const MODE_LABEL: Record<TravelMode, string> = {
   flight: 'Flight',

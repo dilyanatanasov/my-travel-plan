@@ -90,9 +90,13 @@ export const VEHICLE_PATHS: Record<'train' | 'car' | 'bus' | 'ferry', string> = 
     'M3.2 9.2 L20 9.2 Q22.4 9.2 22.4 12 Q22.4 14.8 20 14.8 L3.2 14.8 ' +
     'Q1.8 14.8 1.8 12 Q1.8 9.2 3.2 9.2 Z ' +
     'M19 9.9 L19.8 10.5 L19.8 13.5 L19 14.1 Z',
+  // Top view like the rest of the fleet (ferry UI, 2026-08-18): pointed
+  // bow on +x, rounded stern, the superstructure as an evenodd cutout.
   ferry:
-    'M2.5 13 L21.5 13 L19 16.5 Q18.6 17 18 17 L6 17 Q5.4 17 5 16.5 Z ' +
-    'M8 12 L8 9.3 Q8 8.5 8.8 8.5 L15.2 8.5 Q16 8.5 16 9.3 L16 12 Z',
+    'M4.4 9 L14.6 8.6 Q18.6 8.8 22.6 12 Q18.6 15.2 14.6 15.4 L4.4 15 ' +
+    'Q2.2 14.6 2.2 12 Q2.2 9.4 4.4 9 Z ' +
+    'M7.2 10.6 L13.4 10.4 Q14.4 10.4 14.4 11.2 L14.4 12.8 Q14.4 13.6 13.4 13.6 ' +
+    'L7.2 13.4 Q6.4 13.4 6.4 12.6 L6.4 11.4 Q6.4 10.6 7.2 10.6 Z',
 };
 
 /*
@@ -114,6 +118,8 @@ export const VEHICLE_LIGHTS: Partial<
     { x: 22.1, y: 10.8 },
     { x: 22.1, y: 13.2 },
   ],
+  // One masthead lamp at the bow, beam sweeping the water ahead.
+  ferry: [{ x: 22.2, y: 12 }],
 };
 
 export const HEADLIGHT_COLOR = '#fff3c4';
@@ -267,6 +273,31 @@ export function drawVehicleSprite(
   ctx.scale(scale, scale);
   ctx.translate(-12, -12);
   ctx.lineJoin = 'round';
+
+  // The ferry churns a wake (owner whim, 2026-08-18): diverging foam
+  // strokes drifting astern, fading as they fall behind.
+  if (mode === 'ferry') {
+    const drift = (timeMs / 110) % 3.2;
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = '#f4fbfa';
+    for (let k = 0; k < 3; k++) {
+      const dist = k * 3.2 + drift;
+      const alpha = Math.max(0, 0.55 - dist * 0.055);
+      if (alpha <= 0.02) continue;
+      ctx.globalAlpha = alpha;
+      ctx.lineWidth = 1.1;
+      const wx = 1.4 - dist;
+      const spread = 1 + dist * 0.35;
+      ctx.beginPath();
+      ctx.moveTo(wx, 12 - spread);
+      ctx.lineTo(wx + 2, 12 - spread * 0.4);
+      ctx.moveTo(wx, 12 + spread);
+      ctx.lineTo(wx + 2, 12 + spread * 0.4);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }
+
   ctx.strokeStyle = outline;
   ctx.globalAlpha = 0.95;
   ctx.lineWidth = HALO_WIDTH;

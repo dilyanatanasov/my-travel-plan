@@ -1,5 +1,6 @@
 import {
   IsArray,
+  IsIn,
   IsOptional,
   IsString,
   IsDateString,
@@ -10,6 +11,7 @@ import {
   Length,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import { TRAVEL_MODES, type TravelModeDto } from './create-flight.dto';
 
 export class ImportLegDto {
   /** IATA code. Resolved server-side — the client never sends airport ids. */
@@ -20,6 +22,12 @@ export class ImportLegDto {
   @IsString()
   @Length(3, 3)
   to: string;
+
+  /** Absent means flight. Land legs import between airports - a spread-
+      sheet has no city ids, and airports are honest land endpoints. */
+  @IsOptional()
+  @IsIn(TRAVEL_MODES)
+  mode?: TravelModeDto;
 }
 
 export class ImportJourneyDto {

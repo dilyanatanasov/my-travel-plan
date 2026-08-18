@@ -456,14 +456,44 @@ export class FlightsService {
       }
 
       try {
-        await this.create(userId, {
-          journeyDate: journey.date,
-          notes: journey.notes,
-          legs: journey.legs.map((leg) => ({
-            departureAirportId: byCode.get(leg.from.toUpperCase())!.id,
-            arrivalAirportId: byCode.get(leg.to.toUpperCase())!.id,
-          })),
-        });
+        /*
+          A journey with any land leg goes through the stops path so its
+          modes persist; all-flight journeys keep the legacy legs shape
+          and with it the ground-transfer typo guard.
+        */
+        const hasLandLeg = journey.legs.some(
+          (leg) => leg.mode && leg.mode !== 'flight',
+        );
+        await this.create(
+          userId,
+          hasLandLeg
+            ? {
+                journeyDate: journey.date,
+                notes: journey.notes,
+                stops: journey.legs.flatMap((leg, index) => {
+                  const stop = {
+                    airportId: byCode.get(leg.to.toUpperCase())!.id,
+                  };
+                  return index === 0
+                    ? [
+                        {
+                          airportId: byCode.get(leg.from.toUpperCase())!.id,
+                        },
+                        stop,
+                      ]
+                    : [stop];
+                }),
+                modes: journey.legs.map((leg) => leg.mode ?? 'flight'),
+              }
+            : {
+                journeyDate: journey.date,
+                notes: journey.notes,
+                legs: journey.legs.map((leg) => ({
+                  departureAirportId: byCode.get(leg.from.toUpperCase())!.id,
+                  arrivalAirportId: byCode.get(leg.to.toUpperCase())!.id,
+                })),
+              },
+        );
         // Guards against duplicates *within* the same file, not just against
         // rows already in the database.
         seen.add(key);

@@ -32,6 +32,14 @@ function VehicleGlyph({ mode, transform, fill, outline }: VehicleGlyphProps) {
   const lights = VEHICLE_LIGHTS[mode] ?? [];
   return (
     <g transform={transform}>
+      {/* The ferry's wake: diverging foam drifting astern via CSS. */}
+      {mode === 'ferry' && (
+        <g stroke="#f4fbfa" strokeWidth={1.1} strokeLinecap="round" fill="none">
+          <path className="ferry-wake ferry-wake-a" d="M1.4 11 L3.4 11.6 M1.4 13 L3.4 12.4" />
+          <path className="ferry-wake ferry-wake-b" d="M1.4 10.4 L3.4 11.2 M1.4 13.6 L3.4 12.8" />
+          <path className="ferry-wake ferry-wake-c" d="M1.4 9.8 L3.4 10.8 M1.4 14.2 L3.4 13.2" />
+        </g>
+      )}
       {lights.map((light, index) => (
         <polygon
           key={`beam-${index}`}

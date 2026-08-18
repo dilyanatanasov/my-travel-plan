@@ -185,8 +185,10 @@ function MapControlPanel({
             <span className="sm:hidden">Layers &amp; filters</span>
             <span className="hidden sm:inline">Map layers &amp; filters</span>
           </span>
+          {/* Active-filter accents are teal: "the view is filtered" is a
+              different message than the terracotta action color. */}
           {activeCount > 0 && (
-            <span className="inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full bg-brand-600 text-white text-xs font-semibold">
+            <span className="inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full bg-secondary-600 text-white text-xs font-semibold">
               {activeCount}
             </span>
           )}
@@ -381,10 +383,10 @@ function MapControlPanel({
                         type="button"
                         onClick={() => handleContinentToggle(continent)}
                         aria-pressed={isActive}
-                        className={`min-h-11 px-3 text-sm rounded-lg border transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500 ${
+                        className={`min-h-11 px-3 text-sm rounded-lg border transition-colors focus:outline-none focus:ring-2 focus:ring-secondary-600 ${
                           isActive
-                            ? 'bg-brand-500 text-white border-brand-500'
-                            : 'map-glass-field hover:border-brand-400'
+                            ? 'bg-secondary-600 text-white border-secondary-600'
+                            : 'map-glass-field hover:border-secondary-600/60'
                         }`}
                       >
                         {continent}
@@ -398,7 +400,7 @@ function MapControlPanel({
                 <button
                   type="button"
                   onClick={() => onFiltersChange(DEFAULT_FILTERS)}
-                  className="min-h-11 text-sm text-brand-text hover:text-brand-800 font-medium focus:outline-none focus:ring-2 focus:ring-brand-500 rounded-lg px-2 -mx-2"
+                  className="min-h-11 text-sm text-secondary-text hover:text-secondary-700 font-medium focus:outline-none focus:ring-2 focus:ring-secondary-600 rounded-lg px-2 -mx-2"
                 >
                   Clear all filters ({activeCount})
                 </button>
