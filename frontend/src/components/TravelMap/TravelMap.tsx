@@ -720,8 +720,15 @@ function TravelMap() {
     receives it as a slot. Same berth as the journey card — they are never
     open together (and the globe has no journey selection at all).
   */
+  /*
+    The card's ceiling is its CONTAINER, not the viewport (owner report,
+    2026-08-18: Bulgaria's four airports pushed it under the top bar on
+    mobile). The wrapper now spans from below the map's top controls to
+    the card's bottom anchor; the card fills upward inside it and can
+    never leave the map area. justify-end keeps it hugging the bottom.
+  */
   const countryDetailCard = openCountry && !selectedJourney && (
-    <div className="absolute z-20 left-3 right-3 sm:right-auto bottom-20 lg:bottom-4 lg:left-auto lg:right-20">
+    <div className="absolute z-20 left-3 right-3 sm:right-auto sm:w-96 bottom-20 lg:bottom-4 lg:left-auto lg:right-20 top-16 md:top-3 flex flex-col justify-end pointer-events-none">
       <CountryDetailCard
         countryName={openCountry.name}
         isoAlpha2={openCountry.isoAlpha2}

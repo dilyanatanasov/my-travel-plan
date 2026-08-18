@@ -166,7 +166,12 @@ function CountryDetailCard({
       tabIndex={-1}
       role="dialog"
       aria-label={`${countryName} details`}
-      className="map-glass rounded-2xl border shadow-xl p-4 w-full max-w-sm max-h-[calc(100dvh-8rem)] overflow-y-auto overscroll-contain focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+      /* max-h-full, not a viewport formula: the wrapper in TravelMap is
+         bounded to the map area, so the card cannot outgrow it (the old
+         100dvh math ignored the header and slid under the top bar). On
+         phones it also stops at 60% of the screen - a country card
+         should peek over the map, not replace it (owner, 2026-08-18). */
+      className="map-glass rounded-2xl border shadow-xl p-4 w-full max-w-sm [max-height:min(100%,60dvh)] sm:[max-height:100%] overflow-y-auto overscroll-contain pointer-events-auto focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
