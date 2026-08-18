@@ -31,8 +31,17 @@ function ContrailLoader({
         aria-hidden="true"
         className="w-12 h-12 text-brand-600"
       >
+        {/* The route: the whole arc, faint - the mark never vanishes. */}
         <path
-          className="contrail-loader-arc"
+          className="contrail-loader-route"
+          d="M17.06 40.92 A 32 32 0 0 1 48 18"
+          stroke="currentColor"
+          strokeWidth="4.5"
+          strokeLinecap="round"
+        />
+        {/* The comet gliding along it, endlessly and seamlessly. */}
+        <path
+          className="contrail-loader-comet"
           d="M17.06 40.92 A 32 32 0 0 1 48 18"
           pathLength={1}
           stroke="currentColor"
