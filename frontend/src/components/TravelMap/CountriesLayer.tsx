@@ -241,6 +241,9 @@ function CountriesLayer({
               */
               tabIndex={-1}
               aria-hidden="true"
+              /* The tap chooser reads the country under an ambiguous tap
+                 via elementsFromPoint (2026-08-18). */
+              data-country-iso={isoCode ?? undefined}
               onClick={() => {
                 // The hold already acted; do not also treat it as a tap.
                 if (pressFiredRef.current) {

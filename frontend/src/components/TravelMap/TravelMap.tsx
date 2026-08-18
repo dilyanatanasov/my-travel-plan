@@ -54,6 +54,7 @@ import { useSearchLanding } from './useSearchLanding';
 import { useCountryInteraction } from './useCountryInteraction';
 import ReplayControl from './ReplayControl';
 import GlobeView from './GlobeView';
+import RouteChooser from './RouteChooser';
 import type { AggregatedRoute } from '../FlightMap/routeUtils';
 import { fitToPoints, type LonLat } from './fitBounds';
 
@@ -362,6 +363,31 @@ function TravelMap() {
     if (consumed || wasDragRef.current) return;
     setSelectedJourney(null);
   }, []);
+
+  /*
+    The tap chooser (owner pick, 2026-08-18): a tap where several route
+    hit strokes stack opens a "which did you mean" popover instead of
+    selecting whichever painted last - including the country buried
+    under the bundle.
+  */
+  const [routeChooser, setRouteChooser] = useState<{
+    candidates: AggregatedRoute[];
+    point: { x: number; y: number };
+    countryIso: string | null;
+  } | null>(null);
+
+  const handleAmbiguousTap = useCallback(
+    (
+      candidates: AggregatedRoute[],
+      point: { x: number; y: number },
+      countryIso: string | null,
+    ) => {
+      if (wasDragRef.current || replay.isActive) return;
+      clickConsumedRef.current = true;
+      setRouteChooser({ candidates, point, countryIso });
+    },
+    [replay.isActive],
+  );
 
   const handleSelectRoute = useCallback((route: AggregatedRoute) => {
     if (wasDragRef.current) return;
@@ -694,8 +720,15 @@ function TravelMap() {
     receives it as a slot. Same berth as the journey card — they are never
     open together (and the globe has no journey selection at all).
   */
+  /*
+    The card's ceiling is its CONTAINER, not the viewport (owner report,
+    2026-08-18: Bulgaria's four airports pushed it under the top bar on
+    mobile). The wrapper now spans from below the map's top controls to
+    the card's bottom anchor; the card fills upward inside it and can
+    never leave the map area. justify-end keeps it hugging the bottom.
+  */
   const countryDetailCard = openCountry && !selectedJourney && (
-    <div className="absolute z-20 left-3 right-3 sm:right-auto bottom-20 lg:bottom-4 lg:left-auto lg:right-20">
+    <div className="absolute z-20 left-3 right-3 sm:right-auto sm:w-96 bottom-20 lg:bottom-4 lg:left-auto lg:right-20 top-16 md:top-3 flex flex-col justify-end pointer-events-none">
       <CountryDetailCard
         countryName={openCountry.name}
         isoAlpha2={openCountry.isoAlpha2}
@@ -862,6 +895,7 @@ function TravelMap() {
                 hoveredRouteKey={selectedJourney ? null : hoveredRoute?.key || null}
                 onHover={selectedJourney ? () => undefined : handleRouteHover}
                 onSelect={handleSelectRoute}
+                onAmbiguous={handleAmbiguousTap}
                 sizeScale={markerScale}
                 faded={Boolean(selectedJourney) || replay.isActive}
               />
@@ -1087,7 +1121,34 @@ function TravelMap() {
       {/* Hover-only. On touch the route's details are in the card instead. */}
       {canHover && (
         <>
-          <RouteTooltip route={hoveredRoute} position={tooltipPosition} />
+          {/* The hover tooltip yields while the chooser is open - it sat
+              exactly on top of the chooser's first row. */}
+          {!routeChooser && (
+            <RouteTooltip route={hoveredRoute} position={tooltipPosition} />
+          )}
+          {routeChooser && !replay.isActive && (
+            <RouteChooser
+              candidates={routeChooser.candidates}
+              point={routeChooser.point}
+              countryName={
+                routeChooser.countryIso
+                  ? (countries.find(
+                      (country) => country.isoCode === routeChooser.countryIso,
+                    )?.name ?? null)
+                  : null
+              }
+              onPickRoute={(route) => {
+                setRouteChooser(null);
+                handleSelectRoute(route);
+              }}
+              onPickCountry={() => {
+                const iso = routeChooser.countryIso;
+                setRouteChooser(null);
+                if (iso) handleCountryClick(iso);
+              }}
+              onClose={() => setRouteChooser(null)}
+            />
+          )}
           {!hoveredRoute && (
             <CountryTooltip name={hoveredCountry} position={tooltipPosition} />
           )}

@@ -26,6 +26,17 @@ interface FlightRoutesProps {
   /** Omit to render non-interactive routes, as the public shared map does. */
   onSelect?: (route: AggregatedRoute) => void;
   /**
+   * A tap where several routes' hit strokes overlap (owner pick,
+   * 2026-08-18: "tap chooser"): instead of silently selecting whichever
+   * path painted last, hand every candidate - plus the country under
+   * the tap, if any - to the caller's chooser popover.
+   */
+  onAmbiguous?: (
+    candidates: AggregatedRoute[],
+    point: { x: number; y: number },
+    countryIso: string | null,
+  ) => void;
+  /**
    * When a journey is selected the other routes fade almost to nothing so the
    * selection stands alone — but they stay clickable, so switching to another
    * journey is one tap rather than "clear, then click again".
@@ -40,8 +51,39 @@ function FlightRoutes({
   onHover,
   sizeScale = 1,
   onSelect,
+  onAmbiguous,
   faded = false,
 }: FlightRoutesProps) {
+  /*
+    One tap, every candidate: the browser already knows the full stack
+    of elements under the pointer, so ambiguity detection is a walk of
+    elementsFromPoint for our own data attributes - no geometry math.
+  */
+  const handleRouteClick = (
+    route: AggregatedRoute,
+    event: React.MouseEvent,
+  ) => {
+    if (!onSelect) return;
+    if (onAmbiguous) {
+      const stack = document.elementsFromPoint(event.clientX, event.clientY);
+      const keys = new Set<string>();
+      let countryIso: string | null = null;
+      for (const element of stack) {
+        const key = element.getAttribute('data-route-key');
+        if (key) keys.add(key);
+        if (!countryIso) countryIso = element.getAttribute('data-country-iso');
+      }
+      if (keys.size > 1) {
+        onAmbiguous(
+          routes.filter((candidate) => keys.has(candidate.key)),
+          { x: event.clientX, y: event.clientY },
+          countryIso,
+        );
+        return;
+      }
+    }
+    onSelect(route);
+  };
   const { map: colors } = useMapColors();
   const { projection } = useMapContext();
   const { k: zoom } = useZoomPanContext();
@@ -162,10 +204,11 @@ function FlightRoutes({
               stroke="transparent"
               strokeWidth={getZoomAdjustedSize(22, zoom)}
               strokeLinecap="round"
+              data-route-key={route.key}
               style={{ cursor: onSelect ? 'pointer' : 'default' }}
               onMouseEnter={(e) => onHover(route, e)}
               onMouseLeave={() => onHover(null)}
-              onClick={() => onSelect?.(route)}
+              onClick={(e) => handleRouteClick(route, e)}
             />
             {/* The smooth path always exists: hidden under a wavy ferry
                 trail, it stays the honest track the video sampler reads. */}
