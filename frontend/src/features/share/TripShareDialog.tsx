@@ -5,6 +5,7 @@ import MapExportCanvas from '../../components/TravelMap/MapExportCanvas';
 import {
   renderTripCard,
   findExportSvg,
+  waitForGeography,
   canShareFiles,
   TRIP_SVG_ID,
   type TripContent,
@@ -176,6 +177,25 @@ function TripShareDialog({
       return;
     }
     setVideoProgress(0);
+    /*
+      The same readiness the card render waits for (owner repro,
+      2026-08-18): data-framed settles from airport coordinates before
+      the world atlas has downloaded, so a quick "Create video" on a
+      fresh dialog filmed an empty ocean - clicking Share first "fixed"
+      it only because the card path waited for the geography.
+    */
+    try {
+      await waitForGeography(svg);
+    } catch (geoError) {
+      setVideoProgress(null);
+      showToast(
+        geoError instanceof Error
+          ? geoError.message
+          : 'The map is still loading - try again in a moment',
+        { tone: 'error' },
+      );
+      return;
+    }
     const objectUrls: string[] = [];
     try {
       const km = legs.reduce(

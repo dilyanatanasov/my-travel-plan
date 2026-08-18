@@ -239,7 +239,14 @@ function drawMapCover(
  */
 const MIN_GEOGRAPHY_PATHS = 60;
 
-async function waitForGeography(svg: SVGSVGElement, timeoutMs = 30000) {
+/**
+ * Exported for the trip VIDEO too (owner repro, 2026-08-18: "share
+ * first, then video works" - the card path waited for the world's
+ * paths, the video path checked only data-framed, which settles from
+ * airport coordinates long before the 756KB atlas arrives; a fast
+ * click filmed an empty ocean).
+ */
+export async function waitForGeography(svg: SVGSVGElement, timeoutMs = 30000) {
   const deadline = Date.now() + timeoutMs;
   const ready = () =>
     svg.querySelectorAll('path').length >= MIN_GEOGRAPHY_PATHS &&

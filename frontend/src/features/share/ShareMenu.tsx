@@ -14,6 +14,7 @@ import {
 import MapExportCanvas, {
   EXPORT_SVG_ID,
 } from '../../components/TravelMap/MapExportCanvas';
+import { waitForGeography } from '../../utils/shareCard';
 import { useGetVisitsQuery } from '../visits/visitsApi';
 import { useGetFlightStatsQuery } from '../flights/flightsApi';
 import { Link } from 'react-router-dom';
@@ -126,6 +127,10 @@ function ShareMenu() {
     setIsExporting(true);
     setVideoProgress(0);
     try {
+      // Same readiness the card render waits for: the framing settles
+      // before the world atlas download does, and a backdrop serialised
+      // in that gap is an empty ocean (owner repro, 2026-08-18).
+      await waitForGeography(svg);
       const blob = await renderMapVideo(svg, buildCaption(), setVideoProgress);
       // MP4 where the browser can (story-friendly), WebM elsewhere.
       downloadBlob(blob, `travel-map.${videoFileExtension(blob.type)}`);
