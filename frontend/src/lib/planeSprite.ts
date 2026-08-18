@@ -143,6 +143,16 @@ export function headlightAlphas(timeMs: number): { lamp: number; beam: number } 
 export const HALO_WIDTH = 3.4;
 export const HALO_INNER_WIDTH = 0.7;
 
+/*
+  The sticker's own colors (owner report, 2026-08-18: an ocean-toned
+  halo blends into plain land, which is nearly the same cream). The
+  approved design-sheet look is theme-INDEPENDENT: ink glyph, warm
+  white ring - a sticker reads on any background, which is the point.
+  The videos keep their own palettes (ticket ink, dark-backdrop rose).
+*/
+export const VEHICLE_INK = '#201e1d';
+export const HALO_COLOR = '#fffdf6';
+
 export interface PlaneSpriteOptions {
   x: number;
   y: number;

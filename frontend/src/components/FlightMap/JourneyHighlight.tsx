@@ -9,6 +9,7 @@ import type { FlightJourney } from '../../types';
 // The glyphs live in lib/planeSprite, shared with the canvas video
 // renderers so every surface drives the same vehicles.
 import VehicleGlyph from './VehicleGlyph';
+import { VEHICLE_INK, HALO_COLOR } from '../../lib/planeSprite';
 import { legEndpoints, legMode } from './routeUtils';
 
 interface JourneyHighlightProps {
@@ -374,8 +375,8 @@ function JourneyHighlight({
               <VehicleGlyph
                 mode={modes[0] ?? 'flight'}
                 transform={`scale(${planeScaleShared}) translate(-12 -12)`}
-                fill={colors.routeHighlight}
-                outline={colors.planeOutline}
+                fill={VEHICLE_INK}
+                outline={HALO_COLOR}
               />
             ) : (
               /*
@@ -419,8 +420,8 @@ function JourneyHighlight({
                   <VehicleGlyph
                     mode={window.mode}
                     transform={`scale(${planeScaleShared}) translate(-12 -12)`}
-                    fill={colors.routeHighlight}
-                    outline={colors.planeOutline}
+                    fill={VEHICLE_INK}
+                    outline={HALO_COLOR}
                   />
                 </g>
               ))

@@ -3,6 +3,7 @@ import { useMapContext } from 'react-simple-maps';
 import type { LineString } from 'geojson';
 import type { FlightJourney } from '../../types';
 import VehicleGlyph from '../FlightMap/VehicleGlyph';
+import { VEHICLE_INK, HALO_COLOR } from '../../lib/planeSprite';
 import { useMapColors } from '../../theme/mapColors';
 import { cameraCenter, isOnVisibleSide, type PlaneFrame } from './globeUtils';
 
@@ -126,8 +127,8 @@ function GlobeJourney({ journey, plane, sizeScale = 1 }: GlobeJourneyProps) {
           <VehicleGlyph
             mode={plane.mode}
             transform={`scale(${planeScale}) translate(-12 -12)`}
-            fill={colors.routeHighlight}
-            outline={colors.planeOutline}
+            fill={VEHICLE_INK}
+            outline={HALO_COLOR}
           />
         </g>
       )}
