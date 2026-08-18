@@ -20,7 +20,8 @@ import {
 import { useToast } from '../../components/Toast/ToastProvider';
 import { useAuth } from '../auth/authApi';
 import { useGetLegPhotoIdsQuery } from '../flights/flightsApi';
-import { legEndpoints } from '../../components/FlightMap/routeUtils';
+import { legEndpoints, legMode } from '../../components/FlightMap/routeUtils';
+import { ensureTerrainWaypoints, modeMedium } from '../../lib/terrainRoute';
 import { formatJourneyDate } from '../../utils/journeyDate';
 import { track } from '../../lib/analytics';
 import Button from '../../components/ui/Button';
@@ -209,6 +210,36 @@ function TripShareDialog({
             return null;
           }
         }),
+      );
+
+      /*
+        Terrain routes must be IN before any scene is captured: on a cold
+        cache the router answers a beat after first render, and a scene
+        snapped in that beat would film the ferry cutting the straight
+        chord across a cape (self-review, 2026-08-18). Resolved answers
+        return instantly from the module cache.
+      */
+      await Promise.all(
+        legs.map((leg) => {
+          const medium = modeMedium(legMode(leg));
+          const endpoints = legEndpoints(leg);
+          if (!medium || !endpoints) return null;
+          return ensureTerrainWaypoints(
+            [
+              Number(endpoints.departure.longitude),
+              Number(endpoints.departure.latitude),
+            ],
+            [
+              Number(endpoints.arrival.longitude),
+              Number(endpoints.arrival.latitude),
+            ],
+            medium,
+          );
+        }),
+      );
+      // One settle frame so FlightRoutes re-renders with the answers.
+      await new Promise((r) =>
+        requestAnimationFrame(() => requestAnimationFrame(r)),
       );
 
       /*

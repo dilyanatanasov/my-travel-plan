@@ -109,7 +109,7 @@ function FlightStats() {
           value={`${formatNumber(Math.round(stats.totalDistanceKm))} km`}
           subtitle={
             stats.overlandDistanceKm && stats.overlandDistanceKm > 0
-              ? `+ ${formatNumber(Math.round(stats.overlandDistanceKm))} km overland`
+              ? `+ ${formatNumber(Math.round(stats.overlandDistanceKm))} km by land & sea`
               : `${stats.earthCircumferences.toFixed(1)}× around Earth`
           }
           color="green"
@@ -163,11 +163,12 @@ function FlightStats() {
         </div>
       </div>
 
-      {/* Overland: the ground tally, deliberately separate from every
-          flight number - a train ride must never inflate "distance flown". */}
+      {/* The surface tally, deliberately separate from every flight
+          number - a train ride must never inflate "distance flown".
+          "Land & sea", not "Overland": ferries live here too. */}
       {stats.overlandByMode && stats.overlandByMode.length > 0 && (
         <div className="bg-surface rounded-xl border border-line p-4">
-          <h4 className="text-sm text-ink-muted mb-2">Overland</h4>
+          <h4 className="text-sm text-ink-muted mb-2">Land & sea</h4>
           <div className="flex flex-wrap gap-x-6 gap-y-2">
             {stats.overlandByMode.map((row) => (
               <div key={row.mode} className="flex items-center gap-2">
