@@ -3,7 +3,8 @@ import { useMapContext } from 'react-simple-maps';
 import type { LineString } from 'geojson';
 import type { FlightJourney } from '../../types';
 import VehicleGlyph from '../FlightMap/VehicleGlyph';
-import { legEndpoints } from '../FlightMap/routeUtils';
+import { legEndpoints, legMode } from '../FlightMap/routeUtils';
+import { modeMedium, terrainWaypointsSync } from '../../lib/terrainRoute';
 import { VEHICLE_INK, HALO_COLOR } from '../../lib/planeSprite';
 import { useMapColors } from '../../theme/mapColors';
 import { cameraCenter, isOnVisibleSide, type PlaneFrame } from './globeUtils';
@@ -45,12 +46,15 @@ function GlobeJourney({ journey, plane, sizeScale = 1 }: GlobeJourneyProps) {
     const endpoints = legEndpoints(leg);
     if (!endpoints) return null;
     const { departure: dep, arrival: arr } = endpoints;
+    const from: [number, number] = [Number(dep.longitude), Number(dep.latitude)];
+    const to: [number, number] = [Number(arr.longitude), Number(arr.latitude)];
+    // Surface legs draw their terrain route when the router has one - the
+    // cache is warmed by GlobeView's replay hook, so no hook needed here.
+    const medium = modeMedium(legMode(leg));
+    const waypoints = medium ? terrainWaypointsSync(from, to, medium) : null;
     const line: LineString = {
       type: 'LineString',
-      coordinates: [
-        [Number(dep.longitude), Number(dep.latitude)],
-        [Number(arr.longitude), Number(arr.latitude)],
-      ],
+      coordinates: waypoints ?? [from, to],
     };
     return path(line) || null;
   };
@@ -91,6 +95,11 @@ function GlobeJourney({ journey, plane, sizeScale = 1 }: GlobeJourneyProps) {
         const d = legLine(leg);
         if (!d) return null;
         const width = 2.4 * sizeScale;
+        // Trail signatures, globe edition: land dotted like the flat map.
+        // The ferry keeps a solid line here - its terrain route already
+        // reads as a sea lane, and a screen-space wave fights geoPath.
+        const mode = legMode(leg);
+        const dotted = mode !== 'flight' && mode !== 'ferry';
         return (
           <g key={leg.id ?? `${leg.legOrder}`}>
             {/* Soft glow, then solid base — the flat highlight's layering. */}
@@ -108,6 +117,7 @@ function GlobeJourney({ journey, plane, sizeScale = 1 }: GlobeJourneyProps) {
               stroke={colors.selected}
               strokeWidth={width}
               strokeLinecap="round"
+              strokeDasharray={dotted ? `0.1 ${4.5 * sizeScale}` : undefined}
             />
           </g>
         );

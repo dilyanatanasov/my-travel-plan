@@ -77,7 +77,13 @@ export function videoFileExtension(mimeType: string): 'mp4' | 'webm' {
 function sampleRoutes(svg: SVGSVGElement): RouteSamples[] {
   const paths = [
     ...svg.querySelectorAll<SVGPathElement>('.flight-routes path'),
-  ].filter((p) => p.getAttribute('stroke') !== 'transparent');
+  ].filter(
+    (p) =>
+      p.getAttribute('stroke') !== 'transparent' &&
+      // The ferry's wavy trail is drawn geometry only - the smooth twin
+      // carrying data-travel-mode is the track vehicles actually sail.
+      p.getAttribute('data-decorative') !== 'true',
+  );
 
   return paths
     .map((path) => {
@@ -99,6 +105,49 @@ function sampleRoutes(svg: SVGSVGElement): RouteSamples[] {
       return { points, length, mode };
     })
     .filter((r): r is RouteSamples => r !== null);
+}
+
+/**
+ * Trail signatures in canvas (owner ask, 2026-08-18): the ferry's drawn
+ * trail undulates. The samples are dense (24-160 per route), so shifting
+ * each point sideways by a sinusoid of the distance travelled reads as a
+ * smooth wave - while the vehicle itself keeps riding the smooth samples,
+ * steady on its heading.
+ */
+function wavyTrailPoints(
+  points: { x: number; y: number }[],
+  amplitude = 3,
+  wavelength = 26,
+): { x: number; y: number }[] {
+  if (points.length < 3) return points;
+  const cumulative: number[] = [0];
+  for (let i = 1; i < points.length; i++) {
+    cumulative.push(
+      cumulative[i - 1] +
+        Math.hypot(points[i].x - points[i - 1].x, points[i].y - points[i - 1].y),
+    );
+  }
+  return points.map((point, i) => {
+    if (i === 0 || i === points.length - 1) return point;
+    const prev = points[i - 1];
+    const next = points[i + 1];
+    const dx = next.x - prev.x;
+    const dy = next.y - prev.y;
+    const len = Math.hypot(dx, dy) || 1;
+    const swing =
+      amplitude * Math.sin((cumulative[i] / wavelength) * Math.PI * 2);
+    return { x: point.x + (-dy / len) * swing, y: point.y + (dx / len) * swing };
+  });
+}
+
+/** Land trails are dotted, water waves, air stays solid - one place so
+    both film renderers speak the same language as the map. */
+function applyTrailDash(
+  ctx: CanvasRenderingContext2D,
+  mode: RouteMode,
+  dotGap: number,
+): void {
+  if (mode !== 'flight' && mode !== 'ferry') ctx.setLineDash([0.1, dotGap]);
 }
 
 function serializeWithoutRoutes(
@@ -268,18 +317,21 @@ export async function renderMapVideo(
         };
 
         // Trail up to the head, following it exactly. Land trails are
-        // dashed - the overland signature carries into the film.
+        // dotted, the ferry's waves - the map's signatures carry into
+        // the film. The head itself stays on the smooth samples.
+        const trailPoints =
+          route.mode === 'ferry' ? wavyTrailPoints(points) : points;
         ctx.beginPath();
-        ctx.moveTo(points[0].x, points[0].y);
+        ctx.moveTo(trailPoints[0].x, trailPoints[0].y);
         for (let i = 1; i <= i0; i++) {
-          ctx.lineTo(points[i].x, points[i].y);
+          ctx.lineTo(trailPoints[i].x, trailPoints[i].y);
         }
         ctx.lineTo(head.x, head.y);
         ctx.strokeStyle = '#60a5fa';
         ctx.lineWidth = 2;
         ctx.lineCap = 'round';
         ctx.globalAlpha = 0.85;
-        if (route.mode !== 'flight') ctx.setLineDash([7, 6]);
+        applyTrailDash(ctx, route.mode, 6);
         ctx.stroke();
         ctx.setLineDash([]);
         ctx.globalAlpha = 1;
@@ -482,17 +534,19 @@ export async function renderTripVideo(
         y: points[i0].y + (points[i0 + 1].y - points[i0].y) * frac,
       };
 
+      const trailPoints =
+        scene.mode === 'ferry' ? wavyTrailPoints(points, 4, 34) : points;
       ctx.beginPath();
-      ctx.moveTo(points[0].x, points[0].y);
+      ctx.moveTo(trailPoints[0].x, trailPoints[0].y);
       for (let i = 1; i <= i0; i++) {
-        ctx.lineTo(points[i].x, points[i].y);
+        ctx.lineTo(trailPoints[i].x, trailPoints[i].y);
       }
       ctx.lineTo(head.x, head.y);
       ctx.strokeStyle = TICKET_TRAIL;
       ctx.lineWidth = 3;
       ctx.lineCap = 'round';
       ctx.globalAlpha = 0.9;
-      if (scene.mode !== 'flight') ctx.setLineDash([9, 7]);
+      applyTrailDash(ctx, scene.mode, 7);
       ctx.stroke();
       ctx.setLineDash([]);
       ctx.globalAlpha = 1;

@@ -32,10 +32,11 @@ function DailyCard() {
         ? 'Revealed - revenge tomorrow'
         : 'Guess the country from its shape';
 
+  // Play is an explore verb, so the card speaks teal (2026-08-18).
   return (
     <Link
       to="/daily"
-      className="block bg-surface border border-line rounded-2xl p-4 shadow-sm hover:border-brand-400 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+      className="block bg-secondary-soft/40 border border-secondary-600/30 rounded-2xl p-4 shadow-sm hover:border-secondary-600/70 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-secondary-600"
     >
       <div className="flex items-baseline justify-between gap-2 mb-1">
         <h3 className="text-sm font-semibold text-ink">Daily country</h3>
@@ -43,7 +44,7 @@ function DailyCard() {
       </div>
       <p className="text-xs text-ink-muted">{status}</p>
       {stats.streak > 0 && (
-        <p className="text-xs text-brand-700 font-medium mt-1.5">
+        <p className="text-xs text-secondary-text font-medium mt-1.5">
           🔥 {stats.streak}-day streak
           {stats.maxStreak > stats.streak ? ` · best ${stats.maxStreak}` : ''}
         </p>

@@ -7,6 +7,8 @@ import {
   BEAM_SPREAD,
   HALO_WIDTH,
   HALO_INNER_WIDTH,
+  VEHICLE_INK,
+  HALO_COLOR,
 } from '../../lib/planeSprite';
 import type { TravelMode } from '../../types';
 import PlaneGlyph from './PlaneGlyph';
@@ -32,12 +34,51 @@ function VehicleGlyph({ mode, transform, fill, outline }: VehicleGlyphProps) {
   const lights = VEHICLE_LIGHTS[mode] ?? [];
   return (
     <g transform={transform}>
-      {/* The ferry's wake: diverging foam drifting astern via CSS. */}
+      {/* The ferry's wake and steam, starting astern of the halo (the
+          first cut hid under the hull) - ink shadow beneath sticker-white
+          foam so the churn reads on any sea. Motion via CSS (.ferry-*). */}
       {mode === 'ferry' && (
-        <g stroke="#f4fbfa" strokeWidth={1.1} strokeLinecap="round" fill="none">
-          <path className="ferry-wake ferry-wake-a" d="M1.4 11 L3.4 11.6 M1.4 13 L3.4 12.4" />
-          <path className="ferry-wake ferry-wake-b" d="M1.4 10.4 L3.4 11.2 M1.4 13.6 L3.4 12.8" />
-          <path className="ferry-wake ferry-wake-c" d="M1.4 9.8 L3.4 10.8 M1.4 14.2 L3.4 13.2" />
+        <g fill="none" strokeLinecap="round">
+          {[
+            { stroke: VEHICLE_INK, width: 1.8, opacity: 0.45 },
+            { stroke: HALO_COLOR, width: 1, opacity: 1 },
+          ].map((layer) => (
+            <g
+              key={layer.stroke}
+              stroke={layer.stroke}
+              strokeWidth={layer.width}
+              opacity={layer.opacity}
+            >
+              <path
+                className="ferry-wake ferry-wake-a"
+                d="M0.2 10.9 L2 11.5 M0.2 13.1 L2 12.5"
+              />
+              <path
+                className="ferry-wake ferry-wake-b"
+                d="M0.2 10.4 L2 11.2 M0.2 13.6 L2 12.8"
+              />
+              <path
+                className="ferry-wake ferry-wake-c"
+                d="M0.2 9.9 L2 10.9 M0.2 14.1 L2 13.1"
+              />
+            </g>
+          ))}
+          {[
+            { className: 'ferry-steam ferry-steam-a', cy: 11.6 },
+            { className: 'ferry-steam ferry-steam-b', cy: 12.4 },
+            { className: 'ferry-steam ferry-steam-c', cy: 12 },
+          ].map((puff) => (
+            <circle
+              key={puff.className}
+              className={puff.className}
+              cx={-0.6}
+              cy={puff.cy}
+              r={1}
+              fill={HALO_COLOR}
+              stroke={VEHICLE_INK}
+              strokeWidth={0.25}
+            />
+          ))}
         </g>
       )}
       {lights.map((light, index) => (

@@ -20,6 +20,7 @@ import {
   stopLoopStatus,
   syncStopsWithMode,
   resolveFlightEndpoints,
+  ferryCoastWarnings,
   HOP_MODES,
   MODE_LABEL,
 } from './stopChain';
@@ -209,6 +210,14 @@ function FlightCard({
           key: 'stop-kind-sync',
         });
       }
+    }
+    // The coastal heads-up, same rule as the add form: warn, never block.
+    const coastWarnings = await ferryCoastWarnings(chainStops, chainModes);
+    if (coastWarnings.length > 0) {
+      showToast(
+        `Heads up: ${coastWarnings.join(', ')} looks far from open water for a ferry - saving anyway`,
+        { key: 'ferry-coast' },
+      );
     }
     const original = journeyToStops(journey);
     const identity = (stops: EditableStop[], modes: TravelMode[]) =>
@@ -556,7 +565,11 @@ function FlightCard({
                         ? 'This stop is an airport - switch to a city'
                         : 'This stop is a city - switch to an airport'
                     }
-                    className="flex-shrink-0 min-h-7 px-1.5 rounded-lg bg-surface-sunken text-ink-muted hover:text-ink"
+                    className={`flex-shrink-0 min-h-7 px-1.5 rounded-lg ${
+                      stop.kind === 'city'
+                        ? 'bg-secondary-soft/70 text-secondary-text hover:text-secondary-text'
+                        : 'bg-surface-sunken text-ink-muted hover:text-ink'
+                    }`}
                   >
                     {stop.kind === 'airport' ? (
                       <ModeIcon mode="flight" className="w-4 h-4" />

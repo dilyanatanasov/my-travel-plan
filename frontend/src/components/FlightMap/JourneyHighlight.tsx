@@ -1,6 +1,19 @@
-import { memo, useEffect, useRef } from 'react';
+import { memo, useEffect, useMemo, useRef } from 'react';
 import { useMapContext, useZoomPanContext } from 'react-simple-maps';
-import { calculateArcPath, getZoomAdjustedSize } from './routeUtils';
+import {
+  calculateArcPath,
+  getZoomAdjustedSize,
+  roundedPolylinePath,
+  polylineScreenLength,
+  stripLeadingMove,
+  wavyPolylinePath,
+} from './routeUtils';
+import {
+  modeMedium,
+  terrainWaypointsSync,
+  type TerrainRequest,
+} from '../../lib/terrainRoute';
+import { useTerrainRoutes } from '../../hooks/useTerrainRoutes';
 import { buildFlightTimeline } from './flightTimeline';
 import { useMapColors } from '../../theme/mapColors';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
@@ -74,6 +87,41 @@ function JourneyHighlight({
   // One per leg on mixed-mode journeys: the glyph-swap opacity animates
   // share the same clock, so they begin in the same batch.
   const swapRefs = useRef<(Beginable | null)[]>([]);
+
+  const legs = [...(journey.legs ?? [])].sort((a, b) => a.legOrder - b.legOrder);
+
+  /*
+    Terrain routing (2026-08-18): surface legs bend around what they
+    cannot cross. The hook triggers a re-render when the router answers;
+    the SMIL clocks restart cleanly because the journeyPath they ride
+    changes with it.
+  */
+  const terrainRequests = useMemo<TerrainRequest[]>(
+    () =>
+      legs.flatMap((leg) => {
+        const medium = modeMedium(legMode(leg));
+        const endpoints = legEndpoints(leg);
+        if (!medium || !endpoints) return [];
+        return [
+          {
+            from: [
+              Number(endpoints.departure.longitude),
+              Number(endpoints.departure.latitude),
+            ] as [number, number],
+            to: [
+              Number(endpoints.arrival.longitude),
+              Number(endpoints.arrival.latitude),
+            ] as [number, number],
+            medium,
+          },
+        ];
+      }),
+    // legs is derived fresh from the journey each render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [journey],
+  );
+  const terrainVersion = useTerrainRoutes(terrainRequests);
+
   useEffect(() => {
     const frame = requestAnimationFrame(() => {
       const refs = [
@@ -92,14 +140,16 @@ function JourneyHighlight({
       }
     });
     return () => cancelAnimationFrame(frame);
-  }, [journey.id]);
+    // terrainVersion: when the router reroutes a leg mid-animation the
+    // motion path changes shape, so the clocks restart from the origin
+    // rather than resuming at a keyPoint of a different path.
+  }, [journey.id, terrainVersion]);
 
   const { map: colors } = useMapColors();
   const { projection } = useMapContext();
   const { k: zoom } = useZoomPanContext();
   const prefersReducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)');
 
-  const legs = [...(journey.legs ?? [])].sort((a, b) => a.legOrder - b.legOrder);
   /*
     Slow enough to be ambient rather than agitating, and staggered so a
     multi-leg journey reads as a sequence rather than moving in lockstep.
@@ -123,25 +173,42 @@ function JourneyHighlight({
       const to = projection([Number(arr.longitude), Number(arr.latitude)]);
       if (!from || !to) return null;
       const mode = legMode(leg);
-      return {
-        leg,
-        mode,
-        // A land leg draws as a straight chord - things on the ground do
-        // not bow through the sky. Curvature 0 keeps the same Q-path
-        // shape, so the splice below still works.
-        pathD: calculateArcPath(
-          from as [number, number],
-          to as [number, number],
-          mode === 'flight' ? 0.2 : 0,
-        ),
-        // Projected chord length: the weight that maps time onto keyPoints,
-        // so a pause lands exactly on the airport rather than at a km-based
-        // guess distorted by the projection.
-        screenLen: Math.hypot(
-          (to as [number, number])[0] - (from as [number, number])[0],
-          (to as [number, number])[1] - (from as [number, number])[1],
-        ),
-      };
+      // A land leg draws as a straight chord - things on the ground do
+      // not bow through the sky - unless the terrain router has found
+      // the way around a coastline, in which case it follows that.
+      let pathD = calculateArcPath(
+        from as [number, number],
+        to as [number, number],
+        mode === 'flight' ? 0.2 : 0,
+      );
+      // Projected path length: the weight that maps time onto keyPoints,
+      // so a pause lands exactly on the airport rather than at a km-based
+      // guess distorted by the projection.
+      let screenLen = Math.hypot(
+        (to as [number, number])[0] - (from as [number, number])[0],
+        (to as [number, number])[1] - (from as [number, number])[1],
+      );
+      const medium = modeMedium(mode);
+      let chainPoints: [number, number][] = [
+        from as [number, number],
+        to as [number, number],
+      ];
+      if (medium) {
+        const waypoints = terrainWaypointsSync(
+          [Number(dep.longitude), Number(dep.latitude)],
+          [Number(arr.longitude), Number(arr.latitude)],
+          medium,
+        );
+        if (waypoints) {
+          const projected = waypoints.map((point) => projection(point));
+          if (projected.every((p): p is [number, number] => Boolean(p))) {
+            pathD = roundedPolylinePath(projected);
+            screenLen = polylineScreenLength(projected);
+            chainPoints = projected;
+          }
+        }
+      }
+      return { leg, mode, pathD, screenLen, chainPoints };
     })
     .filter(
       (
@@ -151,6 +218,7 @@ function JourneyHighlight({
         mode: ReturnType<typeof legMode>;
         pathD: string;
         screenLen: number;
+        chainPoints: [number, number][];
       } => entry !== null,
     );
 
@@ -164,7 +232,7 @@ function JourneyHighlight({
     leg had three aircraft in the air at once on the same itinerary.
   */
   const journeyPath = drawn
-    .map(({ pathD }, index) => (index === 0 ? pathD : pathD.replace(/^M[^Q]*/, '')))
+    .map(({ pathD }, index) => (index === 0 ? pathD : stripLeadingMove(pathD)))
     .join(' ');
 
   // 13, not 9: at 9 the glyph was ~8px and sat directly on top of a route
@@ -208,19 +276,33 @@ function JourneyHighlight({
 
   return (
     <g className="journey-highlight">
-      {drawn.map(({ leg, mode, pathD }, index) => {
+      {drawn.map(({ leg, mode, pathD, chainPoints }, index) => {
         const width = getZoomAdjustedSize(2.4 * sizeScale, zoom);
         const dash = getZoomAdjustedSize(7, zoom);
         const gap = getZoomAdjustedSize(9, zoom);
         // The glyph is drawn in a 24-unit box, so this converts it to roughly
         // the diameter the old marker dot had.
         const delay = (index * legDuration) / Math.max(legs.length, 1);
+        /*
+          Trail signatures (owner ask, 2026-08-18): air solid, land
+          dotted, water wavy. The wave lives only in the drawn trail;
+          the ship's motion path stays smooth, or its heading would
+          wobble the whole crossing.
+        */
+        const trailD =
+          mode === 'ferry'
+            ? wavyPolylinePath(
+                chainPoints,
+                getZoomAdjustedSize(1.7, zoom),
+                getZoomAdjustedSize(10, zoom),
+              )
+            : pathD;
 
         return (
           <g key={leg.id ?? `${leg.legOrder}-${index}`}>
             {/* Soft outer glow, so the line separates from whatever is under it */}
             <path
-              d={pathD}
+              d={trailD}
               fill="none"
               stroke={colors.selectedGlow}
               strokeWidth={width * 2.6}
@@ -229,16 +311,19 @@ function JourneyHighlight({
               pointerEvents="none"
             />
             {/* Solid base so the leg is legible with motion disabled.
-                Land legs are dashed - the ground-travel signature, same
-                language as the aggregate route layer. */}
+                Land legs are dotted - the ground-travel signature, same
+                language as the aggregate route layer; the ferry's wave
+                needs no dash on top. */}
             <path
-              d={pathD}
+              d={trailD}
               fill="none"
               stroke={colors.selected}
               strokeWidth={width}
               strokeLinecap="round"
               strokeDasharray={
-                mode !== 'flight' ? `${dash * 0.8} ${gap * 0.55}` : undefined
+                mode !== 'flight' && mode !== 'ferry'
+                  ? `0.1 ${gap * 0.55}`
+                  : undefined
               }
               pointerEvents="none"
             />
@@ -246,7 +331,7 @@ function JourneyHighlight({
                 start (departure) to its end (arrival). */}
             <path
               className="route-flow"
-              d={pathD}
+              d={trailD}
               fill="none"
               stroke="#ffffff"
               strokeWidth={width * 0.62}
@@ -289,7 +374,7 @@ function JourneyHighlight({
           <animateMotion>, which keeps its own clock: the plane carried on
           from wherever it had got to and joined the next route mid-way.
         */
-        <g key={journey.id} pointerEvents="none">
+        <g key={`${journey.id}-${terrainVersion}`} pointerEvents="none">
           {/*
             The contrail. The app is named after one; the plane finally
             leaves one. pathLength={1} normalises the whole chain so the

@@ -1,7 +1,16 @@
 import type { FlightJourney, FlightLeg, Airport } from '../../types';
-import type { FlightFilters, DistanceRange } from './filterTypes';
+import type { FlightFilters, DistanceRange, TravelKind } from './filterTypes';
 import { getContinent, type Continent } from './continentUtils';
-import { legEndpoints } from './routeUtils';
+import { legEndpoints, legMode } from './routeUtils';
+
+/** Air, ground or sea - the leg's mode collapsed to the filter's kinds. */
+function matchesTravelKind(leg: FlightLeg, kind: TravelKind): boolean {
+  if (kind === 'all') return true;
+  const mode = legMode(leg);
+  if (kind === 'air') return mode === 'flight';
+  if (kind === 'sea') return mode === 'ferry';
+  return mode !== 'flight' && mode !== 'ferry';
+}
 
 /**
  * Check if a leg matches the distance range filter
@@ -89,6 +98,9 @@ export function applyFilters(
 ): FlightJourney[] {
   const { originAirport, destinationAirport, continents, year, distanceRange, routeType } =
     filters;
+  // Nullish fallback: saved settings from before the travel-kind filter
+  // arrive without the field.
+  const travelKind = filters.travelKind ?? 'all';
 
   // Check if any filters are active
   const hasFilters =
@@ -97,7 +109,8 @@ export function applyFilters(
     continents.length > 0 ||
     year !== null ||
     distanceRange !== 'all' ||
-    routeType !== 'all';
+    routeType !== 'all' ||
+    travelKind !== 'all';
 
   if (!hasFilters) return flights;
 
@@ -109,7 +122,8 @@ export function applyFilters(
           matchesAirport(leg, originAirport, destinationAirport) &&
           matchesContinents(leg, continents) &&
           matchesDistanceRange(leg.distanceKm, distanceRange) &&
-          matchesRouteType(leg, routeType)
+          matchesRouteType(leg, routeType) &&
+          matchesTravelKind(leg, travelKind)
         );
       });
 
@@ -166,5 +180,6 @@ export function countActiveFilters(filters: FlightFilters): number {
   if (filters.year !== null) count++;
   if (filters.distanceRange !== 'all') count++;
   if (filters.routeType !== 'all') count++;
+  if ((filters.travelKind ?? 'all') !== 'all') count++;
   return count;
 }

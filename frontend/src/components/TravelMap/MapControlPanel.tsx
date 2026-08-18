@@ -1,7 +1,12 @@
 import { memo } from 'react';
 import type { Airport } from '../../types';
 import type { FlightFilters } from '../FlightMap/filterTypes';
-import { DEFAULT_FILTERS, DISTANCE_RANGES, ROUTE_TYPES } from '../FlightMap/filterTypes';
+import {
+  DEFAULT_FILTERS,
+  DISTANCE_RANGES,
+  ROUTE_TYPES,
+  TRAVEL_KINDS,
+} from '../FlightMap/filterTypes';
 import { ALL_CONTINENTS, type Continent } from '../FlightMap/continentUtils';
 import { countActiveFilters } from '../FlightMap/filterUtils';
 
@@ -42,7 +47,7 @@ const fieldLabelClass = 'block text-xs font-medium map-glass-muted mb-1';
  */
 const MAP_VIEWS = [
   { id: 'all', label: 'Everything', settings: { showCountries: true, showFlights: true, showAirports: true } },
-  { id: 'flights', label: 'Flights', settings: { showCountries: false, showFlights: true, showAirports: true } },
+  { id: 'flights', label: 'Journeys', settings: { showCountries: false, showFlights: true, showAirports: true } },
   { id: 'countries', label: 'Countries', settings: { showCountries: true, showFlights: false, showAirports: false } },
 ] as const;
 
@@ -366,6 +371,30 @@ function MapControlPanel({
                     {ROUTE_TYPES.map((type) => (
                       <option key={type.value} value={type.value}>
                         {type.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label htmlFor="filter-travel-kind" className={fieldLabelClass}>
+                    Travelled by
+                  </label>
+                  <select
+                    id="filter-travel-kind"
+                    value={filters.travelKind ?? 'all'}
+                    onChange={(e) =>
+                      onFiltersChange({
+                        ...filters,
+                        travelKind: e.target
+                          .value as FlightFilters['travelKind'],
+                      })
+                    }
+                    className={selectClass}
+                  >
+                    {TRAVEL_KINDS.map((kind) => (
+                      <option key={kind.value} value={kind.value}>
+                        {kind.label}
                       </option>
                     ))}
                   </select>

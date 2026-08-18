@@ -248,9 +248,9 @@ function TripSearchPanel() {
                   role="radio"
                   aria-checked={view.sort === value}
                   onClick={() => setView((v) => ({ ...v, sort: value }))}
-                  className={`min-h-9 px-3 text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 ${
+                  className={`min-h-9 px-3 text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-secondary-600 ${
                     view.sort === value
-                      ? 'bg-brand-600 text-white'
+                      ? 'bg-secondary-600 text-white'
                       : 'bg-surface text-ink-muted hover:text-ink'
                   }`}
                 >

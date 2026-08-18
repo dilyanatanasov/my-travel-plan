@@ -162,9 +162,10 @@ function ReplayControl({
         title="Replay your journeys"
         /* Matches the zoom buttons exactly, so the stack reads as one
            control rather than a button with a lodger. */
+        /* Replay is an explore verb, so its play mark speaks teal. */
         className="w-11 h-11 flex items-center justify-center map-glass map-glass-hover
-          first:rounded-t-lg focus:outline-none focus-visible:ring-2
-          focus-visible:ring-inset focus-visible:ring-brand-400"
+          text-secondary-text first:rounded-t-lg focus:outline-none focus-visible:ring-2
+          focus-visible:ring-inset focus-visible:ring-secondary-600"
       >
         <PlayIcon />
       </button>
@@ -178,7 +179,7 @@ function ReplayControl({
         onClick={replay.start}
         aria-label={`Replay ${replay.total} journeys in order`}
         className="map-glass map-glass-hover flex items-center gap-2 min-h-11 px-3 rounded-xl border shadow-lg
-          focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-400"
+          text-secondary-text focus:outline-none focus-visible:ring-2 focus-visible:ring-secondary-600"
       >
         <PlayIcon />
         <span className="text-sm font-medium">Replay</span>

@@ -114,9 +114,12 @@ export const VEHICLE_LIGHTS: Partial<
     { x: 21.1, y: 10.3 },
     { x: 21.1, y: 13.7 },
   ],
+  // On solid ink just behind the nose - the warm lamp color is nearly
+  // the halo's, so at the hull edge they melted into the ring (owner
+  // report, 2026-08-18: "the bus has no lights").
   bus: [
-    { x: 22.1, y: 10.8 },
-    { x: 22.1, y: 13.2 },
+    { x: 21.2, y: 10.7 },
+    { x: 21.2, y: 13.3 },
   ],
   // One masthead lamp at the bow, beam sweeping the water ahead.
   ferry: [{ x: 22.2, y: 12 }],
@@ -274,25 +277,53 @@ export function drawVehicleSprite(
   ctx.translate(-12, -12);
   ctx.lineJoin = 'round';
 
-  // The ferry churns a wake (owner whim, 2026-08-18): diverging foam
-  // strokes drifting astern, fading as they fall behind.
+  // The ferry churns a wake and puffs steam (owner whim, 2026-08-18; the
+  // first cut was invisible - near-white foam on a near-white sea, and it
+  // started UNDER the hull's halo). Everything now begins astern of the
+  // halo (hull stern x=2.2, halo edge ~0.5) and is two-tone - ink shadow
+  // under sticker-white foam - so it reads on any sea, both themes.
   if (mode === 'ferry') {
-    const drift = (timeMs / 110) % 3.2;
     ctx.lineCap = 'round';
-    ctx.strokeStyle = '#f4fbfa';
+    const drift = (timeMs / 110) % 2.6;
     for (let k = 0; k < 3; k++) {
-      const dist = k * 3.2 + drift;
-      const alpha = Math.max(0, 0.55 - dist * 0.055);
+      const dist = k * 2.6 + drift;
+      const alpha = Math.max(0, 0.75 - dist * 0.09);
       if (alpha <= 0.02) continue;
-      ctx.globalAlpha = alpha;
-      ctx.lineWidth = 1.1;
-      const wx = 1.4 - dist;
-      const spread = 1 + dist * 0.35;
+      const wx = 0.2 - dist;
+      const spread = 1.1 + dist * 0.5;
+      const layers: [string, number, number][] = [
+        [VEHICLE_INK, 1.8, alpha * 0.45],
+        [HALO_COLOR, 1, alpha],
+      ];
+      for (const [color, width, layerAlpha] of layers) {
+        ctx.strokeStyle = color;
+        ctx.lineWidth = width;
+        ctx.globalAlpha = layerAlpha;
+        ctx.beginPath();
+        ctx.moveTo(wx, 12 - spread);
+        ctx.lineTo(wx + 1.8, 12 - spread * 0.35);
+        ctx.moveTo(wx, 12 + spread);
+        ctx.lineTo(wx + 1.8, 12 + spread * 0.35);
+        ctx.stroke();
+      }
+    }
+    // The steam: puffs ballooning astern of the funnel, wobbling a
+    // touch off the centreline so the plume feels alive.
+    for (let j = 0; j < 3; j++) {
+      const t = (timeMs / 150 + j * 1.7) % 5.1;
+      const alpha = Math.max(0, 0.8 * (1 - t / 5.1));
+      if (alpha <= 0.02) continue;
+      const px = -0.4 - t * 1.5;
+      const py = 12 + Math.sin(timeMs / 400 + j * 2.1) * 0.7;
+      const radius = 0.9 + t * 0.34;
       ctx.beginPath();
-      ctx.moveTo(wx, 12 - spread);
-      ctx.lineTo(wx + 2, 12 - spread * 0.4);
-      ctx.moveTo(wx, 12 + spread);
-      ctx.lineTo(wx + 2, 12 + spread * 0.4);
+      ctx.arc(px, py, radius, 0, Math.PI * 2);
+      ctx.fillStyle = HALO_COLOR;
+      ctx.globalAlpha = alpha;
+      ctx.fill();
+      ctx.strokeStyle = VEHICLE_INK;
+      ctx.lineWidth = 0.25;
+      ctx.globalAlpha = alpha * 0.5;
       ctx.stroke();
     }
     ctx.globalAlpha = 1;
