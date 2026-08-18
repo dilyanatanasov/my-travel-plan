@@ -361,7 +361,12 @@ function TripShareDialog({
       // debug a prod failure without a repro (owner ask, 2026-08-18).
        
       console.error('[trip-video] failed:', message, '| trail:', stageLog.join(' → '));
-      track('video_error', { stage: lastStage.split(' @')[0] });
+      // Stage AND message: the first prod failure only recorded the
+      // stage, which named the room but not the body (2026-08-18).
+      track('video_error', {
+        stage: lastStage.split(' @')[0],
+        message: message.slice(0, 100),
+      });
       showToast(`${message} (failed at: ${lastStage})`, { tone: 'error' });
     } finally {
       setVideoProgress(null);

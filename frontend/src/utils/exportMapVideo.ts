@@ -336,6 +336,10 @@ export async function renderMapVideo(
       new Promise<void>((resolve) => {
         const frame = (now: number) => {
           if (stopped) return;
+          // A throw inside a rAF callback kills the chain SILENTLY -
+          // the render freezes at its last percent with no error. Route
+          // any frame crash into the abort path instead (2026-08-18).
+          try {
           const elapsed = now - start;
       const t = Math.min(elapsed / durationMs, 1);
       onProgress?.(t);
@@ -419,6 +423,13 @@ export async function renderMapVideo(
             requestAnimationFrame(frame);
           } else {
             resolve();
+          }
+          } catch (frameError) {
+            abortRender(
+              frameError instanceof Error
+                ? frameError
+                : new MapExportError('A render frame crashed - try again'),
+            );
           }
         };
         requestAnimationFrame(frame);
@@ -514,6 +525,16 @@ export async function renderTripVideo(
   if (scenes.length === 0) {
     throw new MapExportError('The map is not ready yet - try again in a moment');
   }
+  // A scene image can decode to 0x0 under memory pressure (long journeys
+  // on phones); name the leg instead of failing later as "not ready".
+  const emptyScene = scenes.findIndex(
+    (scene) => !scene.image.width || !scene.image.height,
+  );
+  if (emptyScene !== -1) {
+    throw new MapExportError(
+      `Leg ${emptyScene + 1}'s scene came out empty - close other tabs and try again`,
+    );
+  }
 
   const { canvas: template, placement } = await renderTripCardTemplate(
     trip,
@@ -570,6 +591,8 @@ export async function renderTripVideo(
       new Promise<void>((resolve) => {
         const frame = (now: number) => {
           if (stopped) return;
+          // Same silent-crash trap as the whole-map film (2026-08-18).
+          try {
           const elapsed = now - start;
       const t = Math.min(elapsed / durationMs, 1);
       onProgress?.(t);
@@ -707,6 +730,13 @@ export async function renderTripVideo(
             requestAnimationFrame(frame);
           } else {
             resolve();
+          }
+          } catch (frameError) {
+            abortRender(
+              frameError instanceof Error
+                ? frameError
+                : new MapExportError('A render frame crashed - try again'),
+            );
           }
         };
         requestAnimationFrame(frame);
