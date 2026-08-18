@@ -151,10 +151,11 @@ function applyTrailDash(
 }
 
 /** The film's trail hues (owner ask, 2026-08-18): flights keep their
-    original light blue, ground runs yellow, water a deeper blue. */
+    original light blue, ground runs teal (yellow sank into the orange
+    visited fills), water a deeper blue. */
 function trailColor(mode: RouteMode): string {
   if (mode === 'ferry') return '#2563eb';
-  if (mode !== 'flight') return '#eab308';
+  if (mode !== 'flight') return '#14b8a6';
   return '#60a5fa';
 }
 

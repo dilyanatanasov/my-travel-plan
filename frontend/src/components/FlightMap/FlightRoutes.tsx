@@ -133,7 +133,7 @@ function FlightRoutes({
               getZoomAdjustedSize(10, zoom),
             )
           : null;
-        // Trail colors by medium: terracotta air, gold ground, blue sea.
+        // Trail colors by medium: terracotta air, teal ground, blue sea.
         const modeColor = isFerry
           ? colors.routeSea
           : isLand
@@ -141,8 +141,12 @@ function FlightRoutes({
             : colors.route;
         const baseStrokeWidth = getStrokeWidth(route.count, maxCount, sizeScale);
         const isHovered = hoveredRouteKey === route.key;
+        // A dotted line carries roughly half a solid line's ink, so the
+        // ground trails compensate with a wider stroke (fatter dots) -
+        // without it they sank into saturated visited fills.
+        const dotBoost = isLand && !isFerry ? 1.6 : 1;
         const strokeWidth = getZoomAdjustedSize(
-          isHovered ? baseStrokeWidth * 1.6 : baseStrokeWidth,
+          (isHovered ? baseStrokeWidth * 1.6 : baseStrokeWidth) * dotBoost,
           zoom
         );
 

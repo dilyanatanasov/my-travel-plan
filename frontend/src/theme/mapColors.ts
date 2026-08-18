@@ -88,7 +88,10 @@ const DARK: MapPalette = {
   wishlist: '#5a7ba6',
   lived: '#a05a7c',
   route: '#f6a06b',
-  routeLand: '#e3c05a',
+  // Teal, not gold (owner report, 2026-08-18): gold sank into the
+  // orange visited fills. Teal is the palette's one cool working hue -
+  // complementary to terracotta, so it stands on visited countries.
+  routeLand: '#7fb5b0',
   routeSea: '#7fa8d4',
   routeHighlight: '#ffe1d0',
   planeOutline: '#1a1817',
@@ -133,7 +136,7 @@ const LIGHT: MapPalette = {
   wishlist: '#7d9bc4',
   lived: '#96536f',
   route: '#8c491a',
-  routeLand: '#a1770e',
+  routeLand: '#1f6f6b',
   routeSea: '#3e6f9e',
   routeHighlight: '#402310',
   planeOutline: '#f6a06b',
