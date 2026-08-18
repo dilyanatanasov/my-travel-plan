@@ -3,6 +3,7 @@ import { useMapContext } from 'react-simple-maps';
 import type { LineString } from 'geojson';
 import type { FlightJourney } from '../../types';
 import VehicleGlyph from '../FlightMap/VehicleGlyph';
+import { legEndpoints } from '../FlightMap/routeUtils';
 import { VEHICLE_INK, HALO_COLOR } from '../../lib/planeSprite';
 import { useMapColors } from '../../theme/mapColors';
 import { cameraCenter, isOnVisibleSide, type PlaneFrame } from './globeUtils';
@@ -39,9 +40,11 @@ function GlobeJourney({ journey, plane, sizeScale = 1 }: GlobeJourneyProps) {
   // geoPath samples the great circle and clips it at the horizon for free —
   // this is why routes on the globe are LineStrings, never screen-space arcs.
   const legLine = (leg: (typeof legs)[number]): string | null => {
-    const dep = leg.departureAirport;
-    const arr = leg.arrivalAirport;
-    if (!dep || !arr) return null;
+    // legEndpoints: land legs end in cities, and the globe must draw
+    // their tracks too - reading airports alone dropped them entirely.
+    const endpoints = legEndpoints(leg);
+    if (!endpoints) return null;
+    const { departure: dep, arrival: arr } = endpoints;
     const line: LineString = {
       type: 'LineString',
       coordinates: [

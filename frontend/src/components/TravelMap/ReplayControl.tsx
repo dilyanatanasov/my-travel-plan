@@ -1,7 +1,10 @@
 import { useMemo } from 'react';
 import type { FlightJourney } from '../../types';
 import type { ReplayState } from './useJourneyReplay';
-import { journeyRouteLabel as routeLabel } from '../FlightMap/routeUtils';
+import {
+  journeyRouteLabel as routeLabel,
+  legEndpoints,
+} from '../FlightMap/routeUtils';
 import { useToast } from '../Toast/ToastProvider';
 
 function monthLabel(journey: FlightJourney): string {
@@ -85,10 +88,11 @@ function ReplayControl({
     for (const journey of replay.played) {
       for (const leg of journey.legs ?? []) {
         km += Number(leg.distanceKm) || 0;
-        if (leg.departureAirport?.countryIso)
-          countries.add(leg.departureAirport.countryIso);
-        if (leg.arrivalAirport?.countryIso)
-          countries.add(leg.arrivalAirport.countryIso);
+        const endpoints = legEndpoints(leg);
+        if (endpoints?.departure.countryIso)
+          countries.add(endpoints.departure.countryIso);
+        if (endpoints?.arrival.countryIso)
+          countries.add(endpoints.arrival.countryIso);
       }
     }
     return { km: Math.round(km), countries: countries.size };

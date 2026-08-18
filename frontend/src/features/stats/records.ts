@@ -32,7 +32,11 @@ export function computeTravelRecords(
     if (!Number.isFinite(year)) continue;
 
     for (const leg of journey.legs ?? []) {
-      const iso = leg.arrivalAirport?.countryIso;
+      // Arriving by train or car reaches a country just as surely; only
+      // the arrival matters here, so a leg with a torn departure still
+      // counts its destination.
+      const iso =
+        leg.arrivalAirport?.countryIso ?? leg.arrivalCity?.countryIso;
       if (!iso) continue;
 
       const seen = firstSeenYear.get(iso);

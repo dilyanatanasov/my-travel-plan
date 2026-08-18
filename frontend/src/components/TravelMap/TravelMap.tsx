@@ -591,10 +591,12 @@ function TravelMap() {
   // ends of whatever route is hovered.
   const highlightedAirports = useMemo(() => {
     if (selectedJourney) {
-      return (selectedJourney.legs ?? []).flatMap((leg) => [
-        leg.departureAirport?.iataCode,
-        leg.arrivalAirport?.iataCode,
-      ]).filter(Boolean) as string[];
+      return (selectedJourney.legs ?? []).flatMap((leg) => {
+        const endpoints = legEndpoints(leg);
+        return endpoints
+          ? [endpoints.departure.iataCode, endpoints.arrival.iataCode]
+          : [];
+      });
     }
     return hoveredRoute
       ? [hoveredRoute.departure.iataCode, hoveredRoute.arrival.iataCode]

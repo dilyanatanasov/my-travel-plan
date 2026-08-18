@@ -18,6 +18,7 @@ import {
 import { useToast } from '../../components/Toast/ToastProvider';
 import { useAuth } from '../auth/authApi';
 import { useGetLegPhotoIdsQuery } from '../flights/flightsApi';
+import { legEndpoints } from '../../components/FlightMap/routeUtils';
 import { formatJourneyDate } from '../../utils/journeyDate';
 import { track } from '../../lib/analytics';
 import Button from '../../components/ui/Button';
@@ -63,12 +64,15 @@ function TripShareDialog({
     const sorted = [...(journey.legs ?? [])].sort(
       (a, b) => a.legOrder - b.legOrder,
     );
-    const codes = sorted.length
-      ? ([
-          sorted[0].departureAirport?.iataCode,
-          ...sorted.map((leg) => leg.arrivalAirport?.iataCode),
-        ].filter(Boolean) as string[])
-      : [];
+    // legEndpoints: a land stop is a CITY, and reading airports alone
+    // dropped Belgrade from the ticket (owner report, 2026-08-18).
+    const codes: string[] = [];
+    for (const leg of sorted) {
+      const endpoints = legEndpoints(leg);
+      if (!endpoints) continue;
+      if (codes.length === 0) codes.push(endpoints.departure.iataCode);
+      codes.push(endpoints.arrival.iataCode);
+    }
     return { legs: sorted, routeCodes: codes };
   }, [journey]);
 

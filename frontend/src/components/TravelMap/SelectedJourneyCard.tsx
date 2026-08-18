@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import type { FlightJourney } from '../../types';
 import { formatJourneyDate } from '../../utils/journeyDate';
+import { legEndpoints } from '../FlightMap/routeUtils';
 
 interface SelectedJourneyCardProps {
   journey: FlightJourney;
@@ -34,8 +35,8 @@ function SelectedJourneyCard({
 
   const route = legs.length
     ? [
-        legs[0].departureAirport?.iataCode,
-        ...legs.map((leg) => leg.arrivalAirport?.iataCode),
+        legEndpoints(legs[0])?.departure.iataCode,
+        ...legs.map((leg) => legEndpoints(leg)?.arrival.iataCode),
       ]
         .filter(Boolean)
         .join(' → ')

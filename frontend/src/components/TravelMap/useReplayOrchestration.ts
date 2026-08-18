@@ -152,7 +152,9 @@ export function useReplayOrchestration(
       you at every connection, not just the destination.
     */
     legs.forEach((leg, index) => {
-      const airport = leg.arrivalAirport;
+      // Cities pose as airports here (legEndpoints), so a train's arrival
+      // pops its marker and postcard exactly like a landing does.
+      const airport = legEndpoints(leg)?.arrival;
       if (!airport) return;
       const at = arrivalMsAt(index);
       timers.push(
@@ -232,8 +234,9 @@ export function useReplayOrchestration(
       const backfill = new Set<string>();
       for (const journey of previousJourneys) {
         for (const leg of journey.legs ?? []) {
-          const dep = isoOf(leg.departureAirport?.countryIso ?? null);
-          const arr = isoOf(leg.arrivalAirport?.countryIso ?? null);
+          const endpoints = legEndpoints(leg);
+          const dep = isoOf(endpoints?.departure.countryIso ?? null);
+          const arr = isoOf(endpoints?.arrival.countryIso ?? null);
           if (dep) backfill.add(dep);
           if (arr) backfill.add(arr);
         }

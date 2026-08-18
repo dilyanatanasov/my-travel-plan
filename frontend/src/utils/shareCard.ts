@@ -339,6 +339,7 @@ export interface TripContent {
   routeCodes: string[];
   /** Precision-aware date label, or null for an undated journey. */
   dateLabel: string | null;
+  /** Leg count - a hop may be a train or a drive, so the stub says LEGS. */
   flights: number;
   km: number;
   /** displayName, shown as PASSENGER on the stub; null → TRAVELLER. */
@@ -576,7 +577,7 @@ function drawTripTicket(
   y += routeH + gap;
 
   drawTicketPair(ctx, 'DATE', (trip.dateLabel ?? '—').toUpperCase(), P, y);
-  drawTicketPair(ctx, 'FLIGHTS', String(trip.flights), CARD_WIDTH - P, y, true);
+  drawTicketPair(ctx, 'LEGS', String(trip.flights), CARD_WIDTH - P, y, true);
   y += rowH + gap;
 
   const mapY = y;

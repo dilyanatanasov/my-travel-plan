@@ -135,9 +135,14 @@ function MapExportCanvasInner({
     );
     const map = new Map<string, CountryDisplayInfo>();
     for (const leg of journey.legs ?? []) {
-      for (const airport of [leg.departureAirport, leg.arrivalAirport]) {
-        const iso3 = airport?.countryIso
-          ? alpha2ToAlpha3.get(airport.countryIso)
+      // legEndpoints, not raw airports: a train or drive ends in a CITY,
+      // and reading airports alone left land-visited countries unpainted
+      // on the shared trip (owner report, 2026-08-18).
+      const endpoints = legEndpoints(leg);
+      if (!endpoints) continue;
+      for (const place of [endpoints.departure, endpoints.arrival]) {
+        const iso3 = place.countryIso
+          ? alpha2ToAlpha3.get(place.countryIso)
           : undefined;
         if (!iso3 || map.has(iso3)) continue;
         map.set(iso3, {
