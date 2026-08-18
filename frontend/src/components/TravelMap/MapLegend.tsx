@@ -57,7 +57,9 @@ function MapLegend({ showFlights, stats }: MapLegendProps) {
                 }}
                 aria-hidden="true"
               />
-              <span className="map-glass-muted">Airport</span>
+              {/* "Stop", not "Airport": since land travel a dot can be a
+                  city you took a train or drive to. */}
+              <span className="map-glass-muted">Stop</span>
             </li>
           </>
         )}
@@ -67,7 +69,7 @@ function MapLegend({ showFlights, stats }: MapLegendProps) {
       <p className="hidden lg:block mt-1.5 pt-1.5 border-t border-current/10 text-[11px] map-glass-muted">
         {stats.visitedCount} visited · {stats.transitCount} transit
         {showFlights &&
-          ` · ${stats.flightRoutes} routes · ${stats.airports} airports`}
+          ` · ${stats.flightRoutes} routes · ${stats.airports} stops`}
       </p>
     </div>
   );
