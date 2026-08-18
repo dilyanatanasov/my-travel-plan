@@ -322,7 +322,7 @@ function TripShareDialog({
       }
       setVideoFocusLeg(null);
 
-      stage('Recording flight');
+      stage('Recording journey');
       const blob = await renderTripVideo(
         scenes,
         {
@@ -502,8 +502,8 @@ function TripShareDialog({
             disabled={!previewUrl || videoProgress !== null}
           >
             {videoProgress !== null
-              ? videoStage === 'Recording flight' || videoStage === null
-                ? `Recording flight… ${Math.round(videoProgress * 100)}%`
+              ? videoStage === 'Recording journey' || videoStage === null
+                ? `Recording journey… ${Math.round(videoProgress * 100)}%`
                 : `${videoStage}…`
               : 'Create video ✈️'}
           </Button>
