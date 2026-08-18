@@ -8,9 +8,13 @@ import {
   emptyStop,
   stopFilled,
   stopLabel,
+  syncStopsWithMode,
+  resolveFlightEndpoints,
   HOP_MODES,
   MODE_LABEL,
 } from '../FlightList/stopChain';
+import { useAirportForCity } from './useAirportForCity';
+import { useToast } from '../Toast/ToastProvider';
 import { MONTH_NAMES } from '../../utils/journeyDate';
 
 interface RouteBuilderProps {
@@ -41,8 +45,29 @@ function RouteBuilder({ onSubmit, isLoading }: RouteBuilderProps) {
     );
   };
 
-  const setMode = (index: number, mode: TravelMode) => {
+  const resolveAirport = useAirportForCity();
+  const { showToast } = useToast();
+
+  /*
+    Picking a mode teaches the stops (owner ask, 2026-08-18): a land hop
+    flips its empty endpoints to city search, a flight hop flips them to
+    airport search - and a city already chosen resolves to its own
+    airport when it has one, announced rather than silent.
+  */
+  const setMode = async (index: number, mode: TravelMode) => {
     setModes((current) => current.map((m, i) => (i === index ? mode : m)));
+    const { stops: synced, conversions } = await syncStopsWithMode(
+      stops,
+      index,
+      mode,
+      resolveAirport,
+    );
+    setStops(synced);
+    if (conversions.length > 0) {
+      showToast(`Picked the airport for the flight: ${conversions.join(', ')}`, {
+        key: 'stop-kind-sync',
+      });
+    }
   };
 
   const addLeg = () => {
@@ -60,17 +85,45 @@ function RouteBuilder({ onSubmit, isLoading }: RouteBuilderProps) {
   };
 
   const allFilled = stops.every(stopFilled);
-  // A plane cannot land in a city centre: flight hops need airports.
+  // A plane cannot land in a city centre - but submit tries to fix this
+  // itself (resolveFlightEndpoints), so it only warns, never disables.
   const flightHopViolation = modes.some(
     (mode, i) =>
       mode === 'flight' &&
       (stops[i]?.kind !== 'airport' || stops[i + 1]?.kind !== 'airport'),
   );
-  const isValid = allFilled && stops.length >= 2 && !flightHopViolation;
+  const isValid = allFilled && stops.length >= 2;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isValid) return;
+
+    // Flight hops ending in a chosen city resolve to that city's airport
+    // right here - modes default to flight, so no chip click ever fires
+    // the sync on the common "drove there, flew home" chain.
+    let chainStops = stops;
+    if (flightHopViolation) {
+      const resolved = await resolveFlightEndpoints(
+        stops,
+        modes,
+        resolveAirport,
+      );
+      if (!resolved.ok) {
+        showToast(
+          'A flight needs airports at both ends - pick the nearest airport or change that hop to train, car or bus',
+          { tone: 'error' },
+        );
+        return;
+      }
+      chainStops = resolved.stops;
+      setStops(chainStops);
+      if (resolved.conversions.length > 0) {
+        showToast(
+          `Picked the airport for the flight: ${resolved.conversions.join(', ')}`,
+          { key: 'stop-kind-sync' },
+        );
+      }
+    }
 
     const year = dateYear.trim();
     const journeyDate = year
@@ -86,14 +139,14 @@ function RouteBuilder({ onSubmit, isLoading }: RouteBuilderProps) {
 
     const base = { journeyDate, datePrecision, isRoundTrip, notes: notes || undefined };
     const allFlight = modes.every((mode) => mode === 'flight');
-    const allAirports = stops.every((stop) => stop.kind === 'airport');
+    const allAirports = chainStops.every((stop) => stop.kind === 'airport');
     if (allFlight && allAirports) {
       // The legacy shape keeps the server's ground-transfer typo guard.
-      onSubmit({ ...base, airportIds: stops.map((s) => s.airport!.id) });
+      onSubmit({ ...base, airportIds: chainStops.map((s) => s.airport!.id) });
     } else {
       onSubmit({
         ...base,
-        stops: stops.map((stop) =>
+        stops: chainStops.map((stop) =>
           stop.kind === 'airport'
             ? { airportId: stop.airport!.id }
             : { cityId: stop.city!.id },
@@ -255,9 +308,9 @@ function RouteBuilder({ onSubmit, isLoading }: RouteBuilderProps) {
       </button>
 
       {flightHopViolation && (
-        <p className="text-sm text-danger">
-          A flight needs airports at both ends - pick the nearest airport or
-          change that hop to train, car or bus.
+        <p className="text-sm text-ink-muted">
+          A flight hop ends in a city - saving will switch it to that
+          city&rsquo;s airport automatically when it has one.
         </p>
       )}
 

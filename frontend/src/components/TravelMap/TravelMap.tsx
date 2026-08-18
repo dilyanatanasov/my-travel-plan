@@ -522,9 +522,11 @@ function TravelMap() {
       points.push([endpoints.arrival.longitude, endpoints.arrival.latitude]);
     }
     // fill 0.58 tightens the camera for immersion while still leaving margin
-    // for the arc's bow; maxZoom 6 gets close on short hops without ever
-    // cropping the endpoints (fitToPoints guarantees both stay in frame).
-    const framing = fitToPoints(points, { maxZoom: 6, fill: 0.58 });
+    // for the arc's bow; the fitter only zooms as deep as the points allow,
+    // so the raised cap (6 → 10, land travel 2026-08-18) changes nothing on
+    // a continental flight and finally frames a city-to-city drive as a
+    // trip instead of a speck. Endpoints stay in frame either way.
+    const framing = fitToPoints(points, { maxZoom: 10, fill: 0.58 });
     if (!framing) return;
     setCenter(framing.center);
     setZoom(framing.zoom);

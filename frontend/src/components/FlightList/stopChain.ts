@@ -107,6 +107,88 @@ export function loopStatus(
   return first.id === last.id ? 'loop' : 'broken';
 }
 
+/**
+ * Make the chain agree with a hop's new mode (owner ask, 2026-08-18:
+ * "if i pick train the search should switch to city, if i pick flight
+ * auto pick the airport").
+ *
+ * For a FLIGHT hop both endpoints must be airports: empty stops switch
+ * kind; a stop already holding a city resolves to that city's airport
+ * when one exists (Mostar -> OMO), reported in `conversions` so the form
+ * can say so out loud. A city with no airport stays put - the form's
+ * validation message explains better than silently clearing a choice.
+ *
+ * For a LAND hop only EMPTY airport stops switch to city mode: a filled
+ * airport is a legitimate land endpoint (the train from Geneva Airport),
+ * and clearing someone's chosen stop is never the helpful move.
+ */
+export async function syncStopsWithMode(
+  stops: EditableStop[],
+  hopIndex: number,
+  mode: TravelMode,
+  resolveAirport: (city: CityRef) => Promise<Airport | null>,
+): Promise<{ stops: EditableStop[]; conversions: string[] }> {
+  const next = [...stops];
+  const conversions: string[] = [];
+  for (const index of [hopIndex, hopIndex + 1]) {
+    const stop = next[index];
+    if (!stop) continue;
+    if (mode === 'flight') {
+      if (stop.kind === 'city' && stop.city) {
+        const airport = await resolveAirport(stop.city);
+        if (airport) {
+          next[index] = { kind: 'airport', airport, city: null };
+          conversions.push(`${stop.city.name} → ${airport.iataCode}`);
+        }
+      } else if (stop.kind === 'city') {
+        next[index] = emptyStop();
+      }
+    } else if (stop.kind === 'airport' && !stop.airport) {
+      next[index] = { kind: 'city', airport: null, city: null };
+    }
+  }
+  return { stops: next, conversions };
+}
+
+/**
+ * The submit-time sweep of the same rule: every flight hop's city
+ * endpoints resolve to their airports where possible. Needed because
+ * modes DEFAULT to flight - nobody clicks the chip they already have,
+ * so the chip-click sync alone never fires on the common "drove to
+ * Mostar, flew home" ending. `ok` is false when some flight hop still
+ * lacks an airport on either end after the sweep.
+ */
+export async function resolveFlightEndpoints(
+  stops: EditableStop[],
+  modes: TravelMode[],
+  resolveAirport: (city: CityRef) => Promise<Airport | null>,
+): Promise<{ stops: EditableStop[]; conversions: string[]; ok: boolean }> {
+  const next = [...stops];
+  const conversions: string[] = [];
+  for (let i = 0; i < modes.length; i++) {
+    if (modes[i] !== 'flight') continue;
+    for (const index of [i, i + 1]) {
+      const stop = next[index];
+      if (stop?.kind === 'city' && stop.city) {
+        const airport = await resolveAirport(stop.city);
+        if (airport) {
+          next[index] = { kind: 'airport', airport, city: null };
+          conversions.push(`${stop.city.name} → ${airport.iataCode}`);
+        }
+      }
+    }
+  }
+  const ok = modes.every(
+    (mode, i) =>
+      mode !== 'flight' ||
+      (next[i]?.kind === 'airport' &&
+        next[i].airport !== null &&
+        next[i + 1]?.kind === 'airport' &&
+        next[i + 1].airport !== null),
+  );
+  return { stops: next, conversions, ok };
+}
+
 /** loopStatus for the mixed-mode chain, keyed on stop identity. */
 export function stopLoopStatus(
   stops: EditableStop[],

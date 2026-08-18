@@ -18,9 +18,12 @@ import {
   stopFilled,
   stopIdentity,
   stopLoopStatus,
+  syncStopsWithMode,
+  resolveFlightEndpoints,
   HOP_MODES,
   MODE_LABEL,
 } from './stopChain';
+import { useAirportForCity } from '../FlightForm/useAirportForCity';
 import { journeyRouteLabel, legEndpoints, legMode } from '../FlightMap/routeUtils';
 import ModeIcon, { CityIcon } from '../ui/ModeIcon';
 import StopPhotoControl from '../../features/flights/StopPhotoControl';
@@ -107,6 +110,28 @@ function FlightCard({
     setEditModes((current) => [...current, 'flight']);
   };
 
+  const resolveAirport = useAirportForCity();
+
+  // Same rule as the add form: the mode teaches its endpoints - land
+  // flips empty stops to city search, flight resolves a chosen city to
+  // its own airport when one exists.
+  const changeEditMode = async (index: number, mode: TravelMode) => {
+    setEditModes((current) => current.map((m, i) => (i === index ? mode : m)));
+    const { stops: synced, conversions } = await syncStopsWithMode(
+      editStops,
+      index,
+      mode,
+      resolveAirport,
+    );
+    applyStops(synced);
+    if (conversions.length > 0) {
+      showToast(
+        `Picked the airport for the flight: ${conversions.join(', ')}`,
+        { key: 'stop-kind-sync' },
+      );
+    }
+  };
+
   const removeStop = (index: number) => {
     if (editStops.length <= 2) return;
     applyStops(editStops.filter((_, i) => i !== index));
@@ -142,28 +167,46 @@ function FlightCard({
       showToast('Every stop needs an airport or a city', { tone: 'error' });
       return;
     }
+    // Same submit-time sweep as the add form: flight hops resolve their
+    // city endpoints to airports where possible before complaining.
+    let chainStops = editStops;
     if (flightHopViolation) {
-      showToast(
-        'A flight needs airports at both ends - change that hop to train, car or bus',
-        { tone: 'error' },
+      const resolved = await resolveFlightEndpoints(
+        editStops,
+        editModes,
+        resolveAirport,
       );
-      return;
+      if (!resolved.ok) {
+        showToast(
+          'A flight needs airports at both ends - pick the nearest airport or change that hop to train, car or bus',
+          { tone: 'error' },
+        );
+        return;
+      }
+      chainStops = resolved.stops;
+      applyStops(chainStops);
+      if (resolved.conversions.length > 0) {
+        showToast(
+          `Picked the airport for the flight: ${resolved.conversions.join(', ')}`,
+          { key: 'stop-kind-sync' },
+        );
+      }
     }
     const original = journeyToStops(journey);
     const identity = (stops: EditableStop[], modes: TravelMode[]) =>
       stops.map(stopIdentity).join('>') + '|' + modes.join(',');
     const routeChanged =
-      identity(editStops, editModes) !==
+      identity(chainStops, editModes) !==
       identity(original.stops, original.modes);
     // The legacy shape keeps the server's ground-transfer typo guard.
     const allFlightAirports =
       editModes.every((mode) => mode === 'flight') &&
-      editStops.every((stop) => stop.kind === 'airport');
+      chainStops.every((stop) => stop.kind === 'airport');
     const routePayload = routeChanged
       ? allFlightAirports
-        ? { airportIds: editStops.map((stop) => stop.airport!.id) }
+        ? { airportIds: chainStops.map((stop) => stop.airport!.id) }
         : {
-            stops: editStops.map((stop) =>
+            stops: chainStops.map((stop) =>
               stop.kind === 'airport'
                 ? { airportId: stop.airport!.id }
                 : { cityId: stop.city!.id },
@@ -413,11 +456,7 @@ function FlightCard({
                         aria-pressed={editModes[index - 1] === mode}
                         title={MODE_LABEL[mode]}
                         aria-label={MODE_LABEL[mode]}
-                        onClick={() =>
-                          setEditModes((current) =>
-                            current.map((m, i) => (i === index - 1 ? mode : m)),
-                          )
-                        }
+                        onClick={() => void changeEditMode(index - 1, mode)}
                         className={`min-h-7 px-2 rounded-full transition-colors ${
                           editModes[index - 1] === mode
                             ? 'bg-brand-600 text-white'
@@ -511,9 +550,9 @@ function FlightCard({
               </div>
             ))}
             {flightHopViolation && (
-              <p className="text-xs text-danger">
-                A flight needs airports at both ends - pick the nearest
-                airport or change that hop to train, car or bus.
+              <p className="text-xs text-ink-muted">
+                A flight hop ends in a city - saving will switch it to that
+                city&rsquo;s airport automatically when it has one.
               </p>
             )}
             <button
