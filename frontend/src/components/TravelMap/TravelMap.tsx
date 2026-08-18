@@ -36,7 +36,12 @@ import { buildCountryDisplayMap } from './countryColors';
 import CountriesLayer from './CountriesLayer';
 import CountryDetailCard from './CountryDetailCard';
 import MapSearch from './MapSearch';
-import { useJourneyReplay, journeyFlightSeconds } from './useJourneyReplay';
+import {
+  useJourneyReplay,
+  journeyFlightSeconds,
+  legFlightSeconds,
+  STOP_PAUSE_SECONDS,
+} from './useJourneyReplay';
 import { useReplayAudio } from './useReplayAudio';
 import { useReplayOrchestration } from './useReplayOrchestration';
 import { useSearchLanding } from './useSearchLanding';
@@ -516,23 +521,52 @@ function TravelMap() {
   */
   useEffect(() => {
     if (!replay.isActive || !replay.current) return;
-    const points: LonLat[] = [];
-    for (const leg of replay.current.legs) {
+    const legs = [...(replay.current.legs ?? [])].sort(
+      (a, b) => a.legOrder - b.legOrder,
+    );
+    if (legs.length === 0) return;
+
+    /*
+      The camera follows the legs (owner, 2026-08-18): one frame around
+      the whole journey left a 35 km drive microscopic beside its
+      long-haul flight. Each leg gets its own framing on the same clock
+      the vehicle flies - swoop in for the drive, pull back for the
+      ocean crossing - re-aimed mid-stop-pause so the glide (the
+      .replay-camera transition) lands as the next leg departs. The
+      fitter derives zoom from each leg's own span, capped only by the
+      map's MAX_ZOOM.
+    */
+    const frameLeg = (leg: (typeof legs)[number]) => {
       const endpoints = legEndpoints(leg);
-      if (!endpoints) continue;
-      points.push([endpoints.departure.longitude, endpoints.departure.latitude]);
-      points.push([endpoints.arrival.longitude, endpoints.arrival.latitude]);
-    }
-    // fill 0.58 tightens the camera for immersion while still leaving margin
-    // for the arc's bow; the fitter only zooms as deep as the points allow,
-    // so the raised cap (6 → 10, land travel 2026-08-18) changes nothing on
-    // a continental flight and finally frames a city-to-city drive as a
-    // trip instead of a speck. Endpoints stay in frame either way.
-    const framing = fitToPoints(points, { maxZoom: 10, fill: 0.58 });
-    if (!framing) return;
-    setCenter(framing.center);
-    setZoom(framing.zoom);
-    setHasMovedMap(true);
+      if (!endpoints) return;
+      const points: LonLat[] = [
+        [Number(endpoints.departure.longitude), Number(endpoints.departure.latitude)],
+        [Number(endpoints.arrival.longitude), Number(endpoints.arrival.latitude)],
+      ];
+      const framing = fitToPoints(points, { maxZoom: MAX_ZOOM, fill: 0.55 });
+      if (!framing) return;
+      setCenter(framing.center);
+      setZoom(framing.zoom);
+      setHasMovedMap(true);
+    };
+
+    frameLeg(legs[0]);
+    const timers: number[] = [];
+    let elapsed = 0;
+    legs.forEach((leg, index) => {
+      elapsed += legFlightSeconds(Number(leg.distanceKm) || 0);
+      if (index < legs.length - 1) {
+        const next = legs[index + 1];
+        timers.push(
+          window.setTimeout(
+            () => frameLeg(next),
+            (elapsed + STOP_PAUSE_SECONDS / 2) * 1000,
+          ),
+        );
+        elapsed += STOP_PAUSE_SECONDS;
+      }
+    });
+    return () => timers.forEach((id) => window.clearTimeout(id));
   }, [replay.isActive, replay.current]);
 
   const openCountry = useMemo(() => {

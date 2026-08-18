@@ -104,7 +104,9 @@ describe('buildJourneyTimeline', () => {
     const haul = buildJourneyTimeline(
       journeyOf([{ from: [-122.4, 37.6], to: [151.2, -33.9], km: 12000 }]),
     )!;
-    expect(hop.zoomTarget).toBe(3);
+    // A ~120 km hop now earns the mode's max (land travel: short legs
+    // deserve a close camera); the haul still sits at the wide floor.
+    expect(hop.zoomTarget).toBe(MAX_GLOBE_ZOOM);
     expect(haul.zoomTarget).toBeCloseTo(1.15, 10);
     for (const z of [hop.zoomTarget, haul.zoomTarget]) {
       expect(z).toBeGreaterThanOrEqual(MIN_GLOBE_ZOOM);

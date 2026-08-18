@@ -117,8 +117,11 @@ export function buildJourneyTimeline(
     slams into the ground and a transpacific haul never zooms out past the
     whole globe.
   */
+  // The short-leg allowance rose from 3 to the mode's own max (land
+  // travel, 2026-08-18): a 35 km drive earns a close camera on the
+  // globe too. The distance formula still rules long hauls.
   const zoomTarget = clampGlobeZoom(
-    Math.max(1.15, Math.min(3, 60 / Math.max(maxLegDeg, 1))),
+    Math.max(1.15, Math.min(MAX_GLOBE_ZOOM, 60 / Math.max(maxLegDeg, 0.4))),
   );
 
   return { segments, totalS: t, zoomTarget };

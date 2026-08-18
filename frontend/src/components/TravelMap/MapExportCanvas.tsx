@@ -219,11 +219,12 @@ function MapExportCanvasInner({
       }
     }
     // A single trip affords a closer camera than the whole life map.
-    // The trip cap sits at 8 (5 before land travel): the fitter only goes
-    // as deep as the points allow, so flights frame as before while a
-    // city-to-city drive fills its boarding-pass strip.
+    // The trip cap is rendering sanity, not framing policy: the fitter
+    // derives zoom from the trip's own span, so flights sit at their
+    // usual 2-5 while a short drive zooms until its line fills the
+    // boarding-pass strip. 48 keeps 50m coastlines this side of mush.
     return journey
-      ? fitToPoints(points, { maxZoom: 8, fill: 0.72 })
+      ? fitToPoints(points, { maxZoom: 48, fill: 0.72 })
       : fitToPoints(points, { maxZoom: 3.2, fill: 0.82 });
   }, [airports, countryDisplayMap, countryCentroids, journey]);
 
