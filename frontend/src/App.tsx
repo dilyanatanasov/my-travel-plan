@@ -1,4 +1,5 @@
 import { Suspense, lazy } from 'react';
+import ContrailLoader from './components/ContrailLoader';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout/Layout';
 import TravelMapPage from './pages/TravelMapPage';
@@ -28,10 +29,10 @@ function App() {
   useVersionCheck();
 
   return (
-    // A lazy route resolves in well under a paint on a warm cache; the empty
-    // fallback avoids a flash of spinner on fast navigations while still
-    // satisfying Suspense for the first, uncached load.
-    <Suspense fallback={null}>
+    // A lazy route resolves in well under a paint on a warm cache; the
+    // loader's own 350ms appearance delay keeps fast navigations
+    // flash-free, while a cold load gets the contrail drawing itself.
+    <Suspense fallback={<ContrailLoader fullScreen />}>
       <Routes>
         {/* Public */}
         <Route path="/login" element={<LoginPage />} />

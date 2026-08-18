@@ -7,6 +7,7 @@ import FlightRoutes from '../components/FlightMap/FlightRoutes';
 import AirportMarkers from '../components/FlightMap/AirportMarkers';
 import { useMapViewport } from '../components/TravelMap/useMapViewport';
 import { useMapColors } from '../theme/mapColors';
+import ContrailLoader from '../components/ContrailLoader';
 import type { CountryDisplayInfo } from '../components/TravelMap/countryColors';
 import type { AggregatedRoute } from '../components/FlightMap/routeUtils';
 import type { Airport } from '../types';
@@ -89,7 +90,7 @@ function SharedMapPage() {
   if (isLoading) {
     return (
       <div className="scroll-page bg-canvas flex items-center justify-center">
-        <p className="text-ink-muted">Loading map…</p>
+        <ContrailLoader label="Loading map" />
       </div>
     );
   }
