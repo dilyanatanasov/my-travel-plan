@@ -625,18 +625,72 @@ function TripShareDialog({
             2026-08-19). A new take replaces the old one. */}
         {canExportVideo && (
           <div className="flex items-stretch gap-2">
-            <select
+            {/* Segmented chips with the app's own SVG marks, not a bare
+                native select (owner, 2026-08-19: match the app's control
+                language, and the map/globe icons already exist). */}
+            <div
+              role="radiogroup"
               aria-label="Video style"
-              value={videoStyle}
-              onChange={(e) =>
-                setVideoStyle(e.target.value as 'flat' | 'globe')
-              }
-              disabled={videoProgress !== null}
-              className="rounded-xl border border-line bg-surface text-ink text-sm px-3 min-h-11 focus:outline-none focus:ring-2 focus:ring-brand-500"
+              className="flex items-center gap-1 p-1 rounded-xl bg-surface-sunken"
             >
-              <option value="flat">Map</option>
-              <option value="globe">Globe</option>
-            </select>
+              {(
+                [
+                  {
+                    value: 'flat' as const,
+                    label: 'Map',
+                    icon: (
+                      <svg
+                        className="w-4 h-4 flex-shrink-0"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={1.8}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        aria-hidden="true"
+                      >
+                        <path d="M9 4L3.5 6v14L9 18l6 2 5.5-2V4L15 6 9 4zM9 4v14M15 6v14" />
+                      </svg>
+                    ),
+                  },
+                  {
+                    value: 'globe' as const,
+                    label: 'Globe',
+                    icon: (
+                      <svg
+                        className="w-4 h-4 flex-shrink-0"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={1.8}
+                        aria-hidden="true"
+                      >
+                        <circle cx="12" cy="12" r="9" />
+                        <ellipse cx="12" cy="12" rx="4" ry="9" />
+                        <path d="M3.6 9h16.8M3.6 15h16.8" />
+                      </svg>
+                    ),
+                  },
+                ]
+              ).map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  role="radio"
+                  aria-checked={videoStyle === option.value}
+                  disabled={videoProgress !== null}
+                  onClick={() => setVideoStyle(option.value)}
+                  className={`min-h-9 px-2.5 rounded-lg text-xs font-medium inline-flex items-center gap-1.5 transition-colors ${
+                    videoStyle === option.value
+                      ? 'bg-secondary-600 text-white'
+                      : 'text-ink-muted hover:text-ink'
+                  }`}
+                >
+                  {option.icon}
+                  {option.label}
+                </button>
+              ))}
+            </div>
             <Button
               variant="ghost"
               fullWidth
