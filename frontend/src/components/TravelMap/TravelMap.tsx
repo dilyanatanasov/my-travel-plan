@@ -346,6 +346,10 @@ function TravelMap() {
   const clearSelection = useCallback(() => {
     clickConsumedRef.current = true;
     setSelectedJourney(null);
+    // The tooltip follows the cursor's LAST hover, and deselecting does
+    // not re-fire hover events - so it sat glued to the pointer after
+    // Esc or an ocean tap (owner report, 2026-08-19).
+    setHoveredRoute(null);
   }, []);
 
   /**
@@ -362,6 +366,7 @@ function TravelMap() {
     clickConsumedRef.current = false;
     if (consumed || wasDragRef.current) return;
     setSelectedJourney(null);
+    setHoveredRoute(null);
   }, []);
 
   /*
@@ -406,6 +411,9 @@ function TravelMap() {
       return bDate - aDate;
     })[0];
     setSelectedJourney(journey ?? null);
+    // Hover events stop while a journey is selected, so a stale tooltip
+    // would ride the cursor through the whole selection otherwise.
+    setHoveredRoute(null);
   }, [replay.isActive]);
 
   // Build country display map from visits
@@ -996,7 +1004,7 @@ function TravelMap() {
           briefly stepping aside. Desktop keeps both - different corners.
         */
         className={`absolute top-3 left-3 right-3 md:right-auto md:w-[30rem] z-30 flex-col gap-2 ${
-          countryDetailCard ? 'hidden md:flex' : 'flex'
+          countryDetailCard || selectedJourney ? 'hidden md:flex' : 'flex'
         }`}
       >
         <MapSearch
@@ -1025,9 +1033,17 @@ function TravelMap() {
         accepted: the panel is dismissible and this is a rare orientation for
         a world map.
       */}
-      {/* Hidden during replay (density budget): the map is the show. */}
+      {/* Hidden during replay (density budget): the map is the show.
+          On phones it also yields to an open card (owner, 2026-08-19) -
+          both live at the bottom, and the card is what was asked for. */}
       {!replay.isActive && (
-        <MapLegend showFlights={settings.showFlights} stats={stats} />
+        <div
+          className={
+            countryDetailCard || selectedJourney ? 'hidden lg:block' : 'block'
+          }
+        >
+          <MapLegend showFlights={settings.showFlights} stats={stats} />
+        </div>
       )}
 
       {/*
@@ -1103,7 +1119,10 @@ function TravelMap() {
       {selectedJourney && (
         <SelectedJourneyCard
           journey={selectedJourney}
-          onClose={() => setSelectedJourney(null)}
+          onClose={() => {
+            setSelectedJourney(null);
+            setHoveredRoute(null);
+          }}
           onShare={() => setShareJourney(selectedJourney)}
         />
       )}

@@ -362,7 +362,8 @@ function TravelMapPage() {
                 <MapPeekBar
                   countriesVisited={overviewStats.tripCount}
                   worldPercent={overviewStats.worldPercent}
-                  flights={flightSummary?.totalFlights ?? 0}
+                  journeys={flightSummary?.totalJourneys ?? 0}
+                  overlandKm={flightSummary?.overlandDistanceKm ?? 0}
                   onOpenOverview={() => setActiveSection('overview')}
                 />
               </>

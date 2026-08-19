@@ -1,7 +1,10 @@
 interface MapPeekBarProps {
   countriesVisited: number;
   worldPercent: number;
-  flights: number;
+  /** All trips, whatever they rode - flights, trains, ferries. */
+  journeys: number;
+  /** Kilometres by land & sea - 0 hides the stat. */
+  overlandKm: number;
   onOpenOverview: () => void;
 }
 
@@ -17,7 +20,8 @@ interface MapPeekBarProps {
 function MapPeekBar({
   countriesVisited,
   worldPercent,
-  flights,
+  journeys,
+  overlandKm,
   onOpenOverview,
 }: MapPeekBarProps) {
   return (
@@ -32,7 +36,7 @@ function MapPeekBar({
         two lines together are shorter than one line of 18px text plus its
         leading.
       */}
-      <span className="flex items-center gap-5 min-w-0">
+      <span className="flex items-center gap-4 min-w-0">
         <span className="flex flex-col leading-none">
           <span className="text-base font-bold">{countriesVisited}</span>
           <span className="text-[11px] map-glass-muted mt-0.5">countries</span>
@@ -43,10 +47,22 @@ function MapPeekBar({
           </span>
           <span className="text-[11px] map-glass-muted mt-0.5">of world</span>
         </span>
-        {flights > 0 && (
+        {/* Journeys, not flights (owner report, 2026-08-19): the count
+            covers every trip - trains and ferries were invisible here. */}
+        {journeys > 0 && (
           <span className="flex flex-col leading-none">
-            <span className="text-base font-bold">{flights}</span>
-            <span className="text-[11px] map-glass-muted mt-0.5">flights</span>
+            <span className="text-base font-bold">{journeys}</span>
+            <span className="text-[11px] map-glass-muted mt-0.5">journeys</span>
+          </span>
+        )}
+        {overlandKm > 0 && (
+          <span className="flex flex-col leading-none">
+            <span className="text-base font-bold text-secondary-text">
+              {Math.round(overlandKm).toLocaleString()}
+            </span>
+            <span className="text-[11px] map-glass-muted mt-0.5">
+              km land&nbsp;&amp;&nbsp;sea
+            </span>
           </span>
         )}
       </span>

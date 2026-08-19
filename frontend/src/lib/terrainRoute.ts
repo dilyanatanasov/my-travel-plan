@@ -525,6 +525,33 @@ const STRAIT_GATES: { name: string; a: LonLat; b: LonLat }[] = [
   { name: 'Panama Canal', a: [-79.92, 9.36], b: [-79.55, 8.88] },
   { name: 'Strait of Hormuz', a: [56.6, 26.75], b: [56.9, 26.3] },
   { name: 'Bab-el-Mandeb', a: [43.3, 12.85], b: [43.55, 12.35] },
+  // Beyond Europe (2026-08-19): the gazetteer went global so a ferry
+  // logged anywhere routes as honestly as one in the Aegean.
+  { name: 'Strait of Dover', a: [1.65, 51.15], b: [1.15, 50.7] },
+  { name: 'Strait of Malacca', a: [99.6, 4.5], b: [103.53, 1.16] },
+  { name: 'Tsugaru Strait', a: [140.25, 41.55], b: [141.1, 41.5] },
+  { name: 'Cook Strait', a: [174.1, -40.9], b: [174.9, -41.5] },
+  { name: 'Strait of Magellan', a: [-70.8, -52.7], b: [-68.4, -52.4] },
+];
+
+/*
+  The land counterpart (owner ask, 2026-08-19: trains must find land
+  paths "just like sea travel"): fixed links - bridges and tunnels -
+  that carry trains and cars over water the land mask calls impassable.
+  A Copenhagen -> Malmö train crosses the Öresund Bridge, not a straight
+  line over the sound; London -> Paris takes the Channel Tunnel.
+*/
+const LAND_GATES: { name: string; a: LonLat; b: LonLat }[] = [
+  // Mouths sit on WELL-CONNECTED land at 50m resolution: the bridge
+  // really starts on Amager, but the atlas cuts Amager off from Zealand
+  // (the harbour bridges are far below 50m), so the Danish mouth anchors
+  // in Copenhagen proper.
+  { name: 'Channel Tunnel', a: [1.08, 51.08], b: [1.85, 50.95] },
+  { name: 'Oresund Bridge', a: [12.55, 55.68], b: [13.0, 55.58] },
+  { name: 'Great Belt Bridge', a: [11.13, 55.33], b: [10.8, 55.31] },
+  { name: 'Bosphorus Crossing', a: [28.97, 41.02], b: [29.05, 41.06] },
+  { name: 'Seikan Tunnel', a: [140.7, 41.2], b: [140.6, 41.7] },
+  { name: 'Confederation Bridge', a: [-63.75, 46.2], b: [-63.7, 46.35] },
 ];
 
 const DEG_PER_RAD = 180 / Math.PI;
@@ -554,11 +581,16 @@ function chainLengthDeg(points: LonLat[]): number {
  * settled nodes only, and every probe lands in the segment cache, so the
  * expensive first Varna -> Genoa pays for every later Black Sea ferry.
  */
-async function routeViaGates(from: LonLat, to: LonLat): Promise<LonLat[] | null> {
+async function routeViaGates(
+  from: LonLat,
+  to: LonLat,
+  medium: TerrainMedium,
+): Promise<LonLat[] | null> {
+  const gateList = medium === 'water' ? STRAIT_GATES : LAND_GATES;
   const directDeg = geoDistanceDeg(from, to);
   // A gate is a candidate when the detour through it stays proportionate.
   const detourCap = directDeg * 2.2 + 12;
-  const gates = STRAIT_GATES.filter((gate) => {
+  const gates = gateList.filter((gate) => {
     const mid: LonLat = [
       (gate.a[0] + gate.b[0]) / 2,
       (gate.a[1] + gate.b[1]) / 2,
@@ -602,7 +634,7 @@ async function routeViaGates(from: LonLat, to: LonLat): Promise<LonLat[] | null>
         const segment = await routeSegmentCached(
           nodes[u].point,
           nodes[v].point,
-          'water',
+          medium,
         );
         if (segment === 'blocked') continue;
         geometry =
@@ -637,10 +669,10 @@ async function computeRoute(
   const direct = await routeSegmentCached(from, to, medium);
   if (direct === 'straight') return null;
   if (direct !== 'blocked') return direct;
-  // Only ships get the gate network; a blocked land route (a real sea in
-  // the way) honestly stays a straight chord.
-  if (medium !== 'water') return null;
-  return routeViaGates(from, to);
+  // Both mediums have gates now: straits and canals for ships, bridges
+  // and tunnels for trains and cars (2026-08-19). A route neither the
+  // mask nor a gate can carry honestly stays a straight chord.
+  return routeViaGates(from, to, medium);
 }
 
 /*

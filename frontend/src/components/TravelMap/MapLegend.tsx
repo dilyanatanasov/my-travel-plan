@@ -1,5 +1,10 @@
-import { memo } from 'react';
+import { memo, useState } from 'react';
 import { useMapColors } from '../../theme/mapColors';
+
+/* Collapsed state is remembered: a map key is teaching material - once
+   someone knows the colors they may not want the box again (owner,
+   2026-08-19: "assess when they are needed"). */
+const COLLAPSE_KEY = 'contrail:legend-collapsed';
 
 interface MapLegendProps {
   showFlights: boolean;
@@ -23,9 +28,66 @@ interface MapLegendProps {
  */
 function MapLegend({ showFlights, stats }: MapLegendProps) {
   const { map: colors, legend } = useMapColors();
+  const [collapsed, setCollapsed] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(COLLAPSE_KEY) === '1';
+    } catch {
+      return false;
+    }
+  });
+  const toggleCollapsed = () => {
+    setCollapsed((current) => {
+      const next = !current;
+      try {
+        localStorage.setItem(COLLAPSE_KEY, next ? '1' : '0');
+      } catch {
+        /* private browsing: the choice lasts the session */
+      }
+      return next;
+    });
+  };
+
+  if (collapsed) {
+    return (
+      <button
+        type="button"
+        onClick={toggleCollapsed}
+        aria-label="Show the map legend"
+        className="map-glass map-glass-hover absolute bottom-20 lg:bottom-4 left-3 z-20 rounded-lg border shadow-lg px-2.5 min-h-8 flex items-center gap-1.5 text-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-400"
+      >
+        <span
+          className="w-2.5 h-2.5 rounded-sm flex-shrink-0"
+          style={{ backgroundColor: colors.visited }}
+          aria-hidden="true"
+        />
+        <span className="map-glass-muted">Legend</span>
+      </button>
+    );
+  }
 
   return (
-    <div className="map-glass absolute bottom-20 lg:bottom-4 left-3 z-20 max-w-[55%] lg:max-w-none rounded-lg border shadow-lg px-3 py-2">
+    <div className="map-glass absolute bottom-20 lg:bottom-4 left-3 z-20 max-w-[55%] lg:max-w-none rounded-lg border shadow-lg px-3 py-2 pr-8">
+      <button
+        type="button"
+        onClick={toggleCollapsed}
+        aria-label="Collapse the map legend"
+        className="map-glass-hover absolute top-1 right-1 w-6 h-6 flex items-center justify-center rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-400"
+      >
+        <svg
+          className="w-3.5 h-3.5 map-glass-muted"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2.2}
+            d="M6 18L18 6M6 6l12 12"
+          />
+        </svg>
+      </button>
       <ul className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
         {legend.map((entry) => (
           <li key={entry.label} className="flex items-center gap-1.5">
