@@ -300,6 +300,8 @@ interface GlobeViewProps {
   onSelectRoute?: (route: AggregatedRoute) => void;
   onClearJourney?: () => void;
   journeyCard?: ReactNode;
+  /** Marker tap opens the stop card; guarded here against rotations. */
+  onSelectStop?: (airport: Airport) => void;
   /** The stop whose postcard is showing during replay (trip photos). */
   postcard?: ReplayPostcard | null;
   /** Cockpit-audio mute, owned by TravelMap with the audio itself. */
@@ -363,6 +365,7 @@ function GlobeView({
   onSelectRoute,
   onClearJourney,
   journeyCard,
+  onSelectStop,
   postcard = null,
   audioMuted,
   onToggleAudioMuted,
@@ -1228,6 +1231,16 @@ function GlobeView({
               labelZoom={camera.zoom}
               labelsFromZoom={1.3}
               cityNamesFromZoom={2.8}
+              onSelectStop={
+                onSelectStop
+                  ? (airport) => {
+                      // A rotation's final tap is not a stop selection.
+                      if (lastGestureMovedRef.current || replay.isActive)
+                        return;
+                      onSelectStop(airport);
+                    }
+                  : undefined
+              }
             />
           )}
 

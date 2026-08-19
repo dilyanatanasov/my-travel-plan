@@ -7,7 +7,7 @@ import {
 import { useVisitActions } from '../../features/visits/useVisitActions';
 import { useToast } from '../Toast/ToastProvider';
 import { track } from '../../lib/analytics';
-import type { Visit, FlightJourney } from '../../types';
+import type { Visit, FlightJourney, Airport } from '../../types';
 import {
   useGetFlightsQuery,
   useGetLegPhotoIdsQuery,
@@ -55,6 +55,7 @@ import { useCountryInteraction } from './useCountryInteraction';
 import ReplayControl from './ReplayControl';
 import GlobeView from './GlobeView';
 import RouteChooser from './RouteChooser';
+import StopDetailCard from './StopDetailCard';
 import type { AggregatedRoute } from '../FlightMap/routeUtils';
 import { fitToPoints, type LonLat } from './fitBounds';
 
@@ -214,6 +215,16 @@ function TravelMap() {
     changes.
   */
   const [openCountryIso, setOpenCountryIso] = useState<string | null>(null);
+  /*
+    The stop card (owner ask, 2026-08-19): a tapped airport/city marker,
+    in the map's one vocabulary. It shares the floating-card berth with
+    the country and journey cards - opening any one closes the others,
+    so the corner never stacks.
+  */
+  const [openStop, setOpenStop] = useState<Airport | null>(null);
+  useEffect(() => {
+    if (openCountryIso) setOpenStop(null);
+  }, [openCountryIso]);
 
   /*
     Replay draws one journey at a time, in date order, reusing the same
@@ -414,7 +425,21 @@ function TravelMap() {
     // Hover events stop while a journey is selected, so a stale tooltip
     // would ride the cursor through the whole selection otherwise.
     setHoveredRoute(null);
+    // One berth, one card.
+    setOpenStop(null);
   }, [replay.isActive]);
+
+  /** Marker tap opens the stop card - gesture-guarded, berth-exclusive. */
+  const handleSelectStop = useCallback(
+    (airport: Airport) => {
+      if (wasDragRef.current || replay.isActive) return;
+      clickConsumedRef.current = true;
+      setOpenStop(airport);
+      setOpenCountryIso(null);
+      setSelectedJourney(null);
+    },
+    [replay.isActive],
+  );
 
   // Build country display map from visits
   const countryDisplayMap = useMemo(() => buildCountryDisplayMap(visits), [visits]);
@@ -771,6 +796,23 @@ function TravelMap() {
     </div>
   );
 
+  /* The stop card, both modes, same berth wrapper as the country card. */
+  const stopDetailCard = openStop && !selectedJourney && !openCountry && (
+    <div className="absolute z-20 left-3 right-3 sm:right-auto sm:w-96 bottom-20 lg:bottom-4 lg:left-auto lg:right-20 top-16 md:top-3 flex flex-col justify-end pointer-events-none">
+      <StopDetailCard
+        stop={openStop}
+        journeys={flights}
+        onClose={() => setOpenStop(null)}
+        onShowJourney={(journeyId) => {
+          const journey = flights.find((f) => f.id === journeyId);
+          if (!journey) return;
+          setOpenStop(null);
+          setSelectedJourney(journey);
+        }}
+      />
+    </div>
+  );
+
   /* One journey card for both modes, same pattern as the country card:
      the flat map renders it in place, the globe receives it as a slot. */
   const selectedJourneyCard = selectedJourney && (
@@ -816,11 +858,12 @@ function TravelMap() {
         replay={replayForUi}
         onCountryClick={handleCountryClick}
         onCountryLongPress={handleCountryLongPress}
-        detailCard={countryDetailCard || undefined}
+        detailCard={countryDetailCard || stopDetailCard || undefined}
         selectedJourney={selectedJourney}
         onSelectRoute={handleSelectRoute}
         onClearJourney={() => setSelectedJourney(null)}
         journeyCard={selectedJourneyCard || undefined}
+        onSelectStop={handleSelectStop}
         postcard={postcard}
         audioMuted={muted}
         onToggleAudioMuted={toggleMuted}
@@ -978,6 +1021,7 @@ function TravelMap() {
               sizeScale={markerScale}
               popIata={replay.isActive ? popAirport?.iata : undefined}
               popKey={popAirport?.key}
+              onSelectStop={replay.isActive ? undefined : handleSelectStop}
             />
           )}
 
@@ -1030,7 +1074,9 @@ function TravelMap() {
           briefly stepping aside. Desktop keeps both - different corners.
         */
         className={`absolute top-3 left-3 right-3 md:right-auto md:w-[30rem] z-30 flex-col gap-2 ${
-          countryDetailCard || selectedJourney ? 'hidden md:flex' : 'flex'
+          countryDetailCard || stopDetailCard || selectedJourney
+            ? 'hidden md:flex'
+            : 'flex'
         }`}
       >
         <MapSearch
@@ -1065,7 +1111,9 @@ function TravelMap() {
       {!replay.isActive && (
         <div
           className={
-            countryDetailCard || selectedJourney ? 'hidden lg:block' : 'block'
+            countryDetailCard || stopDetailCard || selectedJourney
+              ? 'hidden lg:block'
+              : 'block'
           }
         >
           <MapLegend showFlights={settings.showFlights} stats={stats} />
@@ -1153,6 +1201,7 @@ function TravelMap() {
 
       {/* Same berth as the journey card — they are never open together. */}
       {countryDetailCard}
+      {stopDetailCard}
 
       {/* Hover-only. On touch the route's details are in the card instead. */}
       {canHover && (
