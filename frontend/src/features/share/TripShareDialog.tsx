@@ -21,6 +21,8 @@ import {
 import { useToast } from '../../components/Toast/ToastProvider';
 import { useAuth } from '../auth/authApi';
 import { useGetLegPhotoIdsQuery } from '../flights/flightsApi';
+import { useGetCountriesQuery } from '../visits/visitsApi';
+import { renderGlobeTripVideo } from '../../utils/exportGlobeVideo';
 import { legEndpoints, legMode } from '../../components/FlightMap/routeUtils';
 import { ensureTerrainWaypoints, modeMedium } from '../../lib/terrainRoute';
 import { formatJourneyDate } from '../../utils/journeyDate';
@@ -50,12 +52,16 @@ function TripShareDialog({
   /** Which pipeline stage the video is in - "0%" alone hid which of the
       five pre-render steps was stuck (owner report, 2026-08-18). */
   const [videoStage, setVideoStage] = useState<string | null>(null);
+  /** Which film is rendering, so each button narrates only its own run. */
+  const [videoKind, setVideoKind] = useState<'flat' | 'globe' | null>(null);
   const [videoFile, setVideoFile] = useState<File | null>(null);
   /** While capturing scenes, the export canvas frames one leg at a time. */
   const [videoFocusLeg, setVideoFocusLeg] = useState<number | null>(null);
   const blobRef = useRef<Blob | null>(null);
   const canExportVideo = useMemo(() => isVideoExportSupported(), []);
   const { data: photoIds } = useGetLegPhotoIdsQuery();
+  // For the globe film: which countries the trip lights up (alpha-3).
+  const { data: allCountries = [] } = useGetCountriesQuery();
   const photoLegSet = useMemo(
     () => new Set(photoIds?.legIds ?? []),
     [photoIds],
@@ -180,6 +186,7 @@ function TripShareDialog({
       return;
     }
     setVideoProgress(0);
+    setVideoKind('flat');
     /*
       Stage labels + per-stage timeouts + a breadcrumb trail (owner
       report, 2026-08-18: a long journey sat at "0%" with no clue which
@@ -371,6 +378,7 @@ function TripShareDialog({
     } finally {
       setVideoProgress(null);
       setVideoStage(null);
+      setVideoKind(null);
       setVideoFocusLeg(null);
       objectUrls.forEach((url) => URL.revokeObjectURL(url));
     }
@@ -383,6 +391,97 @@ function TripShareDialog({
     user?.displayName,
     photoLegSet,
   ]);
+
+  /*
+    The globe film (owner ask, 2026-08-19): no SVG, no scene capture -
+    a bespoke canvas painter flies the same timeline the live globe
+    replay does. Pipeline is therefore two stages: plot routes, record.
+  */
+  const handleCreateGlobeVideo = useCallback(async () => {
+    setVideoProgress(0);
+    setVideoKind('globe');
+    const startedAt = performance.now();
+    const stageLog: string[] = [];
+    const stage = (label: string) => {
+      const at = ((performance.now() - startedAt) / 1000).toFixed(1);
+      stageLog.push(`${label} @${at}s`);
+      console.info(`[globe-video] ${label} (+${at}s)`);
+      setVideoStage(label);
+    };
+    try {
+      stage('Plotting routes');
+      await Promise.race([
+        Promise.all(
+          legs.map((leg) => {
+            const medium = modeMedium(legMode(leg));
+            const endpoints = legEndpoints(leg);
+            if (!medium || !endpoints) return null;
+            return ensureTerrainWaypoints(
+              [
+                Number(endpoints.departure.longitude),
+                Number(endpoints.departure.latitude),
+              ],
+              [
+                Number(endpoints.arrival.longitude),
+                Number(endpoints.arrival.latitude),
+              ],
+              medium,
+            );
+          }),
+        ),
+        new Promise((resolve) => setTimeout(resolve, 15000)),
+      ]);
+
+      stage('Recording journey');
+      const alpha2ToAlpha3 = new Map(
+        allCountries.map((country) => [country.isoCode2, country.isoCode]),
+      );
+      const tripIsos = new Set<string>();
+      for (const leg of legs) {
+        const endpoints = legEndpoints(leg);
+        for (const place of [endpoints?.departure, endpoints?.arrival]) {
+          const alpha3 = place?.countryIso
+            ? alpha2ToAlpha3.get(place.countryIso)
+            : null;
+          if (alpha3) tripIsos.add(alpha3);
+        }
+      }
+      const blob = await renderGlobeTripVideo(
+        journey,
+        { routeCodes, dateLabel: formatJourneyDate(journey) },
+        tripIsos,
+        setVideoProgress,
+        // Slower than the flat film: the globe's chase IS the show.
+        Math.min(Math.max(legs.length * 3200, 6000), 14000),
+      );
+      track('share_render', { style: 'globe-video' });
+      const extension = videoFileExtension(blob.type);
+      const videoName = filename.replace(/\.png$/, `-globe.${extension}`);
+      const shareType = blob.type.split(';')[0] || 'video/mp4';
+      setVideoFile(new File([blob], videoName, { type: shareType }));
+    } catch (videoError) {
+      const lastStage = stageLog[stageLog.length - 1] ?? 'start';
+      const message =
+        videoError instanceof Error
+          ? videoError.message
+          : 'Could not create the video';
+      console.error(
+        '[globe-video] failed:',
+        message,
+        '| trail:',
+        stageLog.join(' → '),
+      );
+      track('video_error', {
+        stage: `globe: ${lastStage.split(' @')[0]}`,
+        message: message.slice(0, 100),
+      });
+      showToast(`${message} (failed at: ${lastStage})`, { tone: 'error' });
+    } finally {
+      setVideoProgress(null);
+      setVideoStage(null);
+      setVideoKind(null);
+    }
+  }, [legs, journey, routeCodes, filename, showToast, allCountries]);
 
   const handleShareVideo = useCallback(async () => {
     if (!videoFile) return;
@@ -494,19 +593,34 @@ function TripShareDialog({
           </Button>
         </div>
         {canExportVideo && !videoFile && (
-          <Button
-            variant="ghost"
-            fullWidth
-            className="rounded-xl"
-            onClick={handleCreateVideo}
-            disabled={!previewUrl || videoProgress !== null}
-          >
-            {videoProgress !== null
-              ? videoStage === 'Recording journey' || videoStage === null
-                ? `Recording journey… ${Math.round(videoProgress * 100)}%`
-                : `${videoStage}…`
-              : 'Create video ✈️'}
-          </Button>
+          <>
+            <Button
+              variant="ghost"
+              fullWidth
+              className="rounded-xl"
+              onClick={handleCreateVideo}
+              disabled={!previewUrl || videoProgress !== null}
+            >
+              {videoKind === 'flat' && videoProgress !== null
+                ? videoStage === 'Recording journey' || videoStage === null
+                  ? `Recording journey… ${Math.round(videoProgress * 100)}%`
+                  : `${videoStage}…`
+                : 'Create video ✈️'}
+            </Button>
+            <Button
+              variant="ghost"
+              fullWidth
+              className="rounded-xl"
+              onClick={handleCreateGlobeVideo}
+              disabled={!previewUrl || videoProgress !== null}
+            >
+              {videoKind === 'globe' && videoProgress !== null
+                ? videoStage === 'Recording journey' || videoStage === null
+                  ? `Recording journey… ${Math.round(videoProgress * 100)}%`
+                  : `${videoStage}…`
+                : 'Create globe video 🌍'}
+            </Button>
+          </>
         )}
         {videoFile &&
           /*

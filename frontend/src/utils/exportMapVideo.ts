@@ -15,13 +15,12 @@ import {
   CARD_HEIGHT,
   type TripContent,
 } from './shareCard';
-
-const FPS = 30;
+export const FPS = 30;
 const DURATION_MS = 9000;
 /** Routes take off staggered across this fraction of the run. */
 const STAGGER = 0.55;
 /** Held at the end so the finished map is the last thing on screen. */
-const HOLD_MS = 1200;
+export const HOLD_MS = 1200;
 
 export interface VideoCaption {
   title: string;
@@ -44,7 +43,7 @@ export function isVideoExportSupported(): boolean {
   return Boolean(pickMimeType());
 }
 
-function pickMimeType(): string | null {
+export function pickMimeType(): string | null {
   const candidates = [
     /*
       MP4 first (2026-08-17): Instagram, iMessage and most story targets
@@ -149,7 +148,7 @@ function wavyTrailPoints(
   silent failure into an honest error, and a screen wake lock keeps the
   phone awake for the render's duration in the first place.
 */
-function armRecordingGuards(onAbort: (error: MapExportError) => void): () => void {
+export function armRecordingGuards(onAbort: (error: MapExportError) => void): () => void {
   type WakeLockNavigator = Navigator & {
     wakeLock?: { request: (type: 'screen') => Promise<{ release: () => Promise<void> }> };
   };
