@@ -40,6 +40,12 @@ interface AirportMarkersProps {
    * pass the reciprocal here so names land at full size.
    */
   labelScale?: number;
+  /**
+   * Tap a marker to open its stop card (owner ask, 2026-08-19: cities
+   * clickable like countries). The caller passes a gesture-guarded
+   * handler; omitted on non-interactive surfaces (exports, shares).
+   */
+  onSelectStop?: (airport: Airport) => void;
 }
 
 function AirportMarkers({
@@ -53,6 +59,7 @@ function AirportMarkers({
   cityNamesFromZoom = 4.5,
   labelZoom,
   labelScale = 1,
+  onSelectStop,
 }: AirportMarkersProps) {
   const { map: colors } = useMapColors();
   const { projection } = useMapContext();
@@ -149,6 +156,23 @@ function AirportMarkers({
               app's worst colour-vision failure. Lightness contrast works for
               everyone.
             */}
+            {/* An invisible fat disc as the tap target: the dot itself
+                is 2-4px, unhittable with a finger. */}
+            {onSelectStop && (
+              <circle
+                cx={x}
+                cy={y}
+                r={Math.max(radius * 2, getZoomAdjustedSize(11, zoom))}
+                fill="transparent"
+                style={{ cursor: 'pointer' }}
+                onClick={(event) => {
+                  // The tap belongs to the stop, not to the country
+                  // beneath it or the clear-selection fallthrough.
+                  event.stopPropagation();
+                  onSelectStop(airport);
+                }}
+              />
+            )}
             <circle
               cx={x}
               cy={y}
@@ -156,6 +180,7 @@ function AirportMarkers({
               fill={isHighlighted ? colors.selected : colors.airportFill}
               stroke={isHighlighted ? colors.selected : colors.airportRing}
               strokeWidth={strokeWidth * 1.5}
+              pointerEvents="none"
               style={{
                 transition: 'fill 0.15s',
               }}
