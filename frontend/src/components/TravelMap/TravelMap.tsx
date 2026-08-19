@@ -764,16 +764,29 @@ function TravelMap() {
           if (!journey) return;
           setOpenCountryIso(null);
           setSelectedJourney(journey);
-          // Journey highlighting lives on the flat map; land the viewer
-          // where the thing they asked to see exists.
-          if (globeMode) handleGlobeModeChange(false);
+          // The globe flies selections itself now (owner ask,
+          // 2026-08-19) - no more being kicked to the flat map.
         }}
       />
     </div>
   );
 
+  /* One journey card for both modes, same pattern as the country card:
+     the flat map renders it in place, the globe receives it as a slot. */
+  const selectedJourneyCard = selectedJourney && (
+    <SelectedJourneyCard
+      journey={selectedJourney}
+      onClose={() => {
+        setSelectedJourney(null);
+        setHoveredRoute(null);
+      }}
+      onShare={() => setShareJourney(selectedJourney)}
+    />
+  );
+
   if (globeMode) {
     return (
+      <>
       <GlobeView
         containerRef={containerRef}
         width={width}
@@ -804,6 +817,10 @@ function TravelMap() {
         onCountryClick={handleCountryClick}
         onCountryLongPress={handleCountryLongPress}
         detailCard={countryDetailCard || undefined}
+        selectedJourney={selectedJourney}
+        onSelectRoute={handleSelectRoute}
+        onClearJourney={() => setSelectedJourney(null)}
+        journeyCard={selectedJourneyCard || undefined}
         postcard={postcard}
         audioMuted={muted}
         onToggleAudioMuted={toggleMuted}
@@ -813,6 +830,15 @@ function TravelMap() {
         stats={stats}
         homeCenter={openingCenter}
       />
+      {/* The share dialog portals to body; sharing works from the
+          globe's journey card too. */}
+      {shareJourney && (
+        <TripShareDialog
+          journey={shareJourney}
+          onClose={() => setShareJourney(null)}
+        />
+      )}
+      </>
     );
   }
 
@@ -1116,16 +1142,7 @@ function TravelMap() {
         onReset={handleResetView}
       />
 
-      {selectedJourney && (
-        <SelectedJourneyCard
-          journey={selectedJourney}
-          onClose={() => {
-            setSelectedJourney(null);
-            setHoveredRoute(null);
-          }}
-          onShare={() => setShareJourney(selectedJourney)}
-        />
-      )}
+      {selectedJourneyCard}
 
       {shareJourney && (
         <TripShareDialog

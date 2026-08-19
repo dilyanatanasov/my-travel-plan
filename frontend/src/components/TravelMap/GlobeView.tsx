@@ -19,7 +19,7 @@ import {
 } from 'react-simple-maps';
 import { geoDistance, geoOrthographic } from 'd3-geo';
 import type { LineString } from 'geojson';
-import type { Airport, Country } from '../../types';
+import type { Airport, Country, FlightJourney } from '../../types';
 import { track } from '../../lib/analytics';
 import { useMapColors } from '../../theme/mapColors';
 import { useTheme } from '../../features/theme/ThemeContext';
@@ -57,7 +57,11 @@ import {
   type PlaneFrame,
 } from './globeUtils';
 import { legEndpoints, legMode } from '../FlightMap/routeUtils';
-import { modeMedium, type TerrainRequest } from '../../lib/terrainRoute';
+import {
+  modeMedium,
+  terrainWaypointsSync,
+  type TerrainRequest,
+} from '../../lib/terrainRoute';
 import { useTerrainRoutes } from '../../hooks/useTerrainRoutes';
 
 /*
@@ -117,6 +121,10 @@ interface GlobeRoutesProps {
   maxCount: number;
   sizeScale: number;
   faded: boolean;
+  /** Tap-to-select (owner ask, 2026-08-19: "selecting a route on the
+      globe is practically impossible") - already gesture-guarded by the
+      caller, so a rotation's final tap never selects. */
+  onSelect?: (route: AggregatedRoute) => void;
 }
 
 /**
@@ -126,38 +134,112 @@ interface GlobeRoutesProps {
  * arc between two *projected* points, which on a globe produces curves that
  * neither follow the sphere nor stop at the horizon. A GeoJSON LineString
  * through geoPath gets both right for free — d3 samples the great circle and
- * clips it at clipAngle 90.
- *
- * Non-interactive for v1: hover tooltips and tap-to-select a journey stay on
- * the flat map, so these draw with pointer events off rather than promising
- * a selection the globe cannot yet honour.
+ * clips it at clipAngle 90. Surface routes follow their terrain waypoints
+ * and wear their mode's color and dash, same language as the flat map.
  */
-function GlobeRoutes({ routes, maxCount, sizeScale, faded }: GlobeRoutesProps) {
+function GlobeRoutes({
+  routes,
+  maxCount,
+  sizeScale,
+  faded,
+  onSelect,
+}: GlobeRoutesProps) {
   const { map: colors } = useMapColors();
   const { path } = useMapContext();
 
+  // Kick off terrain routing so surface routes bend around coastlines
+  // here too - previously only the replay's tracks did.
+  const terrainRequests = useMemo<TerrainRequest[]>(
+    () =>
+      routes.flatMap((route) => {
+        const medium = modeMedium(route.mode ?? 'flight');
+        if (!medium) return [];
+        return [
+          {
+            from: [
+              Number(route.departure.longitude),
+              Number(route.departure.latitude),
+            ] as [number, number],
+            to: [
+              Number(route.arrival.longitude),
+              Number(route.arrival.latitude),
+            ] as [number, number],
+            medium,
+          },
+        ];
+      }),
+    [routes],
+  );
+  useTerrainRoutes(terrainRequests);
+
   return (
-    <g className="flight-routes" pointerEvents="none">
+    <g className="flight-routes">
       {routes.map((route) => {
+        const mode = route.mode ?? 'flight';
+        const medium = modeMedium(mode);
+        const from: [number, number] = [
+          Number(route.departure.longitude),
+          Number(route.departure.latitude),
+        ];
+        const to: [number, number] = [
+          Number(route.arrival.longitude),
+          Number(route.arrival.latitude),
+        ];
+        const waypoints = medium
+          ? terrainWaypointsSync(from, to, medium)
+          : null;
         const line: LineString = {
           type: 'LineString',
-          coordinates: [
-            [Number(route.departure.longitude), Number(route.departure.latitude)],
-            [Number(route.arrival.longitude), Number(route.arrival.latitude)],
-          ],
+          coordinates: waypoints ?? [from, to],
         };
         const d = path(line);
         if (!d) return null;
+        const strokeColor =
+          mode === 'ferry'
+            ? colors.routeSea
+            : mode !== 'flight'
+              ? colors.routeLand
+              : colors.route;
         return (
-          <path
-            key={route.key}
-            d={d}
-            fill="none"
-            stroke={colors.route}
-            strokeWidth={getStrokeWidth(route.count, maxCount, sizeScale)}
-            strokeLinecap="round"
-            strokeOpacity={faded ? 0.1 : 0.65}
-          />
+          <g key={route.key}>
+            {/* Fat invisible hit stroke: the visible line is 1-2px,
+                unhittable with a finger. */}
+            {onSelect && (
+              <path
+                d={d}
+                fill="none"
+                stroke="transparent"
+                strokeWidth={22}
+                strokeLinecap="round"
+                style={{ cursor: 'pointer' }}
+                onClick={(event) => {
+                  // The tap belongs to the route, not to the country
+                  // beneath it or the clear-selection fallthrough.
+                  event.stopPropagation();
+                  onSelect(route);
+                }}
+              />
+            )}
+            <path
+              d={d}
+              fill="none"
+              stroke={strokeColor}
+              strokeWidth={
+                getStrokeWidth(route.count, maxCount, sizeScale) *
+                (mode !== 'flight' && mode !== 'ferry' ? 1.6 : 1)
+              }
+              strokeLinecap="round"
+              strokeDasharray={
+                mode !== 'flight' && mode !== 'ferry'
+                  ? '0.1 4.5'
+                  : mode === 'ferry'
+                    ? '6 5'
+                    : undefined
+              }
+              strokeOpacity={faded ? 0.1 : 0.65}
+              pointerEvents="none"
+            />
+          </g>
         );
       })}
     </g>
@@ -208,6 +290,16 @@ interface GlobeViewProps {
   onCountryLongPress?: (isoCode: string) => void | Promise<void>;
   /** The country detail card, built and positioned by TravelMap. */
   detailCard?: ReactNode;
+  /*
+    Journey selection ON the globe (owner ask, 2026-08-19: "why can't it
+    use the same logic as the replay"): tapping a route selects its
+    journey, the ambient loop below flies it with the replay's own
+    machinery, and the same card the flat map shows rides in as a slot.
+  */
+  selectedJourney?: FlightJourney | null;
+  onSelectRoute?: (route: AggregatedRoute) => void;
+  onClearJourney?: () => void;
+  journeyCard?: ReactNode;
   /** The stop whose postcard is showing during replay (trip photos). */
   postcard?: ReplayPostcard | null;
   /** Cockpit-audio mute, owned by TravelMap with the audio itself. */
@@ -267,6 +359,10 @@ function GlobeView({
   onCountryClick,
   onCountryLongPress,
   detailCard,
+  selectedJourney = null,
+  onSelectRoute,
+  onClearJourney,
+  journeyCard,
   postcard = null,
   audioMuted,
   onToggleAudioMuted,
@@ -852,6 +948,58 @@ function GlobeView({
   }, [replay.isActive, replay.current, setCamera, terrainVersion]);
 
   /*
+    The ambient selected journey (owner ask, 2026-08-19): the replay's
+    own machinery - buildJourneyTimeline + samplePlaneFrame - looping
+    forever, exactly like the flat map's selected-route animation. The
+    camera stays the user's: selection is inspection, not narration.
+  */
+  const [ambientPlane, setAmbientPlane] = useState<PlaneFrame | null>(null);
+  const ambientTerrainRequests = useMemo<TerrainRequest[]>(() => {
+    if (!selectedJourney) return [];
+    return (selectedJourney.legs ?? []).flatMap((leg) => {
+      const medium = modeMedium(legMode(leg));
+      const endpoints = legEndpoints(leg);
+      if (!medium || !endpoints) return [];
+      return [
+        {
+          from: [
+            Number(endpoints.departure.longitude),
+            Number(endpoints.departure.latitude),
+          ] as [number, number],
+          to: [
+            Number(endpoints.arrival.longitude),
+            Number(endpoints.arrival.latitude),
+          ] as [number, number],
+          medium,
+        },
+      ];
+    });
+  }, [selectedJourney]);
+  const ambientTerrainVersion = useTerrainRoutes(ambientTerrainRequests);
+
+  useEffect(() => {
+    if (!selectedJourney || replay.isActive) {
+      setAmbientPlane(null);
+      return;
+    }
+    const timeline = buildJourneyTimeline(selectedJourney);
+    if (!timeline) {
+      setAmbientPlane(null);
+      return;
+    }
+    const startedAt = performance.now();
+    let raf = 0;
+    const tick = (now: number) => {
+      const t = ((now - startedAt) / 1000) % timeline.totalS;
+      setAmbientPlane(samplePlaneFrame(timeline, t));
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+    // ambientTerrainVersion: resolved routes swap the interpolators.
+  }, [selectedJourney, replay.isActive, ambientTerrainVersion]);
+
+  /*
     Horizon culling for point markers: the raw projection maps the hidden
     hemisphere onto the same disk, so airports must be filtered by angular
     distance from the camera centre before AirportMarkers projects them.
@@ -942,6 +1090,16 @@ function GlobeView({
       onPointerUp={handlePointerEnd}
       onPointerCancel={handlePointerEnd}
       onMouseMove={handleMouseMove}
+      onClick={(event) => {
+        // A clean tap on the map (not a control, not a route - routes
+        // stop propagation) releases the selected journey, flat parity.
+        if (!onClearJourney || lastGestureMovedRef.current) return;
+        const target = event.target as Element;
+        if (target.closest('button, [role="switch"], input, select, a'))
+          return;
+        if (!target.closest('svg')) return;
+        onClearJourney();
+      }}
     >
       <ComposableMap
         width={width}
@@ -1024,12 +1182,30 @@ function GlobeView({
                 routes={routes}
                 maxCount={maxRouteCount}
                 sizeScale={markerScale}
-                faded={replay.isActive}
+                faded={replay.isActive || Boolean(selectedJourney)}
+                onSelect={
+                  onSelectRoute
+                    ? (route) => {
+                        // A rotation's final tap is not a selection -
+                        // same guard the country tap-cycle uses.
+                        if (lastGestureMovedRef.current || replay.isActive)
+                          return;
+                        onSelectRoute(route);
+                      }
+                    : undefined
+                }
               />
               {replay.current && plane && (
                 <GlobeJourney
                   journey={replay.current}
                   plane={plane}
+                  sizeScale={markerScale}
+                />
+              )}
+              {!replay.isActive && selectedJourney && ambientPlane && (
+                <GlobeJourney
+                  journey={selectedJourney}
+                  plane={ambientPlane}
                   sizeScale={markerScale}
                 />
               )}
@@ -1129,6 +1305,9 @@ function GlobeView({
       {/* The country detail card, built and positioned by TravelMap (D8) —
           opened by tapping a home country or holding any country. */}
       {!replay.isActive && detailCard}
+      {/* Same berth as the flat map's journey card - never open together
+          with the country card (the country card yields to a selection). */}
+      {!replay.isActive && journeyCard}
 
 
       {replay.isActive && (
