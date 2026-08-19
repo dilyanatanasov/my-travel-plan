@@ -418,6 +418,59 @@ function GlobeView({
   }, []);
   useEffect(() => cancelFlight, [cancelFlight]);
 
+  /*
+    Fidget-spinner physics (owner ask, 2026-08-19: "even if I swipe hard
+    it moves just a bit"). A drag used to end where the finger stopped;
+    now the release velocity carries the globe on, decaying with an
+    exponential friction tuned so a hard flick spins for a few seconds.
+    Longitude carries the spin; latitude is damped harder and dies at
+    the pole clamp - a fidget spinner has one good axis. Any stronger
+    claim on the camera (a press, a wheel tick, the replay, Reset)
+    cancels it.
+  */
+  const inertiaRef = useRef<number | null>(null);
+  const spinSamplesRef = useRef<
+    { t: number; lon: number; lat: number }[]
+  >([]);
+  const cancelInertia = useCallback(() => {
+    if (inertiaRef.current !== null) {
+      cancelAnimationFrame(inertiaRef.current);
+      inertiaRef.current = null;
+    }
+  }, []);
+  useEffect(() => cancelInertia, [cancelInertia]);
+
+  const startInertia = useCallback(
+    (velocity: [number, number]) => {
+      cancelInertia();
+      const spin: [number, number] = [...velocity];
+      let last = performance.now();
+      const tick = (now: number) => {
+        // Capped dt so a background-tab stall cannot slingshot the globe.
+        const dt = Math.min((now - last) / 1000, 0.05);
+        last = now;
+        const decay = Math.exp(-dt * 0.9);
+        spin[0] *= decay;
+        spin[1] *= decay;
+        const current = cameraRef.current;
+        const rawLat = current.rotation[1] + spin[1] * dt;
+        const nextLat = clampLat(rawLat);
+        if (nextLat !== rawLat) spin[1] = 0; // the pole is a wall, not a spring
+        scheduleCamera({
+          rotation: [current.rotation[0] + spin[0] * dt, nextLat],
+          zoom: current.zoom,
+        });
+        if (Math.hypot(spin[0], spin[1]) > 3) {
+          inertiaRef.current = requestAnimationFrame(tick);
+        } else {
+          inertiaRef.current = null;
+        }
+      };
+      inertiaRef.current = requestAnimationFrame(tick);
+    },
+    [cancelInertia, scheduleCamera],
+  );
+
   const anchorGesture = useCallback(() => {
     const points = [...pointersRef.current.values()];
     if (points.length === 0) {
@@ -458,8 +511,11 @@ function GlobeView({
       // Only a press that lands on the map's own SVG starts a rotation.
       if (!(event.target as Element).closest('svg')) return;
       if (event.pointerType === 'mouse' && event.button !== 0) return;
-      // A press on the map takes the camera back from a search flight.
+      // A press on the map takes the camera back from a search flight -
+      // and catches a spinning globe.
       cancelFlight();
+      cancelInertia();
+      spinSamplesRef.current = [];
       /*
         No pointer capture here (D8): capture retargets every later event to
         the container, which starves the country paths — their click never
@@ -477,7 +533,7 @@ function GlobeView({
       anchorGesture();
       setIsDragging(true);
     },
-    [replay.isActive, anchorGesture, cancelFlight],
+    [replay.isActive, anchorGesture, cancelFlight, cancelInertia],
   );
 
   const handlePointerMove = useCallback(
@@ -520,11 +576,21 @@ function GlobeView({
       // Degrees per pixel shrink as the globe grows, so the ground tracks
       // the finger at any zoom.
       const k = ROTATE_SENSITIVITY / (baseRadius * drag.zoom);
+      const nextLon = drag.rotation[0] + dx * k;
+      const nextLat = clampLat(drag.rotation[1] - dy * k);
+      // The spin gauge: recent positions, so release speed is measured
+      // from the gesture's actual tail rather than its average.
+      // Event time, not processing time: a heavy frame delays the
+      // handler by hundreds of ms, and velocity must not care.
+      const now = event.timeStamp;
+      const samples = spinSamplesRef.current;
+      samples.push({ t: now, lon: nextLon, lat: nextLat });
+      // Last six samples, whatever their age: a time-window trim starved
+      // on heavy frames (each move re-renders the whole globe), and a
+      // slow-start average is handled at release by capping the window.
+      while (samples.length > 6) samples.shift();
       scheduleCamera({
-        rotation: [
-          drag.rotation[0] + dx * k,
-          clampLat(drag.rotation[1] - dy * k),
-        ],
+        rotation: [nextLon, nextLat],
         zoom: drag.zoom,
       });
     },
@@ -542,12 +608,41 @@ function GlobeView({
       // Survives the click that follows this pointerup, so the country
       // handlers can tell a tap from the end of a rotation.
       lastGestureMovedRef.current = dragRef.current?.moved ?? false;
+      // A moved gesture that ended fast becomes a spin: velocity from
+      // the last ~120ms of samples, capped at two revolutions a second.
+      const samples = spinSamplesRef.current;
+      spinSamplesRef.current = [];
+      const lastSample = samples[samples.length - 1];
+      if (
+        dragRef.current?.moved &&
+        samples.length >= 2 &&
+        // A finger that STOPPED before lifting is a hold, not a flick -
+        // judged by event timestamps, immune to processing lag. 200ms
+        // keeps slow devices spinnable without turning holds into spins.
+        event.timeStamp - lastSample.t < 200
+      ) {
+        // Velocity over the freshest ~400ms of the gesture - the flick's
+        // tail, not its whole history.
+        const first =
+          samples.find((sample) => lastSample.t - sample.t <= 400) ?? samples[0];
+        const seconds = (lastSample.t - first.t) / 1000;
+        if (seconds > 0.008) {
+          const lonV = (lastSample.lon - first.lon) / seconds;
+          // Latitude flicks damped: a fidget spinner has one good axis.
+          const latV = ((lastSample.lat - first.lat) / seconds) * 0.4;
+          const speed = Math.hypot(lonV, latV);
+          if (speed > 25) {
+            const cap = Math.min(1, 720 / speed);
+            startInertia([lonV * cap, latV * cap]);
+          }
+        }
+      }
       dragRef.current = null;
       setIsDragging(false);
     } else {
       anchorGesture();
     }
-  }, [anchorGesture]);
+  }, [anchorGesture, startInertia]);
 
   /*
     Wheel zoom needs preventDefault, and React's root-level wheel listener is
@@ -583,6 +678,7 @@ function GlobeView({
   const flyTo = useCallback(
     (target: LonLat, zoomTarget: number) => {
       cancelFlight();
+      cancelInertia();
       // A landing is a deliberate move: the data framing stops overriding.
       markMoved();
       let last = performance.now();
@@ -613,7 +709,7 @@ function GlobeView({
       };
       flightRef.current = requestAnimationFrame(tick);
     },
-    [cancelFlight, markMoved, setCamera],
+    [cancelFlight, cancelInertia, markMoved, setCamera],
   );
 
   const frameSearchTarget = useCallback(
@@ -682,6 +778,8 @@ function GlobeView({
       setPlane(null);
       return;
     }
+    // The replay's cameraman does not share the wheel with a spinning globe.
+    cancelInertia();
     const timeline = buildJourneyTimeline(replay.current);
     if (!timeline) {
       setPlane(null);
@@ -757,6 +855,7 @@ function GlobeView({
   );
 
   const handleResetView = useCallback(() => {
+    cancelInertia();
     hasMovedRef.current = false;
     editPinnedRef.current = false;
     setHasMoved(false);
@@ -764,7 +863,7 @@ function GlobeView({
       rotation: [-homeCenter[0], clampLat(-homeCenter[1])],
       zoom: 1,
     });
-  }, [homeCenter, setCamera]);
+  }, [homeCenter, setCamera, cancelInertia]);
 
   /*
     The flat map's tap-cycle and long-press, guarded against the globe's own
