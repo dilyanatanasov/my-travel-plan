@@ -36,3 +36,27 @@ export function loadWorldAtlas(): Promise<unknown> {
     });
   return atlasPromise;
 }
+
+/*
+  The coarse world (2026-08-19): a seventh of the fine atlas's geometry,
+  projected while the globe is in MOTION - a spinning planet needs
+  frame rate, not microstates. The fine world returns the moment it
+  settles. Same one-fetch-per-page rule as above.
+*/
+export const WORLD_ATLAS_COARSE_URL = '/geo/countries-110m.json';
+
+let coarsePromise: Promise<unknown> | null = null;
+
+export function loadWorldAtlasCoarse(): Promise<unknown> {
+  coarsePromise ??= fetch(WORLD_ATLAS_COARSE_URL)
+    .then((response) => {
+      if (!response.ok)
+        throw new Error(`Geography fetch failed: ${response.status}`);
+      return response.json();
+    })
+    .catch((error) => {
+      coarsePromise = null;
+      throw error;
+    });
+  return coarsePromise;
+}

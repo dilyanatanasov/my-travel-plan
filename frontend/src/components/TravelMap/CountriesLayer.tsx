@@ -12,7 +12,7 @@ import { useMapColors } from '../../theme/mapColors';
 
 // The loader and URL live in lib/worldAtlas so the daily puzzle can share
 // the identical world without importing react-simple-maps.
-import { loadWorldAtlas } from '../../lib/worldAtlas';
+import { loadWorldAtlas, loadWorldAtlasCoarse } from '../../lib/worldAtlas';
 
 /**
  * A feature's alpha-3, by numeric id or - for id-less features like
@@ -33,6 +33,14 @@ interface CountriesLayerProps {
   countryDisplayMap: Map<string, CountryDisplayInfo>;
   /** When false, every country renders as plain land. */
   showVisitColors?: boolean;
+  /**
+   * Geometry level of detail (2026-08-19): 'coarse' projects the 110m
+   * atlas - a seventh of the fine geometry - which is what keeps a
+   * spinning globe at frame rate. The caller flips it back to 'fine'
+   * (the default) when the camera settles; until the coarse file has
+   * loaded, fine keeps rendering so the world never blanks.
+   */
+  detail?: 'fine' | 'coarse';
   /** Omit to render a read-only map — used by the public shared view. */
   onCountryClick?: (isoCode: string) => void;
   /**
@@ -91,6 +99,7 @@ function CountriesLayer({
   landedIsoCode,
   blinkIsoCode,
   constantBorderWidth = true,
+  detail = 'fine',
 }: CountriesLayerProps) {
   const isInteractive = Boolean(onCountryClick);
   const vectorEffect = constantBorderWidth ? 'non-scaling-stroke' : undefined;
@@ -129,6 +138,26 @@ function CountriesLayer({
       active = false;
     };
   }, []);
+
+  // The coarse world loads lazily, the first time motion asks for it.
+  const [coarseGeography, setCoarseGeography] = useState<unknown>(null);
+  useEffect(() => {
+    if (detail !== 'coarse' || coarseGeography) return;
+    let active = true;
+    loadWorldAtlasCoarse()
+      .then((data) => {
+        if (active) setCoarseGeography(data);
+      })
+      .catch(() => {
+        /* Fine detail keeps rendering; motion is merely less smooth. */
+      });
+    return () => {
+      active = false;
+    };
+  }, [detail, coarseGeography]);
+
+  const activeGeography =
+    detail === 'coarse' && coarseGeography ? coarseGeography : geography;
   const { map: colors, hover, pressed } = useMapColors();
 
   /*
@@ -136,10 +165,10 @@ function CountriesLayer({
     is not a safe stand-in: Geographies reads the first object's type and
     throws on undefined, which took the whole map down.
   */
-  if (!geography) return null;
+  if (!activeGeography) return null;
 
   return (
-    <Geographies geography={geography}>
+    <Geographies geography={activeGeography}>
       {({
         geographies,
       }: {

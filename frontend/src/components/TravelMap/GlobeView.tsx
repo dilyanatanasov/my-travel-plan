@@ -432,12 +432,27 @@ function GlobeView({
   const spinSamplesRef = useRef<
     { t: number; lon: number; lat: number }[]
   >([]);
+  /*
+    Motion = a moved drag or a live spin. While true the countries layer
+    drops to the coarse atlas and the markers step aside - projecting a
+    seventh of the geometry is what keeps the spin at frame rate
+    (owner ask, 2026-08-19: "decrease the detail?"). Ref-deduped so
+    pointer events do not spam renders.
+  */
+  const [inMotion, setInMotion] = useState(false);
+  const inMotionRef = useRef(false);
+  const setMotion = useCallback((value: boolean) => {
+    if (inMotionRef.current === value) return;
+    inMotionRef.current = value;
+    setInMotion(value);
+  }, []);
   const cancelInertia = useCallback(() => {
     if (inertiaRef.current !== null) {
       cancelAnimationFrame(inertiaRef.current);
       inertiaRef.current = null;
     }
-  }, []);
+    setMotion(false);
+  }, [setMotion]);
   useEffect(() => cancelInertia, [cancelInertia]);
 
   const startInertia = useCallback(
@@ -471,11 +486,13 @@ function GlobeView({
           inertiaRef.current = requestAnimationFrame(tick);
         } else {
           inertiaRef.current = null;
+          setMotion(false);
         }
       };
+      setMotion(true);
       inertiaRef.current = requestAnimationFrame(tick);
     },
-    [cancelInertia, scheduleCamera],
+    [cancelInertia, scheduleCamera, setMotion],
   );
 
   const anchorGesture = useCallback(() => {
@@ -562,6 +579,7 @@ function GlobeView({
         }
         drag.moved = true;
         markMoved();
+        setMotion(true);
         scheduleCamera({
           rotation: drag.rotation,
           zoom: clampGlobeZoom(drag.zoom * (distance / drag.pinch)),
@@ -580,6 +598,7 @@ function GlobeView({
       }
       drag.moved = true;
       markMoved();
+      setMotion(true);
       // Degrees per pixel shrink as the globe grows, so the ground tracks
       // the finger at any zoom.
       const k = ROTATE_SENSITIVITY / (baseRadius * drag.zoom);
@@ -601,7 +620,7 @@ function GlobeView({
         zoom: drag.zoom,
       });
     },
-    [baseRadius, markMoved, scheduleCamera],
+    [baseRadius, markMoved, scheduleCamera, setMotion],
   );
 
   const handlePointerEnd = useCallback((event: React.PointerEvent) => {
@@ -653,10 +672,13 @@ function GlobeView({
       }
       dragRef.current = null;
       setIsDragging(false);
+      // The fine world returns when the hand lifts WITHOUT a spin;
+      // startInertia keeps motion alive until the spin dies.
+      if (inertiaRef.current === null) setMotion(false);
     } else {
       anchorGesture();
     }
-  }, [anchorGesture, startInertia]);
+  }, [anchorGesture, startInertia, setMotion]);
 
   /*
     Wheel zoom needs preventDefault, and React's root-level wheel listener is
@@ -989,6 +1011,9 @@ function GlobeView({
             onCentroids={onCentroids}
             landedIsoCode={landedIsoCode}
             blinkIsoCode={searchBlinkIso}
+            // Coarse world while the globe is in motion - frame rate
+            // over microstates; the fine world returns on settle.
+            detail={inMotion ? 'coarse' : 'fine'}
           />
 
           {settings.showFlights && (
@@ -1009,7 +1034,9 @@ function GlobeView({
             </>
           )}
 
-          {settings.showAirports && settings.showFlights && (
+          {/* Markers step aside while the globe is in motion: dots and
+              halo-stroked labels are DOM the spin does not need. */}
+          {settings.showAirports && settings.showFlights && !inMotion && (
             <AirportMarkers
               airports={visibleAirports}
               visitCounts={airportVisitCounts}
