@@ -35,7 +35,10 @@ export default defineConfig({
      */
     proxy: {
       '/api': {
-        target: 'http://backend:3000',
+        // Overridable so vite can ALSO run natively on the host (much
+        // faster than through the bind mount): set
+        // VITE_PROXY_TARGET=http://localhost:3000 and `npm run dev`.
+        target: process.env.VITE_PROXY_TARGET ?? 'http://backend:3000',
         changeOrigin: true,
       },
     },
@@ -44,7 +47,10 @@ export default defineConfig({
       // without polling the container never sees host edits and HMR silently
       // serves stale modules until the container is restarted.
       usePolling: true,
-      interval: 300,
+      // 1s, not 300ms: the 300ms sweep of the whole tree through the
+      // mount held the container at ~33% CPU while IDLE (measured
+      // 2026-08-19), taxing every render. HMR now lags up to a second.
+      interval: 1000,
     },
   },
 });
