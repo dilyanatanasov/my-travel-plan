@@ -166,6 +166,28 @@ function CountriesLayer({
 
   const activeGeography =
     detail === 'coarse' && coarseGeography ? coarseGeography : geography;
+
+  /*
+    The wash-in transition (fill 400ms) exists so ADDING a country reads
+    as an event - but an LOD swap remounts every path, and the remount
+    re-ran the wash on the whole world: every visited country blinked on
+    each swipe (owner report, 2026-08-19). Transitions sleep while
+    coarse, stay off through the settle remount, and re-arm a beat
+    later so the tap-cycle keeps its wash.
+  */
+  const [transitionsArmed, setTransitionsArmed] = useState(true);
+  useEffect(() => {
+    if (detail === 'coarse') {
+      setTransitionsArmed(false);
+      return;
+    }
+    const timer = window.setTimeout(() => setTransitionsArmed(true), 250);
+    return () => window.clearTimeout(timer);
+  }, [detail]);
+  const fillTransition =
+    detail === 'coarse' || !transitionsArmed
+      ? 'none'
+      : 'fill 400ms ease-out';
   const { map: colors, hover, pressed } = useMapColors();
 
   /*
@@ -360,7 +382,8 @@ function CountriesLayer({
                   outline: 'none',
                   // Countries wash in and out instead of snapping, so adding
                   // one reads as something happening rather than a repaint.
-                  transition: 'fill 400ms ease-out',
+                  // (Suspended around LOD swaps - see fillTransition above.)
+                  transition: fillTransition,
                 },
                 hover: {
                   // A read-only map should not suggest the countries
