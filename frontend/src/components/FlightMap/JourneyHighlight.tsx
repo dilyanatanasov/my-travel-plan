@@ -334,9 +334,18 @@ function JourneyHighlight({
               d={trailD}
               fill="none"
               stroke="#ffffff"
-              strokeWidth={width * 0.62}
+              strokeWidth={width * (mode !== 'flight' && mode !== 'ferry' ? 0.8 : 0.62)}
               strokeLinecap="round"
-              strokeDasharray={`${dash} ${gap}`}
+              // Flow speaks the mode's language too (owner, 2026-08-19):
+              // the airline dash for flights, beads rolling down the
+              // track for ground, short chop riding the wave for sea.
+              strokeDasharray={
+                mode !== 'flight' && mode !== 'ferry'
+                  ? `0.1 ${gap * 0.55}`
+                  : mode === 'ferry'
+                    ? `${dash * 0.5} ${gap * 0.7}`
+                    : `${dash} ${gap}`
+              }
               strokeOpacity={0.95}
               style={{ animationDelay: `${delay}s` }}
               pointerEvents="none"

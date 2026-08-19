@@ -34,6 +34,10 @@ function VehicleGlyph({ mode, transform, fill, outline }: VehicleGlyphProps) {
   const lights = VEHICLE_LIGHTS[mode] ?? [];
   return (
     <g transform={transform}>
+      {/* The ferry rocks on a slow swell (CSS .ferry-rock); the inner
+          group exists because a CSS transform on the outer one would
+          override the caller's scale/centring attribute. */}
+      <g className={mode === 'ferry' ? 'ferry-rock' : undefined}>
       {/* The ferry's wake and steam, starting astern of the halo (the
           first cut hid under the hull) - ink shadow beneath sticker-white
           foam so the churn reads on any sea. Motion via CSS (.ferry-*). */}
@@ -117,6 +121,7 @@ function VehicleGlyph({ mode, transform, fill, outline }: VehicleGlyphProps) {
           fill={HEADLIGHT_COLOR}
         />
       ))}
+      </g>
     </g>
   );
 }

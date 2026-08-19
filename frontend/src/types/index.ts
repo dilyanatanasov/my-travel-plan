@@ -158,6 +158,8 @@ export interface CreateFlightDto {
   stops?: TravelStop[];
   /** One per hop, aligned with stops; omitted means all flights. */
   modes?: TravelMode[];
+  /** Terrain-route km per hop; 0 = keep the server's haversine. */
+  routeDistancesKm?: number[];
 }
 
 export interface UpdateFlightDto {
@@ -170,6 +172,8 @@ export interface UpdateFlightDto {
   /** Mixed-mode replacement chain, same shape as create. */
   stops?: TravelStop[];
   modes?: TravelMode[];
+  /** Terrain-route km per hop; 0 = keep the server's haversine. */
+  routeDistancesKm?: number[];
 }
 
 // Statistics types

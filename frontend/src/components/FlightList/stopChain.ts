@@ -1,6 +1,6 @@
 import type { Airport, CityRef, FlightJourney, TravelMode } from '../../types';
 import { legMode } from '../FlightMap/routeUtils';
-import { isNearWater } from '../../lib/terrainRoute';
+import { isNearWater, modeMedium, terrainRouteKm } from '../../lib/terrainRoute';
 
 /**
  * Helpers for editing a journey's stop chain (2026-08-14): stops can be
@@ -263,6 +263,40 @@ export async function ferryCoastWarnings(
     }
   }
   return [...flagged];
+}
+
+/**
+ * Honest kilometres per hop (owner, 2026-08-19): the terrain route's
+ * length for surface hops - the ferry around the cape, the train over
+ * the bridge - sent alongside the chain so stats stop underselling
+ * every surface leg. 0 = "no route known, keep the haversine" (all
+ * flight hops, unrouted chains, torn stops).
+ */
+export async function hopRouteDistancesKm(
+  stops: EditableStop[],
+  modes: TravelMode[],
+): Promise<number[]> {
+  return Promise.all(
+    modes.map(async (mode, i) => {
+      const medium = modeMedium(mode);
+      if (!medium) return 0;
+      const fromStop = stops[i];
+      const toStop = stops[i + 1];
+      const from = fromStop?.kind === 'city' ? fromStop.city : fromStop?.airport;
+      const to = toStop?.kind === 'city' ? toStop.city : toStop?.airport;
+      if (!from || !to) return 0;
+      try {
+        const km = await terrainRouteKm(
+          [Number(from.longitude), Number(from.latitude)],
+          [Number(to.longitude), Number(to.latitude)],
+          medium,
+        );
+        return km ?? 0;
+      } catch {
+        return 0;
+      }
+    }),
+  );
 }
 
 /** loopStatus for the mixed-mode chain, keyed on stop identity. */

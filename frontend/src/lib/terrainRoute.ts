@@ -737,6 +737,35 @@ export async function isNearWater(
   return answer;
 }
 
+/**
+ * A surface hop's honest length in km (owner, 2026-08-19): the terrain
+ * route's arc length when the router has one, null when the straight
+ * chord stands (the server then keeps its haversine). Earth radius via
+ * the same spherical math the router plans with.
+ */
+export async function terrainRouteKm(
+  from: LonLat,
+  to: LonLat,
+  medium: TerrainMedium,
+): Promise<number | null> {
+  const waypoints = await ensureTerrainWaypoints(from, to, medium);
+  if (!waypoints) return null;
+  const EARTH_KM = 6371;
+  const toRad = Math.PI / 180;
+  let total = 0;
+  for (let i = 1; i < waypoints.length; i++) {
+    const [lon1, lat1] = waypoints[i - 1];
+    const [lon2, lat2] = waypoints[i];
+    const dLat = (lat2 - lat1) * toRad;
+    const dLon = (lon2 - lon1) * toRad;
+    const s =
+      Math.sin(dLat / 2) ** 2 +
+      Math.cos(lat1 * toRad) * Math.cos(lat2 * toRad) * Math.sin(dLon / 2) ** 2;
+    total += 2 * EARTH_KM * Math.asin(Math.min(1, Math.sqrt(s)));
+  }
+  return total;
+}
+
 /** The cached answer, or undefined when it has not been computed yet
     (null means "computed: keep the straight chord"). */
 export function terrainWaypointsSync(

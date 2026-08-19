@@ -11,6 +11,7 @@ import {
   syncStopsWithMode,
   resolveFlightEndpoints,
   ferryCoastWarnings,
+  hopRouteDistancesKm,
   HOP_MODES,
   MODE_LABEL,
 } from '../FlightList/stopChain';
@@ -161,6 +162,13 @@ function RouteBuilder({ onSubmit, isLoading }: RouteBuilderProps) {
       // The legacy shape keeps the server's ground-transfer typo guard.
       onSubmit({ ...base, airportIds: chainStops.map((s) => s.airport!.id) });
     } else {
+      // Honest surface km: the terrain route's length per hop (0 = keep
+      // the server's haversine). Usually instant - the map already
+      // computed and cached these routes while previewing the chain.
+      const routeDistancesKm = await hopRouteDistancesKm(
+        chainStops,
+        chainModes,
+      );
       onSubmit({
         ...base,
         stops: chainStops.map((stop) =>
@@ -169,6 +177,7 @@ function RouteBuilder({ onSubmit, isLoading }: RouteBuilderProps) {
             : { cityId: stop.city!.id },
         ),
         modes: chainModes,
+        routeDistancesKm,
       });
     }
 

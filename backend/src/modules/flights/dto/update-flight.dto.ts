@@ -4,9 +4,11 @@ import {
   IsBoolean,
   IsIn,
   IsInt,
+  IsNumber,
   IsOptional,
   IsString,
   IsDateString,
+  Min,
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
@@ -35,6 +37,13 @@ export class UpdateFlightDto {
   @IsArray()
   @IsIn(TRAVEL_MODES, { each: true })
   modes?: TravelModeDto[];
+
+  /** Per-hop terrain-route km, same contract as create (see create DTO). */
+  @IsOptional()
+  @IsArray()
+  @IsNumber({}, { each: true })
+  @Min(0, { each: true })
+  routeDistancesKm?: number[];
 
   @IsOptional()
   @IsDateString()

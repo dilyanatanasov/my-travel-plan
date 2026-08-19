@@ -21,6 +21,7 @@ import {
   syncStopsWithMode,
   resolveFlightEndpoints,
   ferryCoastWarnings,
+  hopRouteDistancesKm,
   HOP_MODES,
   MODE_LABEL,
 } from './stopChain';
@@ -239,6 +240,11 @@ function FlightCard({
                 : { cityId: stop.city!.id },
             ),
             modes: chainModes,
+            // Honest surface km per hop; 0 keeps the server's haversine.
+            routeDistancesKm: await hopRouteDistancesKm(
+              chainStops,
+              chainModes,
+            ),
           }
       : {};
     try {

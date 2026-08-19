@@ -272,7 +272,12 @@ export function drawVehicleSprite(
 
   ctx.save();
   ctx.translate(x, y);
-  ctx.rotate(angle);
+  // The ferry rocks gently on its heading (owner, 2026-08-19: the
+  // animation should speak each mode's language) - ±2.5° on a slow
+  // swell; wake and steam ride along since they draw in glyph space.
+  ctx.rotate(
+    angle + (mode === 'ferry' ? Math.sin(timeMs / 450) * 0.045 : 0),
+  );
   ctx.scale(scale, scale);
   ctx.translate(-12, -12);
   ctx.lineJoin = 'round';

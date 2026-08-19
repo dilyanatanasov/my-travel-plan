@@ -187,6 +187,23 @@ body {
   animation-delay: -1.07s;
 }
 
+/* The hull rocks on a slow swell (owner, 2026-08-19): each travel mode
+   moves in its own way, and a ship is never perfectly still. */
+@keyframes ferry-rock {
+  from {
+    transform: rotate(-2.5deg);
+  }
+  to {
+    transform: rotate(2.5deg);
+  }
+}
+
+.ferry-rock {
+  animation: ferry-rock 2.2s ease-in-out infinite alternate;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
 /*
   The loading mark (ContrailLoader): the brand arc draws origin-to-
   destination, the dot pops on arrival, the trail fades, repeat. The dot
@@ -272,6 +289,7 @@ body {
   .vehicle-beam,
   .ferry-wake,
   .ferry-steam,
+  .ferry-rock,
   .contrail-loader-arc,
   .contrail-loader-dot {
     animation: none;

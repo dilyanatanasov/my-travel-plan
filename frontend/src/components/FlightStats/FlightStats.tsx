@@ -81,6 +81,17 @@ function FlightStats() {
 
   const formatNumber = (n: number) => n.toLocaleString();
 
+  /*
+    The surface tally splits into its elements (owner, 2026-08-19:
+    "flown stats, drove stats, shipped stats"): ground and sea are
+    different bragging rights, and the backend already reports per mode.
+  */
+  const surfaceRows = stats.overlandByMode ?? [];
+  const groundRows = surfaceRows.filter((row) => row.mode !== 'ferry');
+  const seaRows = surfaceRows.filter((row) => row.mode === 'ferry');
+  const groundKm = groundRows.reduce((sum, row) => sum + row.distanceKm, 0);
+  const seaKm = seaRows.reduce((sum, row) => sum + row.distanceKm, 0);
+
   const getMonthName = (month: number) => {
     const months = [
       'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
@@ -108,9 +119,13 @@ function FlightStats() {
           title="Distance Flown"
           value={`${formatNumber(Math.round(stats.totalDistanceKm))} km`}
           subtitle={
-            stats.overlandDistanceKm && stats.overlandDistanceKm > 0
-              ? `+ ${formatNumber(Math.round(stats.overlandDistanceKm))} km by land & sea`
-              : `${stats.earthCircumferences.toFixed(1)}× around Earth`
+            groundKm > 0 && seaKm > 0
+              ? `+ ${formatNumber(Math.round(groundKm))} km driven · ${formatNumber(Math.round(seaKm))} km sailed`
+              : groundKm > 0
+                ? `+ ${formatNumber(Math.round(groundKm))} km overland`
+                : seaKm > 0
+                  ? `+ ${formatNumber(Math.round(seaKm))} km at sea`
+                  : `${stats.earthCircumferences.toFixed(1)}× around Earth`
           }
           color="green"
           icon={
@@ -163,25 +178,65 @@ function FlightStats() {
         </div>
       </div>
 
-      {/* The surface tally, deliberately separate from every flight
+      {/* The surface tallies, deliberately separate from every flight
           number - a train ride must never inflate "distance flown".
-          "Land & sea", not "Overland": ferries live here too. */}
-      {stats.overlandByMode && stats.overlandByMode.length > 0 && (
-        <div className="bg-surface rounded-xl border border-line p-4">
-          <h4 className="text-sm text-ink-muted mb-2">Land & sea</h4>
-          <div className="flex flex-wrap gap-x-6 gap-y-2">
-            {stats.overlandByMode.map((row) => (
-              <div key={row.mode} className="flex items-center gap-2">
-                <ModeIcon mode={row.mode} className="w-4 h-4 text-ink-muted" />
-                <span className="font-semibold text-ink tabular-nums">
-                  {formatNumber(Math.round(row.distanceKm))} km
-                </span>
-                <span className="text-sm text-ink-muted">
-                  {row.legs} {row.legs === 1 ? 'trip' : 'trips'} by {row.mode}
+          Ground and sea each get their own card: different elements,
+          different bragging rights (owner, 2026-08-19). */}
+      {(groundRows.length > 0 || seaRows.length > 0) && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {groundRows.length > 0 && (
+            <div className="bg-surface rounded-xl border border-line p-4">
+              <div className="flex items-baseline justify-between gap-2 mb-2">
+                <h4 className="text-sm text-ink-muted">Overland</h4>
+                <span className="font-display text-xl text-ink tabular-nums">
+                  {formatNumber(Math.round(groundKm))} km
                 </span>
               </div>
-            ))}
-          </div>
+              <div className="flex flex-wrap gap-x-5 gap-y-2">
+                {groundRows.map((row) => (
+                  <div key={row.mode} className="flex items-center gap-2">
+                    <ModeIcon
+                      mode={row.mode}
+                      className="w-4 h-4 text-ink-muted"
+                    />
+                    <span className="font-semibold text-ink tabular-nums">
+                      {formatNumber(Math.round(row.distanceKm))} km
+                    </span>
+                    <span className="text-sm text-ink-muted">
+                      {row.legs} {row.legs === 1 ? 'trip' : 'trips'} by{' '}
+                      {row.mode}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {seaRows.length > 0 && (
+            <div className="bg-surface rounded-xl border border-line p-4">
+              <div className="flex items-baseline justify-between gap-2 mb-2">
+                <h4 className="text-sm text-ink-muted">At sea</h4>
+                <span className="font-display text-xl text-ink tabular-nums">
+                  {formatNumber(Math.round(seaKm))} km
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-x-5 gap-y-2">
+                {seaRows.map((row) => (
+                  <div key={row.mode} className="flex items-center gap-2">
+                    <ModeIcon
+                      mode={row.mode}
+                      className="w-4 h-4 text-ink-muted"
+                    />
+                    <span className="font-semibold text-ink tabular-nums">
+                      {formatNumber(Math.round(row.distanceKm))} km
+                    </span>
+                    <span className="text-sm text-ink-muted">
+                      {row.legs} {row.legs === 1 ? 'sailing' : 'sailings'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 

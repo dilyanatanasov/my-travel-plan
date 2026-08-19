@@ -325,7 +325,12 @@ export class FlightsService {
           departureCityId: chain[i].cityId ?? null,
           arrivalAirportId: chain[i + 1].airportId ?? null,
           arrivalCityId: chain[i + 1].cityId ?? null,
-          distanceKm: calculateAirportDistance(from, to),
+          distanceKm: this.legDistance(
+            from,
+            to,
+            modes[i],
+            dto.routeDistancesKm?.[i],
+          ),
         }),
       );
     }
@@ -337,6 +342,29 @@ export class FlightsService {
       dto.journeyDate,
     );
     return this.findOne(userId, saved.id);
+  }
+
+  /**
+   * A surface leg's honest kilometres (owner, 2026-08-19). The client
+   * computes the terrain route's length - the ferry around the cape, the
+   * train over the bridge - which the server cannot (the router needs a
+   * canvas). Trust is bounded: the value must sit between the haversine
+   * (no route is shorter than the straight line) and 6x it (nobody
+   * ferries Varna-Burgas via Gibraltar); anything outside, and flights
+   * always, keep the haversine.
+   */
+  private legDistance(
+    from: { latitude: number; longitude: number },
+    to: { latitude: number; longitude: number },
+    mode: string,
+    routeKm?: number,
+  ): number {
+    const direct = calculateAirportDistance(from, to);
+    if (mode === 'flight' || !routeKm || !Number.isFinite(routeKm)) {
+      return direct;
+    }
+    if (routeKm < direct || routeKm > direct * 6) return direct;
+    return Math.round(routeKm * 100) / 100;
   }
 
   /**
@@ -622,7 +650,12 @@ export class FlightsService {
             departureCityId: chain[i].cityId ?? null,
             arrivalAirportId: chain[i + 1].airportId ?? null,
             arrivalCityId: chain[i + 1].cityId ?? null,
-            distanceKm: calculateAirportDistance(from, to),
+            distanceKm: this.legDistance(
+              from,
+              to,
+              modes[i],
+              updateFlightDto.routeDistancesKm?.[i],
+            ),
           }),
         );
       }

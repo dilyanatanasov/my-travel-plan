@@ -183,6 +183,12 @@ function FlightRoutes({
             : colors.route;
         const baseStrokeWidth = getStrokeWidth(route.count, maxCount, sizeScale);
         const isHovered = hoveredRouteKey === route.key;
+        /*
+          Progressive fading (owner pick, 2026-08-19): at world zoom a
+          dense map reads as clutter, so routes rest quieter and firm up
+          as you zoom toward them - full presence from about zoom 3.5.
+        */
+        const restOpacity = Math.min(0.65, 0.3 + zoom * 0.1);
         // A dotted line carries roughly half a solid line's ink, so the
         // ground trails compensate with a wider stroke (fatter dots) -
         // without it they sank into saturated visited fills.
@@ -224,7 +230,9 @@ function FlightRoutes({
                   ? `0.1 ${getZoomAdjustedSize(4.5, zoom)}`
                   : undefined
               }
-              strokeOpacity={wavyD ? 0 : faded ? 0.1 : isHovered ? 1 : 0.65}
+              strokeOpacity={
+                wavyD ? 0 : faded ? 0.1 : isHovered ? 1 : restOpacity
+              }
               pointerEvents="none"
               style={{
                 transition:
@@ -239,7 +247,7 @@ function FlightRoutes({
                 stroke={isHovered ? colors.routeHighlight : modeColor}
                 strokeWidth={strokeWidth}
                 strokeLinecap="round"
-                strokeOpacity={faded ? 0.1 : isHovered ? 1 : 0.65}
+                strokeOpacity={faded ? 0.1 : isHovered ? 1 : restOpacity}
                 pointerEvents="none"
                 style={{
                   transition:

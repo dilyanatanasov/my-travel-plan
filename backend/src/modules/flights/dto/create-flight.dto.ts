@@ -6,6 +6,8 @@ import {
   IsDateString,
   IsIn,
   IsInt,
+  IsNumber,
+  Min,
   ArrayMinSize,
   ValidateNested,
 } from 'class-validator';
@@ -83,4 +85,19 @@ export class CreateFlightDto {
   @IsArray()
   @IsIn(TRAVEL_MODES, { each: true })
   modes?: TravelModeDto[];
+
+  /*
+    Honest surface distances (owner, 2026-08-19): one entry per hop,
+    aligned with `modes`. The CLIENT knows the terrain route (the ferry
+    around the cape, the train over the bridge) because it computed it
+    for the map; the straight-line km the server can derive undersells
+    every surface leg. Null/absent entries fall back to haversine, and
+    the service clamps each value against the haversine so a buggy or
+    malicious client cannot inflate stats unboundedly.
+  */
+  @IsOptional()
+  @IsArray()
+  @IsNumber({}, { each: true })
+  @Min(0, { each: true })
+  routeDistancesKm?: number[];
 }
