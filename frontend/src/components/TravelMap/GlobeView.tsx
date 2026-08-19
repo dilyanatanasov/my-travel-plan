@@ -444,23 +444,30 @@ function GlobeView({
     (velocity: [number, number]) => {
       cancelInertia();
       const spin: [number, number] = [...velocity];
+      // The loop integrates its OWN position: reading the camera back
+      // each frame stuttered whenever a React commit lagged a frame
+      // behind, replaying the same base rotation twice.
+      let lon = cameraRef.current.rotation[0];
+      let lat = cameraRef.current.rotation[1];
       let last = performance.now();
       const tick = (now: number) => {
         // Capped dt so a background-tab stall cannot slingshot the globe.
         const dt = Math.min((now - last) / 1000, 0.05);
         last = now;
-        const decay = Math.exp(-dt * 0.9);
+        const decay = Math.exp(-dt * 0.8);
         spin[0] *= decay;
         spin[1] *= decay;
-        const current = cameraRef.current;
-        const rawLat = current.rotation[1] + spin[1] * dt;
-        const nextLat = clampLat(rawLat);
-        if (nextLat !== rawLat) spin[1] = 0; // the pole is a wall, not a spring
+        lon += spin[0] * dt;
+        const rawLat = lat + spin[1] * dt;
+        lat = clampLat(rawLat);
+        if (lat !== rawLat) spin[1] = 0; // the pole is a wall, not a spring
         scheduleCamera({
-          rotation: [current.rotation[0] + spin[0] * dt, nextLat],
-          zoom: current.zoom,
+          rotation: [lon, lat],
+          zoom: cameraRef.current.zoom,
         });
-        if (Math.hypot(spin[0], spin[1]) > 3) {
+        // 8°/s, not 3: below that each frame moves sub-pixel and the
+        // long tail read as judder rather than glide.
+        if (Math.hypot(spin[0], spin[1]) > 8) {
           inertiaRef.current = requestAnimationFrame(tick);
         } else {
           inertiaRef.current = null;
@@ -632,8 +639,15 @@ function GlobeView({
           const latV = ((lastSample.lat - first.lat) / seconds) * 0.4;
           const speed = Math.hypot(lonV, latV);
           if (speed > 25) {
-            const cap = Math.min(1, 720 / speed);
-            startInertia([lonV * cap, latV * cap]);
+            /*
+              1.7x launch boost (owner feel-test, 2026-08-19: "expected a
+              lot faster rotation"): a fidget spinner leaves the hand
+              faster than the hand was moving, and the measured tail
+              velocity undersells the throw anyway. Capped at three
+              revolutions a second.
+            */
+            const factor = 1.7 * Math.min(1, 1080 / (speed * 1.7));
+            startInertia([lonV * factor, latV * factor]);
           }
         }
       }
