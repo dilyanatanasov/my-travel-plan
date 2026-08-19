@@ -44,6 +44,10 @@ import type { FlightJourney } from '../types';
 export interface GlobeTripContent {
   routeCodes: string[];
   dateLabel: string | null;
+  /** Every stop on the trip, labelled - drawn from frame one, because
+      the dots and names are where the journey is going (owner report,
+      2026-08-19: "missing the cities"). */
+  stops: { lon: number; lat: number; label: string }[];
 }
 
 /* The dark map's own palette, fixed: the film always ships the night
@@ -201,8 +205,11 @@ export async function renderGlobeTripVideo(
               spherePath(country);
               ctx.fillStyle = lit ? GLOBE_VISITED : GLOBE_LAND;
               ctx.fill();
-              ctx.strokeStyle = GLOBE_BORDER;
-              ctx.lineWidth = 0.6;
+              // A lit country wears a dark, heavier border - the muted
+              // one vanished against the visited orange (owner report,
+              // 2026-08-19).
+              ctx.strokeStyle = lit ? '#1f1b18' : GLOBE_BORDER;
+              ctx.lineWidth = lit ? 1.6 : 0.6;
               ctx.stroke();
             }
 
@@ -232,22 +239,32 @@ export async function renderGlobeTripVideo(
               }
               ctx.stroke();
               ctx.setLineDash([]);
-              // A small pin where a finished leg landed.
-              if (flown >= 1) {
-                const arrived = projection(segment.to);
-                if (
-                  arrived &&
-                  isOnVisibleSide(segment.to, cameraCenter(camera.rotation))
-                ) {
-                  ctx.beginPath();
-                  ctx.arc(arrived[0], arrived[1], 5, 0, Math.PI * 2);
-                  ctx.fillStyle = '#f9f4ed';
-                  ctx.fill();
-                  ctx.strokeStyle = GLOBE_BG;
-                  ctx.lineWidth = 2;
-                  ctx.stroke();
-                }
-              }
+            }
+
+            // Every stop, pinned and NAMED from frame one - the dots
+            // and city names are where the journey is going, same rule
+            // the flat trip film settled on.
+            const center = cameraCenter(camera.rotation);
+            for (const stop of content.stops) {
+              if (!isOnVisibleSide([stop.lon, stop.lat], center)) continue;
+              const pinned = projection([stop.lon, stop.lat]);
+              if (!pinned) continue;
+              ctx.beginPath();
+              ctx.arc(pinned[0], pinned[1], 6, 0, Math.PI * 2);
+              ctx.fillStyle = '#f9f4ed';
+              ctx.fill();
+              ctx.strokeStyle = GLOBE_BG;
+              ctx.lineWidth = 2;
+              ctx.stroke();
+              ctx.font = monoFont(24, '600');
+              ctx.textAlign = 'center';
+              ctx.strokeStyle = GLOBE_BG;
+              ctx.lineWidth = 5;
+              ctx.lineJoin = 'round';
+              ctx.strokeText(stop.label, pinned[0], pinned[1] - 16);
+              ctx.fillStyle = GLOBE_TEXT;
+              ctx.fillText(stop.label, pinned[0], pinned[1] - 16);
+              ctx.textAlign = 'left';
             }
 
             // The vehicle, on the visible side only.

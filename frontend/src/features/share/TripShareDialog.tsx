@@ -54,6 +54,9 @@ function TripShareDialog({
   const [videoStage, setVideoStage] = useState<string | null>(null);
   /** Which film is rendering, so each button narrates only its own run. */
   const [videoKind, setVideoKind] = useState<'flat' | 'globe' | null>(null);
+  /** The chosen film style - one dropdown, one button (owner ask,
+      2026-08-19: two stacked buttons scaled badly). */
+  const [videoStyle, setVideoStyle] = useState<'flat' | 'globe'>('flat');
   const [videoFile, setVideoFile] = useState<File | null>(null);
   /** While capturing scenes, the export canvas frames one leg at a time. */
   const [videoFocusLeg, setVideoFocusLeg] = useState<number | null>(null);
@@ -187,6 +190,8 @@ function TripShareDialog({
     }
     setVideoProgress(0);
     setVideoKind('flat');
+    // Regenerating replaces the previous take.
+    setVideoFile(null);
     /*
       Stage labels + per-stage timeouts + a breadcrumb trail (owner
       report, 2026-08-18: a long journey sat at "0%" with no clue which
@@ -400,6 +405,8 @@ function TripShareDialog({
   const handleCreateGlobeVideo = useCallback(async () => {
     setVideoProgress(0);
     setVideoKind('globe');
+    // Regenerating replaces the previous take.
+    setVideoFile(null);
     const startedAt = performance.now();
     const stageLog: string[] = [];
     const stage = (label: string) => {
@@ -446,9 +453,30 @@ function TripShareDialog({
           if (alpha3) tripIsos.add(alpha3);
         }
       }
+      // Every stop, labelled: the departure plus each arrival, deduped.
+      const stops: { lon: number; lat: number; label: string }[] = [];
+      const seen = new Set<string>();
+      const addStop = (place?: {
+        longitude: number | string;
+        latitude: number | string;
+        iataCode: string;
+      }) => {
+        if (!place || seen.has(place.iataCode)) return;
+        seen.add(place.iataCode);
+        stops.push({
+          lon: Number(place.longitude),
+          lat: Number(place.latitude),
+          label: place.iataCode,
+        });
+      };
+      for (const leg of legs) {
+        const endpoints = legEndpoints(leg);
+        addStop(endpoints?.departure);
+        addStop(endpoints?.arrival);
+      }
       const blob = await renderGlobeTripVideo(
         journey,
-        { routeCodes, dateLabel: formatJourneyDate(journey) },
+        { routeCodes, dateLabel: formatJourneyDate(journey), stops },
         tripIsos,
         setVideoProgress,
         // Slower than the flat film: the globe's chase IS the show.
@@ -592,35 +620,43 @@ function TripShareDialog({
             Save image
           </Button>
         </div>
-        {canExportVideo && !videoFile && (
-          <>
+        {/* One style picker, one button - and it stays after a take, so
+            sharing or rejecting a video never ends the session (owner,
+            2026-08-19). A new take replaces the old one. */}
+        {canExportVideo && (
+          <div className="flex items-stretch gap-2">
+            <select
+              aria-label="Video style"
+              value={videoStyle}
+              onChange={(e) =>
+                setVideoStyle(e.target.value as 'flat' | 'globe')
+              }
+              disabled={videoProgress !== null}
+              className="rounded-xl border border-line bg-surface text-ink text-sm px-3 min-h-11 focus:outline-none focus:ring-2 focus:ring-brand-500"
+            >
+              <option value="flat">Map ✈️</option>
+              <option value="globe">Globe 🌍</option>
+            </select>
             <Button
               variant="ghost"
               fullWidth
-              className="rounded-xl"
-              onClick={handleCreateVideo}
+              className="rounded-xl flex-1"
+              onClick={
+                videoStyle === 'flat'
+                  ? handleCreateVideo
+                  : handleCreateGlobeVideo
+              }
               disabled={!previewUrl || videoProgress !== null}
             >
-              {videoKind === 'flat' && videoProgress !== null
+              {videoProgress !== null && videoKind !== null
                 ? videoStage === 'Recording journey' || videoStage === null
                   ? `Recording journey… ${Math.round(videoProgress * 100)}%`
                   : `${videoStage}…`
-                : 'Create video ✈️'}
+                : videoFile
+                  ? 'Create another video'
+                  : 'Create video'}
             </Button>
-            <Button
-              variant="ghost"
-              fullWidth
-              className="rounded-xl"
-              onClick={handleCreateGlobeVideo}
-              disabled={!previewUrl || videoProgress !== null}
-            >
-              {videoKind === 'globe' && videoProgress !== null
-                ? videoStage === 'Recording journey' || videoStage === null
-                  ? `Recording journey… ${Math.round(videoProgress * 100)}%`
-                  : `${videoStage}…`
-                : 'Create globe video 🌍'}
-            </Button>
-          </>
+          </div>
         )}
         {videoFile &&
           /*
