@@ -25,7 +25,7 @@ const STEPS: TourStep[] = [
   },
   {
     title: 'Everything else lives here',
-    body: 'Overview, Countries, Flights, Statistics and Share. Add the flights you’ve taken and watch them fly in the replay ✈️',
+    body: 'Overview, Countries, Flights, Statistics and Share. Add the flights you’ve taken and watch them fly in the replay.',
     placement:
       'left-1/2 -translate-x-1/2 bottom-24 sm:left-24 sm:translate-x-0 sm:bottom-auto sm:top-1/3 w-[min(92vw,22rem)]',
   },

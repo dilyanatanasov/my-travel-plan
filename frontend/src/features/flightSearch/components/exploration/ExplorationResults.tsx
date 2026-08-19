@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { FlightExplorationResultDto } from '../../../../types';
+import ModeIcon from '../../../../components/ui/ModeIcon';
 import HighlightCards from './HighlightCards';
 import InsightsPanel from './InsightsPanel';
 import FlightOptionCard from './FlightOptionCard';
@@ -92,7 +93,17 @@ function ExplorationResults({ results }: ExplorationResultsProps) {
                 className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors"
               >
                 <div className="flex items-center gap-4">
-                  <span className="text-lg">📅</span>
+                  <svg
+                    className="w-5 h-5 text-gray-500 flex-shrink-0"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={1.8}
+                    aria-hidden="true"
+                  >
+                    <rect x="3" y="5" width="18" height="16" rx="2" />
+                    <path d="M3 10h18M8 3v4M16 3v4" strokeLinecap="round" />
+                  </svg>
                   <div className="text-left">
                     <p className="font-medium text-gray-800">{group.dateRange}</p>
                     <p className="text-sm text-gray-600">
@@ -146,7 +157,27 @@ function ExplorationResults({ results }: ExplorationResultsProps) {
                 className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors"
               >
                 <div className="flex items-center gap-4">
-                  <span className="text-lg">{group.connectionAirports.length === 0 ? '✈️' : '🔄'}</span>
+                  {group.connectionAirports.length === 0 ? (
+                    <ModeIcon
+                      mode="flight"
+                      className="w-5 h-5 text-gray-500 flex-shrink-0"
+                    />
+                  ) : (
+                    <svg
+                      className="w-5 h-5 text-gray-500 flex-shrink-0"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth={1.8}
+                      aria-hidden="true"
+                    >
+                      <path
+                        d="M4 9a8 8 0 0 1 14-3.5M20 15a8 8 0 0 1-14 3.5M18 2v4h-4M6 22v-4h4"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  )}
                   <div className="text-left">
                     <p className="font-medium text-gray-800">{group.routeDescription}</p>
                     <p className="text-sm text-gray-600">

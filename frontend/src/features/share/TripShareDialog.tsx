@@ -634,8 +634,8 @@ function TripShareDialog({
               disabled={videoProgress !== null}
               className="rounded-xl border border-line bg-surface text-ink text-sm px-3 min-h-11 focus:outline-none focus:ring-2 focus:ring-brand-500"
             >
-              <option value="flat">Map ✈️</option>
-              <option value="globe">Globe 🌍</option>
+              <option value="flat">Map</option>
+              <option value="globe">Globe</option>
             </select>
             <Button
               variant="ghost"

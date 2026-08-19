@@ -40,6 +40,20 @@ interface Candidate {
 
 const MAX_GUESSES = 6;
 
+/* The puzzle stores bearing hints as emoji arrows because the clipboard
+   share text needs them; the UI renders one SVG arrow rotated instead
+   (owner rule: no emoji in UI). */
+const ARROW_ROTATION: Record<string, number> = {
+  '⬆️': 0,
+  '↗️': 45,
+  '➡️': 90,
+  '↘️': 135,
+  '⬇️': 180,
+  '↙️': 225,
+  '⬅️': 270,
+  '↖️': 315,
+};
+
 /** ms until the next UTC midnight - when tomorrow's country arrives. */
 function msToNextUtcMidnight(now = new Date()): number {
   const next = Date.UTC(
@@ -356,11 +370,46 @@ function DailyPage() {
                 {guess.name}
               </span>
               {!guess.correct && (
-                <span className="text-ink-muted tabular-nums flex-shrink-0">
-                  {guess.km.toLocaleString()} km {guess.arrow}
+                <span className="text-ink-muted tabular-nums flex-shrink-0 inline-flex items-center gap-1">
+                  {guess.km.toLocaleString()} km
+                  {/* The bearing as a rotated SVG arrow - the emoji arrows
+                      stay only in the clipboard share text, where SVG
+                      cannot go (owner rule: no emoji in UI). */}
+                  {ARROW_ROTATION[guess.arrow] !== undefined && (
+                    <svg
+                      className="w-3.5 h-3.5 flex-shrink-0"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth={2.4}
+                      style={{
+                        transform: `rotate(${ARROW_ROTATION[guess.arrow]}deg)`,
+                      }}
+                      aria-hidden="true"
+                    >
+                      <path
+                        d="M12 19V5m0 0l-5.5 5.5M12 5l5.5 5.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  )}
                 </span>
               )}
-              {guess.correct && <span className="flex-shrink-0">🎯</span>}
+              {guess.correct && (
+                <svg
+                  className="w-4 h-4 flex-shrink-0 text-secondary-text"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                  aria-hidden="true"
+                >
+                  <circle cx="12" cy="12" r="9" />
+                  <circle cx="12" cy="12" r="4.5" />
+                  <circle cx="12" cy="12" r="1" fill="currentColor" />
+                </svg>
+              )}
             </li>
           ))}
           {!done &&

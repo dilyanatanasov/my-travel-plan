@@ -23,8 +23,8 @@ export function shouldNudge(input: NudgeInput): boolean {
 
 export function nudgeMessage(streak: number): string {
   return streak === 1
-    ? '🔥 Your streak is on the line - today’s country is waiting'
-    : `🔥 ${streak}-day streak on the line - today’s country is waiting`;
+    ? 'Your streak is on the line - today’s country is waiting'
+    : `${streak}-day streak on the line - today’s country is waiting`;
 }
 
 const NUDGE_KEY = 'contrail:daily-nudged';

@@ -17,7 +17,20 @@ function InsightsPanel({ insights }: InsightsPanelProps) {
   return (
     <div className="bg-white rounded-lg shadow-md p-4">
       <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-        <span>💡</span>
+        <svg
+          className="w-4 h-4 text-gray-500 flex-shrink-0"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.8}
+          aria-hidden="true"
+        >
+          <path
+            d="M9 18h6M10 21h4M12 3a6 6 0 0 1 4 10.5c-.8.7-1 1.5-1 2.5h-6c0-1-.2-1.8-1-2.5A6 6 0 0 1 12 3z"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
         Insights
       </h3>
       <div className="space-y-2">

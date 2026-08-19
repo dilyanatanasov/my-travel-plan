@@ -23,25 +23,50 @@ function HighlightCards({ highlights }: HighlightCardsProps) {
     });
   };
 
+  /* SVG marks, not emoji (owner rule): a star, a coin, a bolt - each in
+     the card's own accent via currentColor. */
+  const iconProps = {
+    className: 'w-5 h-5 flex-shrink-0',
+    viewBox: '0 0 24 24',
+    fill: 'none' as const,
+    stroke: 'currentColor',
+    strokeWidth: 1.8,
+    strokeLinecap: 'round' as const,
+    strokeLinejoin: 'round' as const,
+    'aria-hidden': true,
+  };
   const cards = [
     {
       type: 'recommended',
       title: 'Recommended',
-      icon: '⭐',
+      icon: (
+        <svg {...iconProps}>
+          <path d="M12 3l2.7 5.6 6.1.8-4.5 4.3 1.1 6-5.4-2.9-5.4 2.9 1.1-6L3.2 9.4l6.1-.8L12 3z" />
+        </svg>
+      ),
       option: highlights.recommended,
       color: 'blue',
     },
     {
       type: 'cheapest',
       title: 'Cheapest',
-      icon: '💰',
+      icon: (
+        <svg {...iconProps}>
+          <circle cx="12" cy="12" r="8.5" />
+          <path d="M14.5 9.2a3 3 0 0 0-2.5-1.2c-1.6 0-2.8.9-2.8 2s1 1.7 2.8 2 2.8.9 2.8 2-1.2 2-2.8 2a3 3 0 0 1-2.5-1.2M12 6.5v11" />
+        </svg>
+      ),
       option: highlights.cheapest,
       color: 'green',
     },
     {
       type: 'fastest',
       title: 'Fastest',
-      icon: '⚡',
+      icon: (
+        <svg {...iconProps}>
+          <path d="M13 2L5 13.5h5.5L11 22l8-11.5h-5.5L13 2z" />
+        </svg>
+      ),
       option: highlights.fastest,
       color: 'orange',
     },
@@ -66,9 +91,9 @@ function HighlightCards({ highlights }: HighlightCardsProps) {
             key={card.type}
             className={`${colors.bg} ${colors.border} border-2 rounded-lg p-4 hover:shadow-md transition-shadow`}
           >
-            <div className="flex items-center gap-2 mb-3">
-              <span className="text-xl">{card.icon}</span>
-              <span className={`font-semibold ${colors.text}`}>{card.title}</span>
+            <div className={`flex items-center gap-2 mb-3 ${colors.text}`}>
+              {card.icon}
+              <span className="font-semibold">{card.title}</span>
             </div>
 
             <div className="space-y-3">
