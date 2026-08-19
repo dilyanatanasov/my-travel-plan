@@ -1014,6 +1014,8 @@ function GlobeView({
             // Coarse world while the globe is in motion - frame rate
             // over microstates; the fine world returns on settle.
             detail={inMotion ? 'coarse' : 'fine'}
+            // Every press here may be the start of a rotation - no flash.
+            pressFeedback={false}
           />
 
           {settings.showFlights && (

@@ -41,6 +41,13 @@ interface CountriesLayerProps {
    * loaded, fine keeps rendering so the world never blanks.
    */
   detail?: 'fine' | 'coarse';
+  /**
+   * Pressed-state fill on pointer-down. The globe turns this off: every
+   * press there is potentially the start of a rotation, so the flash
+   * read as "country blinks selected on each swipe" - its tap-cycle
+   * already answers with the actual fill change.
+   */
+  pressFeedback?: boolean;
   /** Omit to render a read-only map — used by the public shared view. */
   onCountryClick?: (isoCode: string) => void;
   /**
@@ -100,6 +107,7 @@ function CountriesLayer({
   blinkIsoCode,
   constantBorderWidth = true,
   detail = 'fine',
+  pressFeedback = true,
 }: CountriesLayerProps) {
   const isInteractive = Boolean(onCountryClick);
   const vectorEffect = constantBorderWidth ? 'non-scaling-stroke' : undefined;
@@ -355,8 +363,15 @@ function CountriesLayer({
                   transition: 'fill 400ms ease-out',
                 },
                 hover: {
-                  // A read-only map should not suggest the countries respond.
-                  fill: isInteractive ? hoverColor : fillColor,
+                  // A read-only map should not suggest the countries
+                  // respond - and neither should a map IN MOTION: the
+                  // LOD swap remounts every path, re-firing enter events
+                  // under the cursor, which flashed the country on every
+                  // swipe (owner report, 2026-08-19).
+                  fill:
+                    isInteractive && detail !== 'coarse'
+                      ? hoverColor
+                      : fillColor,
                   stroke: colors.countryBorder,
                   strokeWidth: 0.5,
                   vectorEffect,
@@ -364,7 +379,10 @@ function CountriesLayer({
                   cursor: clickable ? 'pointer' : 'default',
                 },
                 pressed: {
-                  fill: isInteractive ? pressedColor : fillColor,
+                  fill:
+                    isInteractive && pressFeedback && detail !== 'coarse'
+                      ? pressedColor
+                      : fillColor,
                   stroke: colors.countryBorder,
                   strokeWidth: 0.5,
                   vectorEffect,
