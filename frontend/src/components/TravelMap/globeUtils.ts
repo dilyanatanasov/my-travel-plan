@@ -50,10 +50,19 @@ export interface GlobeCamera {
 }
 
 export const MIN_GLOBE_ZOOM = 1;
-// 8 → 24 (owner ask, 2026-08-18): the flat map allows 64, and at 8 a
-// short drive or a coastal ferry never filled the globe's frame. The
-// 50m atlas stays legible well past this on the flat map already.
-export const MAX_GLOBE_ZOOM = 24;
+/*
+  8 → 24 (owner ask, 2026-08-18): the flat map allows 64, and at 8 a
+  short drive or a coastal ferry never filled the globe's frame. The
+  50m atlas stays legible well past this on the flat map already.
+
+  24 → 40 (owner report, 2026-08-20): stop clustering asks the two maps
+  to behave alike, and they could not - a city and its own airport sit
+  about 7km apart, which is 11px at globe zoom 24 and so stayed merged
+  forever, while the flat map separates them around zoom 45. The rule
+  was always the same; only the reachable magnification differed. At 40
+  the pair clears 18px and the globe splits them too.
+*/
+export const MAX_GLOBE_ZOOM = 40;
 
 const DEG = 180 / Math.PI;
 
