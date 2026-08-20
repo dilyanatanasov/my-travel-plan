@@ -4,7 +4,7 @@ import {
   stopClusterAnchor,
   STOP_CLUSTER_PX,
 } from './routeUtils';
-import type { Airport } from '../../types';
+import { asAlpha2, type Airport } from '../../types';
 
 const stop = (
   id: number,
@@ -17,7 +17,7 @@ const stop = (
   name: iataCode,
   city,
   country: null,
-  countryIso: 'BG',
+  countryIso: asAlpha2('BG'),
   latitude: 0,
   longitude: 0,
   createdAt: '',
