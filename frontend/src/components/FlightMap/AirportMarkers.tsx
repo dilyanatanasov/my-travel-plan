@@ -1,7 +1,12 @@
 import { memo } from 'react';
 import { useMapContext, useZoomPanContext } from 'react-simple-maps';
 import type { Airport } from '../../types';
-import { getZoomAdjustedSize, getZoomEmphasisedSize } from './routeUtils';
+import {
+  clusterByScreenDistance,
+  stopClusterAnchor,
+  getZoomAdjustedSize,
+  getZoomEmphasisedSize,
+} from './routeUtils';
 import { useMapColors } from '../../theme/mapColors';
 
 interface AirportMarkersProps {
@@ -45,7 +50,7 @@ interface AirportMarkersProps {
    * clickable like countries). The caller passes a gesture-guarded
    * handler; omitted on non-interactive surfaces (exports, shares).
    */
-  onSelectStop?: (airport: Airport) => void;
+  onSelectStop?: (stops: Airport[]) => void;
 }
 
 function AirportMarkers({
@@ -84,9 +89,8 @@ function AirportMarkers({
    * clustered over Europe the dots merged into one mass and hid the countries
    * beneath them.
    */
-  const getRadius = (iataCode: string): number => {
-    const count = visitCounts.get(iataCode) || 1;
-    const normalized = (count - 1) / Math.max(maxVisits - 1, 1);
+  const getRadius = (count: number): number => {
+    const normalized = (Math.max(count, 1) - 1) / Math.max(maxVisits - 1, 1);
     return (2 + normalized * 2.2) * sizeScale; // Range: 2 to 4.2
   };
 
@@ -102,17 +106,63 @@ function AirportMarkers({
       ]
     : airports;
 
+  /*
+    Stops that overlap on screen draw as ONE place (owner ask,
+    2026-08-20: Varna and Varna Airport are the same place until you
+    zoom in). The cluster is anchored on a member, so the dot always
+    sits on a real stop rather than in the water between two.
+
+    The whole cluster is what a tap selects, so what you see and what
+    you tap never disagree - zoom past the split and each stop is its
+    own dot and its own card again.
+  */
+  /*
+    City names an actual city stop already owns. An airport borrows its
+    city's name once zoomed in, which reads fine alone - but when the
+    pair splits apart you got two dots both saying "Sofia" (caught in
+    testing, 2026-08-20). Those airports keep their code, so a split
+    pair names the airport and the city centre distinctly.
+  */
+  const cityStopNames = new Set(
+    airports.filter((a) => a.id < 0).map((a) => a.iataCode),
+  );
+
+  const clusters = clusterByScreenDistance(
+    orderedAirports.flatMap((airport) => {
+      const coords = projection([airport.longitude, airport.latitude]);
+      return coords
+        ? [{ item: airport, x: coords[0], y: coords[1] }]
+        : [];
+    }),
+    zoom,
+  );
+
   return (
     <g className="airport-markers">
-      {orderedAirports.map((airport) => {
-        const coords = projection([airport.longitude, airport.latitude]);
-
-        if (!coords) return null;
-
-        const [x, y] = coords;
-        const isHighlighted = highlightedAirports.includes(airport.iataCode);
-        const isPopping = airport.iataCode === popIata;
-        const baseRadius = getRadius(airport.iataCode);
+      {clusters.map(({ items, x, y }) => {
+        /*
+          The cluster speaks for its most-travelled member - and always
+          for the one currently landing, so a replay arrival announces
+          the airport it actually reached rather than a neighbour.
+        */
+        const cluster = stopClusterAnchor(items, visitCounts);
+        const airport =
+          items.find((member) => member.iataCode === popIata) ?? cluster.anchor;
+        const merged = items.length > 1;
+        const isHighlighted = items.some((member) =>
+          highlightedAirports.includes(member.iataCode),
+        );
+        const isPopping = items.some((member) => member.iataCode === popIata);
+        // A merged dot carries everything that happened in the area, so
+        // it is sized by the sum rather than by its spokesman.
+        const baseRadius = merged
+          ? getRadius(
+              items.reduce(
+                (sum, member) => sum + (visitCounts.get(member.iataCode) ?? 1),
+                0,
+              ),
+            )
+          : getRadius(visitCounts.get(airport.iataCode) ?? 1);
         // Emphasised rather than merely constant: zooming in is a request for
         // detail, and a dot that holds exactly still reads as less important
         // the closer you get to it.
@@ -125,11 +175,26 @@ function AirportMarkers({
           labelScale;
         const labelOffset = radius + getZoomAdjustedSize(6 * labelScale, zoom);
         // A popping arrival announces the city even at world zoom — that is
-        // the "you have landed in…" moment.
+        // the "you have landed in…" moment. A merged dot prefers the place
+        // name over a terminal code: "Varna" describes the area, "VAR"
+        // describes one building inside it.
+        /*
+          A merged dot is a PLACE, so it takes the city's own name when
+          the cluster holds one - matching the card's title. A lone
+          airport borrows its city name only while no city stop is using
+          it, so a split pair never shows the same word twice.
+        */
+        // The popping arrival always names itself; otherwise the shared
+        // rule decides, so the dot and its card never disagree.
+        const namer = isPopping ? airport : cluster.namer;
+        const placeName =
+          namer.id < 0
+            ? namer.iataCode
+            : namer.city && !cityStopNames.has(namer.city)
+              ? namer.city
+              : namer.iataCode;
         const label =
-          useCityNames || isPopping
-            ? airport.city || airport.iataCode
-            : airport.iataCode;
+          useCityNames || isPopping || merged ? placeName : airport.iataCode;
 
         return (
           <g
@@ -167,9 +232,11 @@ function AirportMarkers({
                 style={{ cursor: 'pointer' }}
                 onClick={(event) => {
                   // The tap belongs to the stop, not to the country
-                  // beneath it or the clear-selection fallthrough.
+                  // beneath it or the clear-selection fallthrough. The
+                  // WHOLE cluster goes: tapping one blob asks about the
+                  // area, not about whichever member drew the dot.
                   event.stopPropagation();
-                  onSelectStop(airport);
+                  onSelectStop(items);
                 }}
               />
             )}

@@ -224,6 +224,79 @@ export function calculateArcPath(
 }
 
 /**
+ * Which stop speaks for a merged dot, and what it is called.
+ *
+ * ONE definition, because the marker and its card must agree: the map
+ * saying "Varna" while the card titled itself "Burgas" is exactly the
+ * bug this replaced (2026-08-20).
+ *
+ * The anchor is the busiest member - the place you have been through
+ * most - except that a city which owns THIS airport takes over the
+ * name, so a city and its airport read as the city. Unrelated stops
+ * that merely overlap keep the busiest one's name, so the label always
+ * describes where the dot actually sits.
+ */
+export function stopClusterAnchor(
+  stops: Airport[],
+  visitCounts?: Map<string, number>,
+): { anchor: Airport; namer: Airport } {
+  const anchor = stops.reduce((best, member) =>
+    (visitCounts?.get(member.iataCode) ?? 0) >
+    (visitCounts?.get(best.iataCode) ?? 0)
+      ? member
+      : best,
+  );
+  const twin =
+    stops.length > 1 && anchor.city
+      ? stops.find(
+          (member) => member.id < 0 && member.iataCode === anchor.city,
+        )
+      : undefined;
+  return { anchor, namer: twin ?? anchor };
+}
+
+/**
+ * How close two stops must be ON SCREEN to read as one place. Tuned
+ * against measured distances (see stopClustering.test.ts): a dot is
+ * 2-4px with a label above it, so under ~14px they are one blob. On
+ * the flat map this splits a city from its own airport at about zoom
+ * 45, and separates neighbouring cities by zoom 5.
+ */
+export const STOP_CLUSTER_PX = 14;
+
+/**
+ * Group stops that sit on top of each other ON SCREEN (owner ask,
+ * 2026-08-20: Varna and Varna Airport are one place at world zoom and
+ * two places when you zoom in).
+ *
+ * Screen space, not kilometres, is the honest trigger: a fixed radius
+ * would still merge an airport with its city at zoom 40, where they are
+ * visibly 8km apart. Everything inside ZoomableGroup is multiplied by
+ * the zoom factor when drawn, so map-space distance times `zoom` IS the
+ * pixel gap - and the globe pins k at 1 with its magnification in the
+ * projection scale, so the same formula serves both maps.
+ *
+ * Greedy single pass: each stop joins the first cluster whose anchor it
+ * touches, otherwise it starts one. Order is the caller's, so the result
+ * is stable between renders rather than shuffling as zoom drifts.
+ */
+export function clusterByScreenDistance<T>(
+  items: { item: T; x: number; y: number }[],
+  zoom: number,
+  thresholdPx = STOP_CLUSTER_PX,
+): { items: T[]; x: number; y: number }[] {
+  const clusters: { items: T[]; x: number; y: number }[] = [];
+  for (const { item, x, y } of items) {
+    const home = clusters.find(
+      (cluster) => Math.hypot(cluster.x - x, cluster.y - y) * zoom < thresholdPx,
+    );
+    if (home) home.items.push(item);
+    else clusters.push({ items: [item], x, y });
+  }
+  return clusters;
+}
+
+/**
  * A polyline with rounded corners (terrain routes, 2026-08-18): straight
  * runs between waypoints, each interior corner cut with a small quadratic
  * so the ship steers around a cape rather than ricocheting off it. Radius
