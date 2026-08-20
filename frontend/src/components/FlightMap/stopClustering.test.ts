@@ -1,5 +1,33 @@
 import { describe, it, expect } from 'vitest';
-import { clusterByScreenDistance, STOP_CLUSTER_PX } from './routeUtils';
+import {
+  clusterByScreenDistance,
+  stopClusterAnchor,
+  STOP_CLUSTER_PX,
+} from './routeUtils';
+import type { Airport } from '../../types';
+
+const stop = (
+  id: number,
+  iataCode: string,
+  city: string | null = null,
+): Airport => ({
+  id,
+  iataCode,
+  icaoCode: null,
+  name: iataCode,
+  city,
+  country: null,
+  countryIso: 'BG',
+  latitude: 0,
+  longitude: 0,
+  createdAt: '',
+});
+
+/* Cities pose as airports with a NEGATIVE id and their name in the
+   iataCode slot - the map's one vocabulary. */
+const VAR_AIRPORT = stop(4325, 'VAR', 'Varna');
+const VARNA_CITY = stop(-11756, 'Varna');
+const BURGAS_CITY = stop(-11995, 'Burgas');
 
 /*
   Distances MEASURED off the live flat map (2026-08-20), in its own
@@ -57,5 +85,46 @@ describe('clusterByScreenDistance', () => {
 
   it('exports the threshold it was tuned against', () => {
     expect(STOP_CLUSTER_PX).toBe(14);
+  });
+});
+
+/*
+  The naming rule has ONE definition because the marker and its card
+  both call it - the map labelling a dot "Varna" while its card said
+  "Burgas" is the bug this replaced.
+*/
+describe('stopClusterAnchor', () => {
+  const counts = new Map([
+    ['VAR', 4],
+    ['Varna', 1],
+    ['Burgas', 1],
+  ]);
+
+  it('lets a city rename its OWN airport, so the pair reads as the city', () => {
+    const { namer } = stopClusterAnchor([VAR_AIRPORT, VARNA_CITY], counts);
+    expect(namer.iataCode).toBe('Varna');
+  });
+
+  it('keeps the busiest name when the merged stops are unrelated', () => {
+    // Varna airport and Burgas only overlap at world zoom; the dot sits
+    // at Varna, so calling it "Burgas" would point at the wrong place.
+    const { namer } = stopClusterAnchor([VAR_AIRPORT, BURGAS_CITY], counts);
+    expect(namer.iataCode).toBe('VAR');
+  });
+
+  it('anchors on the busiest member regardless of input order', () => {
+    for (const order of [
+      [BURGAS_CITY, VAR_AIRPORT],
+      [VAR_AIRPORT, BURGAS_CITY],
+    ]) {
+      expect(stopClusterAnchor(order, counts).anchor.iataCode).toBe('VAR');
+    }
+  });
+
+  it('names a lone stop after itself', () => {
+    expect(stopClusterAnchor([VAR_AIRPORT], counts).namer.iataCode).toBe('VAR');
+    expect(stopClusterAnchor([VARNA_CITY], counts).namer.iataCode).toBe(
+      'Varna',
+    );
   });
 });

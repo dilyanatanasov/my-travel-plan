@@ -1,6 +1,10 @@
-import { memo, useEffect, useMemo, useRef } from 'react';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import type { Airport, FlightJourney } from '../../types';
-import { journeyRouteLabel, legEndpoints } from '../FlightMap/routeUtils';
+import {
+  journeyRouteLabel,
+  legEndpoints,
+  stopClusterAnchor,
+} from '../FlightMap/routeUtils';
 import { formatJourneyDate } from '../../utils/journeyDate';
 import CountryFlag from '../ui/CountryFlag';
 
@@ -13,6 +17,9 @@ interface StopDetailCardProps {
    */
   stops: Airport[];
   journeys: FlightJourney[];
+  /** Shared with the marker layer, so the card titles itself with the
+      same rule the dot labels itself. */
+  visitCounts: Map<string, number>;
   onShowJourney: (journeyId: number) => void;
   onClose: () => void;
 }
@@ -28,13 +35,14 @@ interface StopDetailCardProps {
 function StopDetailCard({
   stops,
   journeys,
+  visitCounts,
   onShowJourney,
   onClose,
 }: StopDetailCardProps) {
   const cardRef = useRef<HTMLDivElement | null>(null);
-  // The card speaks for the place: a merged dot prefers the city name
-  // over a terminal code, matching the label the map is showing.
-  const stop = stops.find((member) => member.id < 0) ?? stops[0];
+  // The same rule the marker labels itself with - one definition in
+  // routeUtils, so the dot and its card can never disagree.
+  const stop = stopClusterAnchor(stops, visitCounts).namer;
   const merged = stops.length > 1;
   const identity = stops.map((member) => member.iataCode).join('|');
   useEffect(() => {
@@ -42,8 +50,20 @@ function StopDetailCard({
   }, [identity]);
 
   const isCity = stop.id < 0;
+  /*
+    Which member the list is answering for (owner ask, 2026-08-20):
+    null is "the whole area", a code narrows to one facility. This is
+    what makes magnification unnecessary - you can inspect just the
+    airport at any zoom, merged dot or not.
+  */
+  const [focus, setFocus] = useState<string | null>(null);
+  // A different dot is a different question; never inherit a filter.
+  useEffect(() => setFocus(null), [identity]);
+
   const touching = useMemo(() => {
-    const codes = new Set(stops.map((member) => member.iataCode));
+    const codes = new Set(
+      focus ? [focus] : stops.map((member) => member.iataCode),
+    );
     return journeys.filter((journey) =>
       (journey.legs ?? []).some((leg) => {
         const endpoints = legEndpoints(leg);
@@ -55,7 +75,7 @@ function StopDetailCard({
     );
     // identity stands in for the stops array, rebuilt every render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [journeys, identity]);
+  }, [journeys, identity, focus]);
 
   return (
     <div
@@ -107,23 +127,51 @@ function StopDetailCard({
         </button>
       </div>
 
-      {/* What the merged dot is standing for - named, so nothing hides
-          behind a collapsed marker. */}
+      {/* What the merged dot stands for - named, so nothing hides behind
+          a collapsed marker, and tappable, so one facility can be read
+          on its own without zooming in to separate the dots. */}
       {merged && (
-        <div className="flex flex-wrap gap-1.5 mt-3">
-          {stops.map((member) => (
-            <span
-              key={member.iataCode}
-              className="inline-flex items-baseline gap-1 px-2 py-1 rounded-lg bg-current/10 text-xs"
-            >
-              <span className="font-mono font-bold">{member.iataCode}</span>
-              {member.id > 0 && member.city && (
-                <span className="map-glass-muted truncate max-w-[7rem]">
-                  {member.city}
-                </span>
-              )}
-            </span>
-          ))}
+        <div
+          role="group"
+          aria-label="Filter journeys by stop"
+          className="flex flex-wrap gap-1.5 mt-3"
+        >
+          {[null, ...stops.map((member) => member.iataCode)].map((code) => {
+            const member = stops.find((item) => item.iataCode === code);
+            const active = focus === code;
+            return (
+              <button
+                key={code ?? 'all'}
+                type="button"
+                aria-pressed={active}
+                onClick={() => setFocus(code)}
+                className={`inline-flex items-baseline gap-1 px-2 py-1 rounded-lg text-xs transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 ${
+                  active
+                    ? 'bg-secondary-600 text-white'
+                    : 'bg-current/10 map-glass-hover'
+                }`}
+              >
+                {member ? (
+                  <>
+                    <span className="font-mono font-bold">
+                      {member.iataCode}
+                    </span>
+                    {member.id > 0 && member.city && (
+                      <span
+                        className={
+                          active ? 'text-white/75' : 'map-glass-muted'
+                        }
+                      >
+                        {member.city}
+                      </span>
+                    )}
+                  </>
+                ) : (
+                  <span className="font-medium">All</span>
+                )}
+              </button>
+            );
+          })}
         </div>
       )}
 
@@ -131,7 +179,7 @@ function StopDetailCard({
         <div className="mt-3">
           <p className="text-[11px] font-semibold uppercase tracking-wide map-glass-muted">
             {touching.length} {touching.length === 1 ? 'journey' : 'journeys'}{' '}
-            through here
+            through {focus ?? 'here'}
           </p>
           <ul className="mt-1.5 space-y-1 max-h-36 overflow-y-auto overscroll-contain pr-1">
             {touching.map((journey) => (
@@ -154,7 +202,7 @@ function StopDetailCard({
         </div>
       ) : (
         <p className="text-xs map-glass-muted mt-3">
-          No journeys through here yet.
+          No journeys through {focus ?? 'here'} yet.
         </p>
       )}
     </div>

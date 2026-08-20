@@ -3,6 +3,7 @@ import { useMapContext, useZoomPanContext } from 'react-simple-maps';
 import type { Airport } from '../../types';
 import {
   clusterByScreenDistance,
+  stopClusterAnchor,
   getZoomAdjustedSize,
   getZoomEmphasisedSize,
 } from './routeUtils';
@@ -144,14 +145,9 @@ function AirportMarkers({
           for the one currently landing, so a replay arrival announces
           the airport it actually reached rather than a neighbour.
         */
+        const cluster = stopClusterAnchor(items, visitCounts);
         const airport =
-          items.find((member) => member.iataCode === popIata) ??
-          items.reduce((best, member) =>
-            (visitCounts.get(member.iataCode) ?? 0) >
-            (visitCounts.get(best.iataCode) ?? 0)
-              ? member
-              : best,
-          );
+          items.find((member) => member.iataCode === popIata) ?? cluster.anchor;
         const merged = items.length > 1;
         const isHighlighted = items.some((member) =>
           highlightedAirports.includes(member.iataCode),
@@ -188,18 +184,9 @@ function AirportMarkers({
           airport borrows its city name only while no city stop is using
           it, so a split pair never shows the same word twice.
         */
-        const twin = merged
-          ? items.find(
-              (member) =>
-                member.id < 0 &&
-                Boolean(airport.city) &&
-                member.iataCode === airport.city,
-            )
-          : undefined;
-        // Only a city that owns THIS airport renames the dot. Two
-        // unrelated stops merging at world zoom keep the busier one's
-        // name, so the label always describes where the dot sits.
-        const namer = twin ?? airport;
+        // The popping arrival always names itself; otherwise the shared
+        // rule decides, so the dot and its card never disagree.
+        const namer = isPopping ? airport : cluster.namer;
         const placeName =
           namer.id < 0
             ? namer.iataCode

@@ -224,6 +224,38 @@ export function calculateArcPath(
 }
 
 /**
+ * Which stop speaks for a merged dot, and what it is called.
+ *
+ * ONE definition, because the marker and its card must agree: the map
+ * saying "Varna" while the card titled itself "Burgas" is exactly the
+ * bug this replaced (2026-08-20).
+ *
+ * The anchor is the busiest member - the place you have been through
+ * most - except that a city which owns THIS airport takes over the
+ * name, so a city and its airport read as the city. Unrelated stops
+ * that merely overlap keep the busiest one's name, so the label always
+ * describes where the dot actually sits.
+ */
+export function stopClusterAnchor(
+  stops: Airport[],
+  visitCounts?: Map<string, number>,
+): { anchor: Airport; namer: Airport } {
+  const anchor = stops.reduce((best, member) =>
+    (visitCounts?.get(member.iataCode) ?? 0) >
+    (visitCounts?.get(best.iataCode) ?? 0)
+      ? member
+      : best,
+  );
+  const twin =
+    stops.length > 1 && anchor.city
+      ? stops.find(
+          (member) => member.id < 0 && member.iataCode === anchor.city,
+        )
+      : undefined;
+  return { anchor, namer: twin ?? anchor };
+}
+
+/**
  * How close two stops must be ON SCREEN to read as one place. Tuned
  * against measured distances (see stopClustering.test.ts): a dot is
  * 2-4px with a label above it, so under ~14px they are one blob. On

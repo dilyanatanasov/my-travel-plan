@@ -802,6 +802,7 @@ function TravelMap() {
       <StopDetailCard
         stops={openStop}
         journeys={flights}
+        visitCounts={airportVisitCounts}
         onClose={() => setOpenStop(null)}
         onShowJourney={(journeyId) => {
           const journey = flights.find((f) => f.id === journeyId);
