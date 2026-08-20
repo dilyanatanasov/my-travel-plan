@@ -5,9 +5,13 @@ import { formatJourneyDate } from '../../utils/journeyDate';
 import CountryFlag from '../ui/CountryFlag';
 
 interface StopDetailCardProps {
-  /** The tapped stop, in the map's one vocabulary - a city poses as an
-      Airport (negative id, name in the iataCode slot). */
-  stop: Airport;
+  /**
+   * The tapped dot's stops, in the map's one vocabulary - a city poses
+   * as an Airport (negative id, name in the iataCode slot). Usually one;
+   * more when the dot is a merged place (Varna and its airport at any
+   * zoom where they overlap), and then the card answers for the area.
+   */
+  stops: Airport[];
   journeys: FlightJourney[];
   onShowJourney: (journeyId: number) => void;
   onClose: () => void;
@@ -22,30 +26,36 @@ interface StopDetailCardProps {
  * them; TravelMap enforces that, the same way the other two do.
  */
 function StopDetailCard({
-  stop,
+  stops,
   journeys,
   onShowJourney,
   onClose,
 }: StopDetailCardProps) {
   const cardRef = useRef<HTMLDivElement | null>(null);
+  // The card speaks for the place: a merged dot prefers the city name
+  // over a terminal code, matching the label the map is showing.
+  const stop = stops.find((member) => member.id < 0) ?? stops[0];
+  const merged = stops.length > 1;
+  const identity = stops.map((member) => member.iataCode).join('|');
   useEffect(() => {
     cardRef.current?.focus({ preventScroll: true });
-  }, [stop.iataCode]);
+  }, [identity]);
 
   const isCity = stop.id < 0;
-  const touching = useMemo(
-    () =>
-      journeys.filter((journey) =>
-        (journey.legs ?? []).some((leg) => {
-          const endpoints = legEndpoints(leg);
-          return (
-            endpoints?.departure.iataCode === stop.iataCode ||
-            endpoints?.arrival.iataCode === stop.iataCode
-          );
-        }),
-      ),
-    [journeys, stop.iataCode],
-  );
+  const touching = useMemo(() => {
+    const codes = new Set(stops.map((member) => member.iataCode));
+    return journeys.filter((journey) =>
+      (journey.legs ?? []).some((leg) => {
+        const endpoints = legEndpoints(leg);
+        return (
+          (endpoints && codes.has(endpoints.departure.iataCode)) ||
+          (endpoints && codes.has(endpoints.arrival.iataCode))
+        );
+      }),
+    );
+    // identity stands in for the stops array, rebuilt every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [journeys, identity]);
 
   return (
     <div
@@ -67,9 +77,11 @@ function StopDetailCard({
             {stop.iataCode}
           </h3>
           <p className="text-xs map-glass-muted mt-0.5 truncate">
-            {isCity
-              ? 'City stop'
-              : [stop.name, stop.city].filter(Boolean).join(' · ')}
+            {merged
+              ? `${stops.length} stops in this area`
+              : isCity
+                ? 'City stop'
+                : [stop.name, stop.city].filter(Boolean).join(' · ')}
           </p>
         </div>
         <button
@@ -94,6 +106,26 @@ function StopDetailCard({
           </svg>
         </button>
       </div>
+
+      {/* What the merged dot is standing for - named, so nothing hides
+          behind a collapsed marker. */}
+      {merged && (
+        <div className="flex flex-wrap gap-1.5 mt-3">
+          {stops.map((member) => (
+            <span
+              key={member.iataCode}
+              className="inline-flex items-baseline gap-1 px-2 py-1 rounded-lg bg-current/10 text-xs"
+            >
+              <span className="font-mono font-bold">{member.iataCode}</span>
+              {member.id > 0 && member.city && (
+                <span className="map-glass-muted truncate max-w-[7rem]">
+                  {member.city}
+                </span>
+              )}
+            </span>
+          ))}
+        </div>
+      )}
 
       {touching.length > 0 ? (
         <div className="mt-3">

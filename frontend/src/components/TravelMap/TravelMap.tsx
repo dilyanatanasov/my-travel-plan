@@ -221,7 +221,7 @@ function TravelMap() {
     the country and journey cards - opening any one closes the others,
     so the corner never stacks.
   */
-  const [openStop, setOpenStop] = useState<Airport | null>(null);
+  const [openStop, setOpenStop] = useState<Airport[] | null>(null);
   useEffect(() => {
     if (openCountryIso) setOpenStop(null);
   }, [openCountryIso]);
@@ -431,10 +431,10 @@ function TravelMap() {
 
   /** Marker tap opens the stop card - gesture-guarded, berth-exclusive. */
   const handleSelectStop = useCallback(
-    (airport: Airport) => {
-      if (wasDragRef.current || replay.isActive) return;
+    (stops: Airport[]) => {
+      if (wasDragRef.current || replay.isActive || stops.length === 0) return;
       clickConsumedRef.current = true;
-      setOpenStop(airport);
+      setOpenStop(stops);
       setOpenCountryIso(null);
       setSelectedJourney(null);
     },
@@ -800,7 +800,7 @@ function TravelMap() {
   const stopDetailCard = openStop && !selectedJourney && !openCountry && (
     <div className="absolute z-20 left-3 right-3 sm:right-auto sm:w-96 bottom-20 lg:bottom-4 lg:left-auto lg:right-20 top-16 md:top-3 flex flex-col justify-end pointer-events-none">
       <StopDetailCard
-        stop={openStop}
+        stops={openStop}
         journeys={flights}
         onClose={() => setOpenStop(null)}
         onShowJourney={(journeyId) => {
