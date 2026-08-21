@@ -1175,6 +1175,9 @@ function GlobeView({
             // Coarse world while the globe is in motion - frame rate
             // over microstates; the fine world returns on settle.
             detail={inMotion ? 'coarse' : 'fine'}
+            // Half the world is behind the planet; let the layer drop it
+            // before the projection pays to clip it away.
+            horizonRotation={camera.rotation}
             // Every press here may be the start of a rotation - no flash.
             pressFeedback={false}
           />
