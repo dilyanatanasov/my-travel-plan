@@ -26,8 +26,11 @@ function MobileTabBar({ activeSection, onSelect }: MobileTabBarProps) {
         same width regardless of label length — "Statistics" is twice the
         length of "Share" and would otherwise take twice the room.
       */}
+      {/* Play is deliberately absent (owner call, 2026-08-21): a sixth
+          column would squeeze five already-tight tabs, so on phones the
+          games live in the header instead. */}
       <div className="grid grid-cols-5 px-0.5 py-1">
-        {SECTIONS.map((section) => {
+        {SECTIONS.filter((section) => section.id !== 'play').map((section) => {
           const isActive = activeSection === section.id;
           return (
             <button

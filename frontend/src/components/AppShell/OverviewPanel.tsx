@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import { useGetFlightsQuery } from '../../features/flights/flightsApi';
 import JourneyHighlightCard from './JourneyHighlightCard';
 import RegionProgress from './RegionProgress';
-import DailyCard from '../../features/daily/DailyCard';
 import type { Country, FlightJourney, Visit } from '../../types';
 
 interface OverviewPanelProps {
@@ -153,7 +152,8 @@ function OverviewPanel({
 
       <RegionProgress countries={countries} visits={visits} />
 
-      <DailyCard />
+      {/* The daily puzzle moved to its own Play section (2026-08-21):
+          one home each, and a shell entry that points at it. */}
 
       {!next && !last && (
         <p className="text-sm text-ink-muted">

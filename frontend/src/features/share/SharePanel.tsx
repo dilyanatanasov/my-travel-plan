@@ -25,7 +25,6 @@ import MapExportCanvas, {
 import { useGetCountriesQuery, useGetVisitsQuery } from '../visits/visitsApi';
 import { useGetFlightStatsQuery } from '../flights/flightsApi';
 import { useAuth, useResendVerificationMutation } from '../auth/authApi';
-import DuelSection from './DuelSection';
 import { track } from '../../lib/analytics';
 
 const STYLES: { id: ShareStyle; label: string; hint: string }[] = [
@@ -553,10 +552,9 @@ function SharePanel() {
         )}
       </div>
 
-      {/* Duels ride the same token as the public link: no link, no duels. */}
-      {!isGuest && user?.emailVerified && token && (
-        <DuelSection myToken={token} />
-      )}
+      {/* Duels moved to the Play section (2026-08-21): buried at the
+          bottom here and hidden outright without a share link, they were
+          effectively undiscoverable. */}
 
       {user?.displayName && (
         <p className="text-xs text-ink-subtle text-center">

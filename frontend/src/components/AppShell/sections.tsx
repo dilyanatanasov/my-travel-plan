@@ -1,6 +1,12 @@
 import type { ReactNode } from 'react';
 
-export type SectionId = 'overview' | 'countries' | 'flights' | 'stats' | 'share';
+export type SectionId =
+  | 'overview'
+  | 'countries'
+  | 'flights'
+  | 'stats'
+  | 'share'
+  | 'play';
 
 export interface SectionDef {
   id: SectionId;
@@ -86,6 +92,28 @@ export const SECTIONS: SectionDef[] = [
           strokeLinejoin="round"
           strokeWidth={1.8}
           d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+        />
+      </svg>
+    ),
+  },
+  /*
+    The games' own home (owner ask, 2026-08-21: "they are a bit hidden").
+    The daily puzzle sat below the fold in Overview and the duel was at
+    the very bottom of Share, hidden entirely until you happened to have
+    created a share link. On the desktop rail this is a sixth entry; the
+    mobile tab bar deliberately skips it and the header carries it
+    instead, because six tabs on a phone is a squeeze.
+  */
+  {
+    id: 'play',
+    label: 'Play',
+    icon: (
+      <svg {...iconProps}>
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={1.8}
+          d="M7.5 9.5h3M9 8v3M15.2 9.6h.01M17 12.2h.01M9.2 5.5h5.6a5 5 0 014.9 4l.8 5.2a2.7 2.7 0 01-2.7 3.1c-1 0-1.9-.5-2.4-1.4l-.5-.9H8.1l-.5.9c-.5.9-1.4 1.4-2.4 1.4a2.7 2.7 0 01-2.7-3.1l.8-5.2a5 5 0 014.9-4z"
         />
       </svg>
     ),
