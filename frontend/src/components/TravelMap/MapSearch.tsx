@@ -34,6 +34,41 @@ interface Hit {
 const MAX_HITS = 6;
 
 /**
+ * Diacritic-free lowercase, so "keramoti" scores against "Keramotí" as
+ * the exact match it is. The city table stores both spellings but only
+ * ships the native one, and typing accents on a phone is nobody's plan.
+ */
+const fold = (value: string): string =>
+  value
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+
+/**
+ * How well a candidate answers the query: 0 exact, 1 prefix, 2 a word
+ * inside the name, 3 anywhere at all. Names are checked in order and the
+ * best one wins, so an airport is judged on whichever of its code, city
+ * or full name matches best.
+ */
+export function matchTier(
+  rawTerm: string,
+  ...names: (string | null | undefined)[]
+): number {
+  const term = fold(rawTerm);
+  let best = Number.POSITIVE_INFINITY;
+  for (const raw of names) {
+    if (!raw) continue;
+    const name = fold(raw);
+    if (name === term) return 0;
+    if (name.startsWith(term)) best = Math.min(best, 1);
+    else if (new RegExp(`\\b${term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`).test(name))
+      best = Math.min(best, 2);
+    else if (name.includes(term)) best = Math.min(best, 3);
+  }
+  return best;
+}
+
+/**
  * Fly the map to a country or airport.
  *
  * Panning to a specific place by hand is the least rewarding thing you can do
@@ -83,10 +118,33 @@ function MapSearch({ countries, countryCentroids, onGo }: MapSearchProps) {
     const term = query.trim().toLowerCase();
     if (term.length < 2) return [];
 
-    const results: Hit[] = [];
+    /*
+      Collect every candidate with a match tier, then sort and trim
+      (friend feedback, 2026-08-21: exact matches belong on top).
+
+      The old version filled six rows strictly by type - countries, then
+      airports, then cities - and stopped. So six airports with the term
+      buried somewhere in their names crowded out the city you had typed
+      the exact name of, and it never even reached the list. Ranking by
+      how well each row answers the query fixes both halves: the exact
+      hit rises, and nothing is dropped before it has been considered.
+
+      Array.sort is stable, so rows of equal tier keep insertion order -
+      which is the type preference this list always had: a country beats
+      an airport beats a city when they answer the query equally well.
+
+      The tier only decides how the three SOURCES interleave; it must
+      never reshuffle a source internally, because both servers already
+      rank better than a name comparison can. Airports weigh hub status,
+      and cities weigh exactness against population - which is how "var"
+      keeps Varanasi above the Iranian village literally called Vār. So
+      each loop clamps its tiers to be non-decreasing: a later row can
+      never outrank an earlier one, and a stable sort then preserves the
+      server's order exactly.
+    */
+    const results: (Hit & { tier: number })[] = [];
 
     for (const country of countries) {
-      if (results.length >= MAX_HITS) break;
       // Abbreviation-aware: "n. mariana is." (the daily puzzle's spelling)
       // and "northern mariana" both find Northern Mariana Islands.
       if (!matchesGeoName(country.name, term)) continue;
@@ -98,6 +156,10 @@ function MapSearch({ countries, countryCentroids, onGo }: MapSearchProps) {
         fallbackCentroids[country.isoCode];
       if (!centroid) continue;
       results.push({
+        // matchesGeoName also accepts abbreviations the plain scorer
+        // cannot see ("n. mariana is."), so a country that matched only
+        // that way still lands mid-table rather than at the bottom.
+        tier: Math.min(matchTier(term, country.name), 2),
         // "ct-", not "c-": cities used the same prefix, so a country and
         // a city sharing an id collided as React keys (2026-08-21).
         key: `ct-${country.id}`,
@@ -110,11 +172,16 @@ function MapSearch({ countries, countryCentroids, onGo }: MapSearchProps) {
       });
     }
 
+    let airportFloor = 0;
     for (const airport of airports) {
-      if (results.length >= MAX_HITS) break;
-      const haystack = `${airport.iataCode} ${airport.city ?? ''} ${airport.name}`.toLowerCase();
-      if (!haystack.includes(term)) continue;
+      const scored = matchTier(term, airport.iataCode, airport.city, airport.name);
+      // Unranked means the term appears nowhere in this airport at all.
+      if (!Number.isFinite(scored)) continue;
+      // Clamped upward only, so the ranking the server sent survives.
+      const tier = Math.max(airportFloor, Math.min(scored, 3));
+      airportFloor = tier;
       results.push({
+        tier,
         key: `a-${airport.id}`,
         label: airport.iataCode,
         detail: [airport.city, airport.country].filter(Boolean).join(', ') || airport.name,
@@ -132,10 +199,11 @@ function MapSearch({ countries, countryCentroids, onGo }: MapSearchProps) {
       });
     }
 
-    // Cities last: an airport hit usually IS the city people mean, so
-    // cities fill the remaining rows rather than crowd airports out.
+    // Cities added last: an airport hit usually IS the city people mean,
+    // so at equal match quality the airport keeps the higher row. A city
+    // named exactly still outranks a loosely-matched airport.
+    let cityFloor = 0;
     for (const cityHit of cities) {
-      if (results.length >= MAX_HITS) break;
       /*
         Say WHICH city (owner report, 2026-08-21). Greece has three
         towns called Stavrós and Monaco is both a country and a city, so
@@ -145,7 +213,13 @@ function MapSearch({ countries, countryCentroids, onGo }: MapSearchProps) {
       const cityCountry = countries.find(
         (country) => country.isoCode2 === cityHit.countryIso,
       );
+      const cityTier = Math.max(
+        cityFloor,
+        Math.min(matchTier(term, cityHit.name), 3),
+      );
+      cityFloor = cityTier;
       results.push({
+        tier: cityTier,
         key: `ci-${cityHit.id}`,
         label: cityHit.name,
         detail: [
@@ -168,7 +242,9 @@ function MapSearch({ countries, countryCentroids, onGo }: MapSearchProps) {
       });
     }
 
-    return results;
+    return results
+      .sort((a, b) => a.tier - b.tier)
+      .slice(0, MAX_HITS);
   }, [query, countries, airports, cities, countryCentroids]);
 
 
