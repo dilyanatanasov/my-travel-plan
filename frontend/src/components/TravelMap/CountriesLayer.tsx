@@ -1,6 +1,7 @@
-import { memo, useEffect, useRef, useState } from 'react';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { Geographies, Geography } from 'react-simple-maps';
 import { geoBounds, geoCentroid } from 'd3-geo';
+import { feature as topoFeature } from 'topojson-client';
 import { numericToAlpha3, nameToAlpha3 } from './isoCodes';
 import {
   getCountryColor,
@@ -27,6 +28,46 @@ function geoToAlpha3(geo: {
   if (byId) return byId;
   const name = geo.properties?.name;
   return name ? nameToAlpha3[name] : undefined;
+}
+
+const RADIANS = Math.PI / 180;
+
+/** Great-circle angle between two lon/lat points, in degrees. */
+function angularDistance(
+  [lonA, latA]: [number, number],
+  [lonB, latB]: [number, number],
+): number {
+  const phiA = latA * RADIANS;
+  const phiB = latB * RADIANS;
+  const cosine =
+    Math.sin(phiA) * Math.sin(phiB) +
+    Math.cos(phiA) * Math.cos(phiB) * Math.cos((lonB - lonA) * RADIANS);
+  return Math.acos(Math.min(1, Math.max(-1, cosine))) / RADIANS;
+}
+
+/*
+  Culling runs off a rounded rotation, and the horizon test carries a
+  margin wider than that rounding.
+
+  The rounding is what makes it affordable: <Geographies> re-runs its
+  whole pipeline whenever the collection it is given changes identity, so
+  a set recomputed every frame would cost more than the culling saves.
+  Rounded to 10 degrees, the visible set only changes every few frames of
+  a spin. The margin then guarantees the coarse rounding can never hide
+  something that belongs on screen - a country is dropped only when it is
+  comfortably round the back.
+*/
+const CULL_BUCKET_DEG = 10;
+const CULL_MARGIN_DEG = 15;
+
+interface FeatureCollectionish {
+  features: { id?: string; properties?: { name?: string } }[];
+}
+
+/** A converted atlas plus the measurements the culler needs from it. */
+interface DerivedAtlas {
+  collection: FeatureCollectionish;
+  shapes: ({ centre: [number, number]; radius: number } | null)[];
 }
 
 interface CountriesLayerProps {
@@ -77,6 +118,16 @@ interface CountriesLayerProps {
    * there.
    */
   onCountryLongPress?: (isoCode: string) => void;
+  /**
+   * The globe's camera rotation, which turns on horizon culling.
+   *
+   * On a sphere roughly half the countries are behind the planet, and
+   * clipAngle(90) discards them - but only AFTER paying to rotate and
+   * clip every one of their points. Handing over the rotation lets this
+   * layer drop them before the projection ever sees them. Omitted by the
+   * flat map, where every country is genuinely on screen.
+   */
+  horizonRotation?: [number, number];
   /** Alpha-3 of a country the replay has just landed in; pulses once. */
   landedIsoCode?: string | null;
   /** Search landing: this country blinks three times so it can be found. */
@@ -108,6 +159,7 @@ function CountriesLayer({
   constantBorderWidth = true,
   detail = 'fine',
   pressFeedback = true,
+  horizonRotation,
 }: CountriesLayerProps) {
   const isInteractive = Boolean(onCountryClick);
   const vectorEffect = constantBorderWidth ? 'non-scaling-stroke' : undefined;
@@ -168,6 +220,154 @@ function CountriesLayer({
     detail === 'coarse' && coarseGeography ? coarseGeography : geography;
 
   /*
+    Hand <Geographies> GeoJSON, not the raw topology (2026-08-21).
+
+    Given a topology it does two things per render, and one of them is
+    pure waste for us. It converts the topology to features - fine, but
+    it also builds the outline and borders MESHES and runs both through
+    the projection. Its memo is keyed on the path function, which is a
+    new function on every camera change, so a spinning globe re-projected
+    the whole world three times a frame: once as countries, once as an
+    outline, once as a border mesh. This layer draws its own per-country
+    paths and has never rendered either mesh.
+
+    getMesh() returns null for anything that is not a Topology, so
+    converting here - once per atlas, memoised - makes prepareMesh a
+    no-op and leaves only the projection work we actually use.
+  */
+  /*
+    Derived per atlas and kept, not recomputed on every swap.
+
+    useMemo remembers exactly one result, and the LOD flips between two
+    atlases - so every swap threw the other one's work away and redid it.
+    That work is not small: converting the topology, and then measuring
+    each country's centroid and bounding box for the culler, walks all
+    80,000 points of the fine world. Both atlases are computed once each
+    and held in a Map keyed on the topology object, so a swap costs
+    nothing beyond the render itself.
+  */
+  const derivedRef = useRef(new Map<unknown, DerivedAtlas>());
+  const deriveAtlas = (topology: unknown): DerivedAtlas | null => {
+    if (!topology) return null;
+    const cached = derivedRef.current.get(topology);
+    if (cached) return cached;
+    const source = topology as { objects: Record<string, never> };
+    const collection = topoFeature(
+      source as never,
+      source.objects.countries ??
+        source.objects[Object.keys(source.objects)[0]],
+    ) as unknown as FeatureCollectionish;
+
+    /*
+      Each country's centroid and angular radius. The radius is the
+      widest reach from the centroid to a corner of its bounding box, so
+      the horizon test can ask whether ANY part of the country could
+      still be in front - Russia stays on screen long after its centroid
+      has gone round the back.
+    */
+    const shapes = collection.features.map((geo) => {
+      const centre = geoCentroid(geo as never) as [number, number];
+      if (!Number.isFinite(centre[0]) || !Number.isFinite(centre[1])) {
+        return null;
+      }
+      const box = geoBounds(geo as never);
+      const corners: [number, number][] = [
+        [box[0][0], box[0][1]],
+        [box[0][0], box[1][1]],
+        [box[1][0], box[0][1]],
+        [box[1][0], box[1][1]],
+      ];
+      let radius = 0;
+      for (const corner of corners) {
+        const reach = angularDistance(centre, corner);
+        if (Number.isFinite(reach)) radius = Math.max(radius, reach);
+      }
+      // An unmeasurable shape is never culled: wrong on screen is worse
+      // than slow.
+      return Number.isFinite(radius) ? { centre, radius } : null;
+    });
+
+    const entry: DerivedAtlas = { collection, shapes };
+    derivedRef.current.set(topology, entry);
+    return entry;
+  };
+
+  const activeAtlas = deriveAtlas(activeGeography);
+  const featureCollection = activeAtlas?.collection ?? null;
+  const cullGeometry = activeAtlas?.shapes ?? null;
+
+  /*
+    Centroids are reported from the FINE atlas, in full, regardless of
+    what is currently drawn (2026-08-21).
+
+    This used to run inside the Geographies render callback over whatever
+    was on screen. Two things now make that wrong: horizon culling means
+    the visible set is a fraction of the world, and the coarse atlas is
+    missing microstates entirely - so anything framing a view around a
+    visited country could have learned a partial map, or none. Reading
+    the fine collection directly also keeps this work out of the render
+    path it used to sit in.
+  */
+  const fineFeatures = deriveAtlas(geography)?.collection.features ?? null;
+
+  useEffect(() => {
+    if (!onCentroids || !fineFeatures || reportedRef.current) return;
+    reportedRef.current = true;
+    const centroids = new Map<string, [number, number]>();
+    const bounds = new Map<string, [[number, number], [number, number]]>();
+    for (const geo of fineFeatures) {
+      const iso = geoToAlpha3(geo);
+      if (!iso) continue;
+      const centre = geoCentroid(geo as never);
+      if (Number.isFinite(centre[0]) && Number.isFinite(centre[1])) {
+        centroids.set(iso, [centre[0], centre[1]]);
+      }
+      const box = geoBounds(geo as never);
+      if (box.every((corner) => corner.every(Number.isFinite))) {
+        bounds.set(iso, [
+          [box[0][0], box[0][1]],
+          [box[1][0], box[1][1]],
+        ]);
+      }
+    }
+    onCentroids(centroids, bounds);
+  }, [onCentroids, fineFeatures]);
+
+  /*
+    Drop the countries that are entirely behind the planet. Identity is
+    keyed on the ROUNDED rotation, so the collection handed to
+    <Geographies> holds still for a bucket's worth of spin.
+  */
+  const bucketLon = horizonRotation
+    ? Math.round(horizonRotation[0] / CULL_BUCKET_DEG)
+    : 0;
+  const bucketLat = horizonRotation
+    ? Math.round(horizonRotation[1] / CULL_BUCKET_DEG)
+    : 0;
+  const visibleCollection = useMemo(() => {
+    if (!featureCollection) return null;
+    if (!horizonRotation || !cullGeometry) return featureCollection;
+    // A d3 rotation is the negation of the point facing the camera.
+    const viewCentre: [number, number] = [
+      -bucketLon * CULL_BUCKET_DEG,
+      -bucketLat * CULL_BUCKET_DEG,
+    ];
+    const collection = featureCollection as unknown as { features: unknown[] };
+    const visible = collection.features.filter((_, index) => {
+      const shape = cullGeometry[index];
+      if (!shape) return true;
+      return (
+        angularDistance(viewCentre, shape.centre) - shape.radius <=
+        90 + CULL_MARGIN_DEG
+      );
+    });
+    return { ...collection, features: visible };
+    // horizonRotation itself is deliberately absent: the bucket is what
+    // may change identity here, not every degree of a drag.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [featureCollection, cullGeometry, Boolean(horizonRotation), bucketLon, bucketLat]);
+
+  /*
     The wash-in transition (fill 400ms) exists so ADDING a country reads
     as an event - but an LOD swap remounts every path, and the remount
     re-ran the wash on the whole world: every visited country blinked on
@@ -195,10 +395,10 @@ function CountriesLayer({
     is not a safe stand-in: Geographies reads the first object's type and
     throws on undefined, which took the whole map down.
   */
-  if (!activeGeography) return null;
+  if (!visibleCollection) return null;
 
   return (
-    <Geographies geography={activeGeography}>
+    <Geographies geography={visibleCollection}>
       {({
         geographies,
       }: {
@@ -208,33 +408,6 @@ function CountriesLayer({
           properties?: { name?: string };
         }[];
       }) => {
-        if (onCentroids && !reportedRef.current && geographies.length > 0) {
-          reportedRef.current = true;
-          const centroids = new Map<string, [number, number]>();
-          const bounds = new Map<
-            string,
-            [[number, number], [number, number]]
-          >();
-          for (const geo of geographies) {
-            const iso = geoToAlpha3(geo);
-            if (!iso) continue;
-            const centre = geoCentroid(geo as never);
-            if (Number.isFinite(centre[0]) && Number.isFinite(centre[1])) {
-              centroids.set(iso, [centre[0], centre[1]]);
-            }
-            const box = geoBounds(geo as never);
-            if (box.every((corner) => corner.every(Number.isFinite))) {
-              bounds.set(iso, [
-                [box[0][0], box[0][1]],
-                [box[1][0], box[1][1]],
-              ]);
-            }
-          }
-          // Deferred: this runs inside Geographies' render callback, and
-          // setting parent state during render warns and can loop.
-          queueMicrotask(() => onCentroids(centroids, bounds));
-        }
-
         return geographies.map((geo) => {
           const isoCode = geoToAlpha3(geo);
           const displayInfo = isoCode
