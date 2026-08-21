@@ -125,6 +125,16 @@ function CitySearch({
                 <span className="ml-2 text-sm text-ink-muted">
                   {city.countryIso}
                 </span>
+                {/* Greece really does have three towns called Stavrós, and
+                    without a size they render as three identical rows that
+                    read like duplicates (owner report, 2026-08-21). Size is
+                    the only field the dataset gives us to tell them apart,
+                    and the list is already ranked by it. */}
+                {(city.population ?? 0) > 0 && (
+                  <span className="ml-2 text-xs text-ink-subtle tabular-nums">
+                    {(city.population ?? 0).toLocaleString()} people
+                  </span>
+                )}
               </button>
             ))
           )}

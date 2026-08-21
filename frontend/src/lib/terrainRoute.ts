@@ -441,6 +441,18 @@ async function routeSegment(
   // cannot wrap, and these are vanishingly rare for surface travel.
   if (Math.abs(from[0] - to[0]) > 180) return 'straight';
 
+  /*
+    Short hops are not routed at all (2026-08-21). Every mask is padded
+    to at least a degree, so a 1km hop still rasterises to ~1km cells -
+    a resolution at which a coastal point can land in a water cell and
+    snap to a DIFFERENT landmass than its neighbour, reporting two
+    points in one city as unreachable. That is what stranded Copenhagen
+    from an Oresund gate mouth 1.2km away, pushing the route through the
+    Great Belt. Below ~25km a detour is invisible at any zoom we offer,
+    so the straight chord is both cheaper and more honest.
+  */
+  if (geoDistanceDeg(from, to) < 0.22) return 'straight';
+
   const polygons = await loadLandPolygons();
 
   const minLon = Math.min(from[0], to[0]);
@@ -552,6 +564,14 @@ const LAND_GATES: { name: string; a: LonLat; b: LonLat }[] = [
   { name: 'Bosphorus Crossing', a: [28.97, 41.02], b: [29.05, 41.06] },
   { name: 'Seikan Tunnel', a: [140.7, 41.2], b: [140.6, 41.7] },
   { name: 'Confederation Bridge', a: [-63.75, 46.2], b: [-63.7, 46.35] },
+  /*
+    Island road links (owner report, 2026-08-21): a car really does
+    drive to Lefkada, over a floating bridge about 50m wide - narrower
+    than any atlas tier can draw. Without these the island reads as
+    unreachable and the router went shopping for absurd detours.
+  */
+  { name: 'Lefkada Causeway', a: [20.83, 38.83], b: [20.66, 38.78] },
+  { name: 'Euripus Bridge (Evia)', a: [23.55, 38.43], b: [23.72, 38.55] },
 ];
 
 const DEG_PER_RAD = 180 / Math.PI;
@@ -650,6 +670,19 @@ async function routeViaGates(
   }
 
   if (dist[GOAL] === Infinity) return null;
+  /*
+    Proportionality guard (owner report, 2026-08-21: a Keramoti to
+    Lefkada drive detoured through Istanbul). A gate route is a GUESS
+    about a link the raster cannot see, so it has to stay believable:
+    past this much of the direct distance, the honest answer is the
+    straight chord, not a confident thousand-kilometre lie.
+
+    Land is held tighter than water on purpose. A road that wanders
+    twice the crow-flies distance is nearly always wrong, while a ship
+    routing around a continent or through a canal legitimately does.
+  */
+  const ratio = dist[GOAL] / Math.max(directDeg, 0.001);
+  if (ratio > (medium === 'land' ? 1.8 : 2.6)) return null;
   const chain: LonLat[] = [];
   const parts: LonLat[][] = [];
   for (let v = GOAL; v !== 0; v = prev[v]) parts.push(geomTo[v] as LonLat[]);

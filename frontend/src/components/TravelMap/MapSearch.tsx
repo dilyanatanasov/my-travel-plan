@@ -98,7 +98,9 @@ function MapSearch({ countries, countryCentroids, onGo }: MapSearchProps) {
         fallbackCentroids[country.isoCode];
       if (!centroid) continue;
       results.push({
-        key: `c-${country.id}`,
+        // "ct-", not "c-": cities used the same prefix, so a country and
+        // a city sharing an id collided as React keys (2026-08-21).
+        key: `ct-${country.id}`,
         label: country.name,
         detail: 'Country',
         iso2: country.isoCode2,
@@ -134,10 +136,27 @@ function MapSearch({ countries, countryCentroids, onGo }: MapSearchProps) {
     // cities fill the remaining rows rather than crowd airports out.
     for (const cityHit of cities) {
       if (results.length >= MAX_HITS) break;
+      /*
+        Say WHICH city (owner report, 2026-08-21). Greece has three
+        towns called Stavrós and Monaco is both a country and a city, so
+        a bare "City" made distinct places look like repeats. The
+        country and the size make every row its own answer.
+      */
+      const cityCountry = countries.find(
+        (country) => country.isoCode2 === cityHit.countryIso,
+      );
       results.push({
-        key: `c-${cityHit.id}`,
+        key: `ci-${cityHit.id}`,
         label: cityHit.name,
-        detail: 'City',
+        detail: [
+          'City',
+          cityCountry?.name,
+          (cityHit.population ?? 0) > 0
+            ? `${(cityHit.population ?? 0).toLocaleString()} people`
+            : null,
+        ]
+          .filter(Boolean)
+          .join(' · '),
         iso2: cityHit.countryIso,
         target: {
           center: [Number(cityHit.longitude), Number(cityHit.latitude)],
