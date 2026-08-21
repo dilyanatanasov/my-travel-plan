@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ComposableMap, ZoomableGroup } from 'react-simple-maps';
 import {
@@ -50,11 +50,30 @@ function ChallengeLanding({ token }: { token: string }) {
     skip: !user || isGuest,
   });
 
+  /*
+    Straight into the duel when the visitor is already equipped (owner
+    ask, 2026-08-21): a challenge arriving from WhatsApp should open the
+    fight, not a page asking you to press one more button. Everyone else
+    still gets the landing, which is the part that converts - signed out
+    it invites you to make a map, signed in without sharing it says how
+    to turn sharing on.
+
+    replace: the landing is a doorway, so Back should return to whatever
+    the link was opened from rather than bouncing through it again. And
+    never self-duel: opening your own challenge link is how you check
+    what your friends will see.
+  */
+  const myToken = shareStatus?.shareToken;
+  const canAutoJoin = Boolean(map && myToken && myToken !== token);
+  useEffect(() => {
+    if (!canAutoJoin) return;
+    navigate(`/duel/${token}/${myToken}`, { replace: true });
+  }, [canAutoJoin, navigate, token, myToken]);
+
   if (isLoading) return <PageShell>Loading the challenge…</PageShell>;
   if (isError || !map)
     return <PageShell>This challenge link is no longer available.</PageShell>;
 
-  const myToken = shareStatus?.shareToken;
   const name = map.displayName;
 
   return (
