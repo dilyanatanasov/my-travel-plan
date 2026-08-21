@@ -23,7 +23,28 @@ function DuelSection({ myToken }: { myToken: string }) {
 
   const challengeUrl = `${window.location.origin}/duel/${myToken}`;
 
-  const handleCopyChallenge = async () => {
+  /*
+    Hand the challenge to the OS share sheet (owner ask, 2026-08-21):
+    a duel is aimed at one friend on WhatsApp or Instagram, and asking
+    someone to copy a link and then go find the app to paste it into
+    loses most of them. Clipboard remains the fallback for desktop
+    browsers without navigator.share, which is most of them.
+  */
+  const handleShareChallenge = async () => {
+    const payload = {
+      title: 'myContrail map duel',
+      text: 'I challenge you to a map duel - who has seen more of the world?',
+      url: challengeUrl,
+    };
+    if (typeof navigator.share === 'function') {
+      try {
+        await navigator.share(payload);
+        return;
+      } catch (error) {
+        // A dismissed sheet is a choice, not a failure to work around.
+        if ((error as Error)?.name === 'AbortError') return;
+      }
+    }
     try {
       await navigator.clipboard.writeText(challengeUrl);
       showToast('Challenge link copied - send it to someone', {
@@ -60,10 +81,25 @@ function DuelSection({ myToken }: { myToken: string }) {
 
       <button
         type="button"
-        onClick={handleCopyChallenge}
-        className="mt-3 flex items-center justify-center w-full min-h-11 rounded-xl bg-brand-600 text-white text-sm font-medium hover:bg-brand-700"
+        onClick={handleShareChallenge}
+        className="mt-3 flex items-center justify-center gap-2 w-full min-h-11 rounded-xl bg-brand-600 text-white text-sm font-medium hover:bg-brand-700"
       >
-        Copy my challenge link
+        <svg
+          className="w-4 h-4 flex-shrink-0"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={2}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <circle cx="18" cy="5" r="2.6" />
+          <circle cx="6" cy="12" r="2.6" />
+          <circle cx="18" cy="19" r="2.6" />
+          <path d="M8.4 13.3l7.2 4.2M15.6 6.5L8.4 10.7" />
+        </svg>
+        Challenge a friend
       </button>
 
       <div className="mt-2 flex items-center gap-1">
