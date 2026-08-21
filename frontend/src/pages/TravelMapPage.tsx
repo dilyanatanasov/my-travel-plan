@@ -11,6 +11,7 @@ import SectionRail from '../components/AppShell/SectionRail';
 import MobileTabBar from '../components/AppShell/MobileTabBar';
 import SectionPanel from '../components/AppShell/SectionPanel';
 import OverviewPanel from '../components/AppShell/OverviewPanel';
+import PlayPanel from '../components/AppShell/PlayPanel';
 import SharePanel from '../features/share/SharePanel';
 import MapPeekBar from '../components/AppShell/MapPeekBar';
 import MapTour from '../components/TravelMap/MapTour';
@@ -65,8 +66,15 @@ function TravelMapPage() {
   */
   const location = useLocation();
   useEffect(() => {
-    setActiveSection(null);
-  }, [location.key]);
+    /*
+      ...unless the navigation ASKED for a panel. The header's Play chip
+      is a Link (sections are shell state, not routes - see above), so it
+      carries the request in navigation state rather than in the URL.
+    */
+    const requested = (location.state as { section?: SectionId } | null)
+      ?.section;
+    setActiveSection(requested ?? null);
+  }, [location.key, location.state]);
 
   // "Where do they stay the most" - null section means the bare map.
   useSectionDwell(activeSection ?? 'map');
@@ -259,6 +267,9 @@ function TravelMapPage() {
 
       case 'share':
         return <SharePanel />;
+
+      case 'play':
+        return <PlayPanel />;
 
       case 'countries':
         return (
