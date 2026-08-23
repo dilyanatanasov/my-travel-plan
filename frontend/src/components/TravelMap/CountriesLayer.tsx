@@ -60,8 +60,26 @@ function angularDistance(
 const CULL_BUCKET_DEG = 10;
 const CULL_MARGIN_DEG = 15;
 
+/**
+ * The React key for a country, stamped on at derive time.
+ *
+ * It cannot be the rsmKey react-simple-maps supplies: that is "geo-" plus
+ * the index in the array HANDED to <Geographies>, and horizon culling
+ * changes what is in that array. Dropping one country slid every country
+ * after it down an index, so React rewrote each DOM node to a different
+ * country and the 400ms fill transition animated between their colours -
+ * the whole world flickering during a globe replay (owner report,
+ * 2026-08-23). Two countries share an id in the 50m atlas, so the index
+ * into the FULL atlas is the identity that is both stable and unique.
+ */
+const STABLE_KEY = '__stableKey';
+
 interface FeatureCollectionish {
-  features: { id?: string; properties?: { name?: string } }[];
+  features: {
+    id?: string;
+    properties?: { name?: string };
+    [STABLE_KEY]?: string;
+  }[];
 }
 
 /** A converted atlas plus the measurements the culler needs from it. */
@@ -258,6 +276,12 @@ function CountriesLayer({
         source.objects[Object.keys(source.objects)[0]],
     ) as unknown as FeatureCollectionish;
 
+    // Stamped before anything can filter the list, so a country keeps the
+    // same key whether or not its neighbours are currently on screen.
+    collection.features.forEach((geo, index) => {
+      geo[STABLE_KEY] = `country-${index}`;
+    });
+
     /*
       Each country's centroid and angular radius. The radius is the
       widest reach from the centroid to a corner of its bounding box, so
@@ -406,6 +430,7 @@ function CountriesLayer({
           id: string;
           rsmKey: string;
           properties?: { name?: string };
+          [STABLE_KEY]?: string;
         }[];
       }) => {
         return geographies.map((geo) => {
@@ -450,7 +475,7 @@ function CountriesLayer({
 
           return (
             <Geography
-              key={geo.rsmKey}
+              key={geo[STABLE_KEY] ?? geo.rsmKey}
               geography={geo}
               className={isBlinking ? 'country-blink' : undefined}
               /*
