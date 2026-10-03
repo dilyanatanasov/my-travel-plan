@@ -7,6 +7,11 @@
 #   2. opens http://localhost:3001 in the browser,
 #   3. holds the SSH tunnel open until you press Ctrl+C or close the window.
 #
+# The local end of the tunnel is the first free port from 3001 upwards:
+# another stack on this machine (ia-fitness observability) listens on 3001,
+# and ssh silently skips a forward it cannot bind - the browser then opened
+# the wrong app with a "cannot be reached" page (2026-10-03).
+#
 # ASCII only in this file: PowerShell 5.1 reads BOM-less files as ANSI, and
 # fancy dashes decode into curly-quote bytes that break the parser.
 #
@@ -29,10 +34,16 @@ if (-not $line) {
 $password = $line.Line.Split('=', 2)[1]
 Set-Clipboard -Value $password
 
+$port = 3001
+while (Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue) {
+    $port++
+}
+$url = "http://localhost:$port"
+
 Write-Host ''
 Write-Host '  Umami dashboard' -ForegroundColor Cyan
 Write-Host '  ---------------'
-Write-Host '  URL:      http://localhost:3001'
+Write-Host "  URL:      $url"
 Write-Host '  Username: admin'
 Write-Host '  Password: (already on your clipboard - just paste)'
 Write-Host ''
@@ -40,6 +51,6 @@ Write-Host '  Opening browser; the tunnel stays up until Ctrl+C.' -ForegroundCol
 Write-Host ''
 
 # Give the tunnel a moment to bind before the browser asks for the page.
-Start-Job -ScriptBlock { Start-Sleep -Seconds 2; Start-Process 'http://localhost:3001' } | Out-Null
+Start-Job -ArgumentList $url -ScriptBlock { param($u) Start-Sleep -Seconds 2; Start-Process $u } | Out-Null
 
-ssh -i $keyFile -L 3001:localhost:3001 root@$droplet 'echo "Tunnel up - leave this window open. Ctrl+C to close."; sleep infinity'
+ssh -i $keyFile -L ${port}:localhost:3001 root@$droplet 'echo "Tunnel up - leave this window open. Ctrl+C to close."; sleep infinity'
