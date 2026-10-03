@@ -8,6 +8,7 @@ import {
 import { useGetVisitsQuery } from '../features/visits/visitsApi';
 import { useGetFlightStatsQuery } from '../features/flights/flightsApi';
 import AuthLayout from '../features/auth/AuthLayout';
+import GoogleSignInButton from '../features/auth/GoogleSignInButton';
 import { track } from '../lib/analytics';
 import {
   inputClass,
@@ -100,6 +101,9 @@ function RegisterPage() {
       }
     >
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
+        {/* A guest's map carries over here too: the callback upgrades the
+            same row that password registration would. */}
+        <GoogleSignInButton label="Sign up with Google" />
         {/* No dark: variants — the brand ramp is inverted per theme in
             tokens.css, so 50-on-800 stays readable in both. */}
         {isGuest && carriedOver.length > 0 && (

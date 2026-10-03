@@ -16,6 +16,7 @@ const RegisterPage = lazy(() => import('./pages/RegisterPage'));
 const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'));
 const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'));
 const VerifyEmailPage = lazy(() => import('./pages/VerifyEmailPage'));
+const AuthCompletePage = lazy(() => import('./pages/AuthCompletePage'));
 const SharedMapPage = lazy(() => import('./pages/SharedMapPage'));
 const DuelPage = lazy(() => import('./pages/DuelPage'));
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
@@ -41,6 +42,8 @@ function App() {
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/verify-email" element={<VerifyEmailPage />} />
+        {/* Where a Google sign-in lands; the cookie is already set */}
+        <Route path="/auth/complete" element={<AuthCompletePage />} />
         {/* Legal pages — public: linked from registration */}
         <Route path="/privacy" element={<PrivacyPage />} />
         <Route path="/terms" element={<TermsPage />} />

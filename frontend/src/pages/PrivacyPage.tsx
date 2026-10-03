@@ -38,7 +38,9 @@ function PrivacyPage() {
             <h2>What we store, and why</h2>
             <p>
               Your email address and a securely hashed password (to sign you
-              in), an optional display name, and the travel records you enter:
+              in), or, if you sign in with Google, the account id and email
+              address Google gives us for you; an optional display name; and
+              the travel records you enter:
               countries, flights, dates and notes. That is the product — a map
               of your travels — and it is processed only to show it to you and
               to whoever you explicitly share it with. Legal basis: performing

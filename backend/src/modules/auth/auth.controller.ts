@@ -5,11 +5,15 @@ import {
   Patch,
   Delete,
   Body,
+  Query,
   Req,
   Res,
   HttpCode,
   HttpStatus,
+  Logger,
+  UnauthorizedException,
 } from '@nestjs/common';
+import { randomBytes } from 'crypto';
 import { Request, Response, CookieOptions } from 'express';
 import { ConfigService } from '@nestjs/config';
 import { Throttle } from '@nestjs/throttler';
@@ -24,14 +28,33 @@ import { ChangePasswordDto } from './dto/change-password.dto';
 import { Public } from '../../common/decorators/public.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { ACCESS_TOKEN_COOKIE } from './jwt.strategy';
+import { GoogleAuthService, safeNext } from './google-auth.service';
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
+/**
+ * The in-flight Google sign-in: state (CSRF), nonce (token binding) and
+ * where to go afterwards. Scoped to the two Google routes and ten minutes,
+ * so it is never sent anywhere else and cannot be replayed later.
+ */
+const GOOGLE_FLOW_COOKIE = 'google_oauth';
+const GOOGLE_FLOW_PATH = '/api/auth/google';
+const GOOGLE_FLOW_MAX_AGE_MS = 10 * 60 * 1000;
+
+interface GoogleFlow {
+  state: string;
+  nonce: string;
+  next: string;
+}
+
 @Controller('auth')
 export class AuthController {
+  private readonly logger = new Logger(AuthController.name);
+
   constructor(
     private readonly authService: AuthService,
     private readonly configService: ConfigService,
+    private readonly googleAuth: GoogleAuthService,
   ) {}
 
   private cookieOptions(): CookieOptions {
@@ -191,6 +214,98 @@ export class AuthController {
     const { maxAge, ...options } = this.cookieOptions();
     res.clearCookie(ACCESS_TOKEN_COOKIE, options);
     return { ok: true };
+  }
+
+  /** Which outside sign-in methods this deployment offers. */
+  @Public()
+  @Get('providers')
+  providers() {
+    return { google: this.googleAuth.isConfigured() };
+  }
+
+  private googleFlowCookieOptions(): CookieOptions {
+    return {
+      ...this.cookieOptions(),
+      maxAge: GOOGLE_FLOW_MAX_AGE_MS,
+      path: GOOGLE_FLOW_PATH,
+    };
+  }
+
+  /**
+   * Begin a Google sign-in: remember state + nonce in a short-lived cookie
+   * and send the browser to Google. Throttled like login: each hit is a
+   * redirect to a third party on someone's behalf.
+   */
+  @Public()
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @Get('google')
+  startGoogle(@Query('next') next: string | undefined, @Res() res: Response) {
+    if (!this.googleAuth.isConfigured()) {
+      return res.redirect('/login?error=google-unavailable');
+    }
+    const flow: GoogleFlow = {
+      state: randomBytes(24).toString('base64url'),
+      nonce: randomBytes(24).toString('base64url'),
+      next: safeNext(next),
+    };
+    res.cookie(
+      GOOGLE_FLOW_COOKIE,
+      JSON.stringify(flow),
+      this.googleFlowCookieOptions(),
+    );
+    return res.redirect(this.googleAuth.authorizationUrl(flow.state, flow.nonce));
+  }
+
+  /**
+   * Google sends the browser back here (a top-level GET, so our Lax
+   * cookies arrive: the flow cookie and, for a guest, the session cookie
+   * that lets the guest row be upgraded rather than orphaned). Every
+   * failure lands on /login with a reason; nothing is ever returned as a
+   * bare error page.
+   */
+  @Public()
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @Get('google/callback')
+  async googleCallback(
+    @Query('code') code: string | undefined,
+    @Query('state') state: string | undefined,
+    @Query('error') providerError: string | undefined,
+    @Req() req: Request,
+    @Res() res: Response,
+  ) {
+    const { maxAge, ...clearOptions } = this.googleFlowCookieOptions();
+    res.clearCookie(GOOGLE_FLOW_COOKIE, clearOptions);
+    const fail = (reason: string) => res.redirect(`/login?error=${reason}`);
+
+    let flow: GoogleFlow | null = null;
+    try {
+      flow = JSON.parse(req.cookies?.[GOOGLE_FLOW_COOKIE] ?? 'null');
+    } catch {
+      flow = null;
+    }
+    if (providerError) return fail('google-denied');
+    if (!flow?.state || !state || flow.state !== state || !code) {
+      return fail('google');
+    }
+
+    try {
+      const profile = await this.googleAuth.exchange(code, flow.nonce);
+      const guestId = this.authService.userIdFromToken(
+        req.cookies?.[ACCESS_TOKEN_COOKIE],
+      );
+      const result = await this.authService.signInWithGoogle(profile, guestId);
+      this.setAuthCookie(res, result);
+      const params = new URLSearchParams({
+        next: flow.next,
+        outcome: result.outcome,
+      });
+      return res.redirect(`/auth/complete?${params.toString()}`);
+    } catch (err) {
+      this.logger.warn(`Google sign-in failed: ${(err as Error)?.message}`);
+      return fail(
+        err instanceof UnauthorizedException ? 'google-unverified' : 'google',
+      );
+    }
   }
 
   /** Protected on purpose: the 401 is the frontend's "logged out" signal. */
