@@ -1,5 +1,5 @@
 import { useForm } from 'react-hook-form';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { apiSlice } from '../store/api/apiSlice';
 import {
@@ -8,6 +8,7 @@ import {
   type LoginRequest,
 } from '../features/auth/authApi';
 import AuthLayout from '../features/auth/AuthLayout';
+import GoogleSignInButton from '../features/auth/GoogleSignInButton';
 import {
   inputClass,
   inputErrorClass,
@@ -17,11 +18,30 @@ import {
   getApiErrorMessage,
 } from '../features/auth/authStyles';
 
+/**
+ * The Google callback can only communicate through a redirect, so its
+ * failures arrive here as ?error=. Each reason gets its own sentence; an
+ * unknown one still gets a message rather than nothing.
+ */
+const GOOGLE_ERRORS: Record<string, string> = {
+  'google-denied': 'Google sign-in was cancelled.',
+  'google-unverified':
+    'Google has not verified that email address, so it cannot be used to sign in.',
+  'google-unavailable': 'Google sign-in is not available right now.',
+  google: 'Google sign-in did not complete. Please try again.',
+};
+
 function LoginPage() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const [login, { isLoading, error }] = useLoginMutation();
+
+  const redirectError = searchParams.get('error');
+  const redirectMessage = redirectError
+    ? (GOOGLE_ERRORS[redirectError] ?? GOOGLE_ERRORS.google)
+    : null;
 
   const {
     register,
@@ -81,14 +101,18 @@ function LoginPage() {
       }
     >
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
-        {error && (
+        {(error || redirectMessage) && (
           <div
             role="alert"
             className="bg-danger-soft border border-danger/30 text-danger px-3 py-2 rounded-lg text-sm"
           >
-            {getApiErrorMessage(error, 'Incorrect email or password')}
+            {error
+              ? getApiErrorMessage(error, 'Incorrect email or password')
+              : redirectMessage}
           </div>
         )}
+
+        <GoogleSignInButton next={from} />
 
         <div>
           <label htmlFor="email" className={labelClass}>

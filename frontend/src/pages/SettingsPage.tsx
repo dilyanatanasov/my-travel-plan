@@ -8,6 +8,7 @@ import {
   useAuth,
   useChangePasswordMutation,
   useDeleteAccountMutation,
+  useForgotPasswordMutation,
 } from '../features/auth/authApi';
 import { downloadBlob } from '../utils/exportMapImage';
 import {
@@ -56,6 +57,15 @@ function ThemeSwatch({ mode }: { mode: ThemePreference }) {
 function SettingsPage() {
   const { preference, resolved, setPreference } = useTheme();
   const { user, isGuest } = useAuth();
+  /*
+    An account that only signs in through Google has no password to change
+    or to confirm deletion with. Missing on cached profiles from older
+    deploys, so absent means "has one" and nothing disappears by accident.
+  */
+  const hasPassword = user?.hasPassword ?? true;
+  const needsPassword = !isGuest && hasPassword;
+  const [sendSetPasswordLink, { isLoading: isSendingSetPassword }] =
+    useForgotPasswordMutation();
   const { data: countries = [] } = useGetCountriesQuery();
   const { data: visits = [] } = useGetVisitsQuery();
   const [setHomeCountry, { isLoading: isSavingHome }] = useSetHomeCountryMutation();
@@ -111,15 +121,28 @@ function SettingsPage() {
   const handleDelete = async () => {
     try {
       await deleteAccount(
-        isGuest ? {} : { password: deletePassword },
+        needsPassword ? { password: deletePassword } : {},
       ).unwrap();
       showToast('Your account and all its data have been deleted');
       navigate('/');
     } catch {
       showToast(
-        isGuest ? 'Could not delete the account' : 'Wrong password',
+        needsPassword ? 'Wrong password' : 'Could not delete the account',
         { tone: 'error' },
       );
+    }
+  };
+
+  /** The reset link doubles as "set a password" for Google-only accounts. */
+  const handleSetPassword = async () => {
+    if (!user?.email) return;
+    try {
+      await sendSetPasswordLink({ email: user.email }).unwrap();
+      showToast('Check your inbox for a link to set a password', {
+        tone: 'success',
+      });
+    } catch {
+      showToast('Could not send the link - try again', { tone: 'error' });
     }
   };
 
@@ -286,7 +309,22 @@ function SettingsPage() {
                   <dd className="text-ink truncate">{user?.email}</dd>
                 </div>
               </dl>
-              {!showPasswordForm ? (
+              {!hasPassword ? (
+                <div className="mt-4 space-y-2">
+                  <p className="text-sm text-ink-muted">
+                    You sign in with Google. Add a password to also sign in
+                    with your email.
+                  </p>
+                  <Button
+                    variant="neutral"
+                    fullWidth
+                    onClick={handleSetPassword}
+                    disabled={isSendingSetPassword}
+                  >
+                    {isSendingSetPassword ? 'Sending…' : 'Set a password'}
+                  </Button>
+                </div>
+              ) : !showPasswordForm ? (
                 <Button
                   variant="neutral"
                   fullWidth
@@ -395,7 +433,7 @@ function SettingsPage() {
                 any share or duel links. There is no undo - consider
                 downloading your data first.
               </p>
-              {!isGuest && (
+              {needsPassword && (
                 <TextInput
                   type="password"
                   value={deletePassword}
@@ -410,7 +448,7 @@ function SettingsPage() {
                   size="sm"
                   className="flex-1"
                   onClick={handleDelete}
-                  disabled={isDeleting || (!isGuest && !deletePassword)}
+                  disabled={isDeleting || (needsPassword && !deletePassword)}
                 >
                   {isDeleting ? 'Deleting…' : 'Permanently delete everything'}
                 </Button>

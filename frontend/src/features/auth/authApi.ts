@@ -13,7 +13,20 @@ export interface AuthUser {
   isGuest: boolean;
   /** False until the emailed verify link is clicked; gates sharing only. */
   emailVerified: boolean;
+  /**
+   * False for guests and for accounts that only sign in through Google.
+   * Optional because cached responses from older deploys lack the field;
+   * treat missing as "has one" so nothing password-related disappears.
+   */
+  hasPassword?: boolean;
+  /** Outside sign-in methods linked to this account ("google"). */
+  providers?: string[];
   createdAt: string;
+}
+
+/** Which outside sign-in methods this deployment offers. */
+export interface AuthProviders {
+  google: boolean;
 }
 
 export interface RegisterRequest {
@@ -42,6 +55,12 @@ export const authApi = apiSlice.injectEndpoints({
     getAuthProfile: builder.query<{ user: AuthUser }, void>({
       query: () => '/auth/me',
       providesTags: ['Auth'],
+    }),
+
+    /* Public and deployment-wide, so the Google button only renders where
+       the server actually holds credentials. */
+    getAuthProviders: builder.query<AuthProviders, void>({
+      query: () => '/auth/providers',
     }),
 
     /*
@@ -179,6 +198,7 @@ export const authApi = apiSlice.injectEndpoints({
 
 export const {
   useGetAuthProfileQuery,
+  useGetAuthProvidersQuery,
   useCreateGuestMutation,
   useRegisterMutation,
   useLoginMutation,

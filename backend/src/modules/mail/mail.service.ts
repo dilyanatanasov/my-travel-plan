@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { appUrl } from '../../common/app-url';
 
 /**
  * Thin wrapper over Resend's REST API.
@@ -28,10 +29,9 @@ export class MailService {
     );
   }
 
-  /** Base URL for links in emails, derived from the same DOMAIN nginx uses. */
+  /** Base URL for links in emails; shared with OAuth redirects. */
   appUrl(): string {
-    const domain = this.configService.get<string>('DOMAIN');
-    return domain ? `https://${domain}` : 'http://localhost:5173';
+    return appUrl(this.configService);
   }
 
   async sendVerificationEmail(to: string, link: string): Promise<void> {

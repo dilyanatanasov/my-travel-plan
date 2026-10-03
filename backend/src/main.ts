@@ -30,6 +30,13 @@ async function bootstrap() {
 
   app.setGlobalPrefix('api');
 
+  // nginx is the only thing in front of this process and it sets
+  // X-Forwarded-For. Without this every client shares nginx's address, so
+  // the per-IP throttles were one global bucket (found while adding public
+  // OAuth routes, 2026-10-03). Exactly one hop is trusted: a client cannot
+  // forge its way past nginx by sending its own header.
+  app.getHttpAdapter().getInstance().set('trust proxy', 1);
+
   // Security headers. contentSecurityPolicy is off because this process only
   // serves JSON — nginx sets the document policy for the pages that need one.
   app.use(

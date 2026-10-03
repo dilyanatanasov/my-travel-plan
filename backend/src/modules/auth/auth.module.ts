@@ -12,12 +12,14 @@ import { GuestCleanupService } from './guest-cleanup.service';
 import { AuthController } from './auth.controller';
 import { JwtStrategy } from './jwt.strategy';
 import { AuthToken } from './entities/auth-token.entity';
+import { UserIdentity } from './entities/user-identity.entity';
+import { GoogleAuthService } from './google-auth.service';
 
 @Module({
   imports: [
     UsersModule,
     MailModule,
-    TypeOrmModule.forFeature([AuthToken]),
+    TypeOrmModule.forFeature([AuthToken, UserIdentity]),
     PassportModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
@@ -36,7 +38,13 @@ import { AuthToken } from './entities/auth-token.entity';
     }),
   ],
   controllers: [AuthController],
-  providers: [GuestCleanupService, AuthService, AuthTokensService, JwtStrategy],
+  providers: [
+    GuestCleanupService,
+    AuthService,
+    AuthTokensService,
+    GoogleAuthService,
+    JwtStrategy,
+  ],
   exports: [AuthService],
 })
 export class AuthModule {}

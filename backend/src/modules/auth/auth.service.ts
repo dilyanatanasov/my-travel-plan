@@ -18,6 +18,8 @@ import { AuthTokensService } from './auth-tokens.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { JwtPayload } from './jwt.strategy';
+import { UserIdentity } from './entities/user-identity.entity';
+import { GoogleProfile } from './google-auth.service';
 
 export interface PublicUser {
   id: number;
@@ -27,7 +29,18 @@ export interface PublicUser {
   isGuest: boolean;
   /** False until the verify link is clicked; gates sharing, nothing else. */
   emailVerified: boolean;
+  /** False for guests and for accounts that only sign in through Google. */
+  hasPassword: boolean;
+  /** Outside sign-in methods linked to this account ("google"). */
+  providers: string[];
   createdAt: Date;
+}
+
+/** How a Google sign-in resolved - the funnel event the frontend records. */
+export type SocialOutcome = 'login' | 'signup' | 'guest_convert';
+
+export interface SocialAuthResult extends AuthResult {
+  outcome: SocialOutcome;
 }
 
 export interface AuthResult {
@@ -58,6 +71,8 @@ export class AuthService {
       email: user.email,
       displayName: user.displayName,
       emailVerified: user.emailVerified,
+      hasPassword: Boolean(user.passwordHash),
+      providers: (user.identities ?? []).map((identity) => identity.provider),
       createdAt: user.createdAt,
     };
   }
@@ -228,7 +243,9 @@ export class AuthService {
    */
   async forgotPassword(email: string): Promise<void> {
     const user = await this.usersService.findByEmail(email);
-    if (!user || user.isGuest || !user.passwordHash || !user.email) {
+    // An account with no password (Google sign-in only) may SET one through
+    // this same link - it is how such an account gains a second way in.
+    if (!user || user.isGuest || !user.email) {
       return;
     }
     const to = user.email;
@@ -310,8 +327,115 @@ export class AuthService {
     };
   }
 
+  /**
+   * Sign in or sign up with a verified Google profile (2026-10-03).
+   *
+   * Resolution order, all inside one transaction:
+   *   1. an identity already linked to this Google subject -> that account;
+   *   2. an account whose email matches Google's verified email -> link the
+   *      identity to it (and the email is now proven, so verify it);
+   *   3. the guest session making the request -> upgrade that row in place,
+   *      exactly as password registration does, so nothing is orphaned;
+   *   4. otherwise a brand new account with no password.
+   *
+   * Unverified Google emails are refused outright: step 2 is only safe
+   * because Google vouched for the address, and an unverified one could
+   * claim somebody else's account.
+   */
+  async signInWithGoogle(
+    profile: GoogleProfile,
+    guestUserId?: number,
+  ): Promise<SocialAuthResult> {
+    if (!profile.emailVerified) {
+      throw new UnauthorizedException(
+        'Google has not verified this email address',
+      );
+    }
+    const email = profile.email.trim().toLowerCase();
+    const provider = 'google';
+
+    return this.dataSource.transaction(async (manager) => {
+      const link = (user: User) =>
+        manager.save(
+          manager.create(UserIdentity, {
+            userId: user.id,
+            provider,
+            providerSubject: profile.subject,
+            email,
+          }),
+        );
+      const finish = async (
+        userId: number,
+        outcome: SocialOutcome,
+      ): Promise<SocialAuthResult> => {
+        const user = await manager.findOne(User, {
+          where: { id: userId },
+          relations: ['identities'],
+        });
+        return {
+          user: this.toPublicUser(user),
+          accessToken: this.issueToken(user),
+          outcome,
+        };
+      };
+
+      const identity = await manager.findOne(UserIdentity, {
+        where: { provider, providerSubject: profile.subject },
+      });
+      if (identity) {
+        return finish(identity.userId, 'login');
+      }
+
+      const existing = await manager.findOne(User, { where: { email } });
+      if (existing) {
+        await link(existing);
+        if (!existing.emailVerified) {
+          await manager.update(User, { id: existing.id }, { emailVerified: true });
+        }
+        return finish(existing.id, 'login');
+      }
+
+      if (guestUserId !== undefined) {
+        const guest = await manager.findOne(User, {
+          where: { id: guestUserId, isGuest: true },
+        });
+        if (guest) {
+          guest.email = email;
+          guest.displayName = guest.displayName || profile.name || null;
+          guest.isGuest = false;
+          guest.emailVerified = true;
+          await manager.save(guest);
+          await link(guest);
+          return finish(guest.id, 'guest_convert');
+        }
+      }
+
+      let created: User;
+      try {
+        created = await manager.save(
+          manager.create(User, {
+            email,
+            passwordHash: null,
+            displayName: profile.name || null,
+            isGuest: false,
+            emailVerified: true,
+          }),
+        );
+      } catch (err: any) {
+        if (err?.code === '23505') {
+          throw new ConflictException(
+            'An account with that email already exists',
+          );
+        }
+        throw err;
+      }
+      await link(created);
+      return finish(created.id, 'signup');
+    });
+  }
+
   async getProfile(userId: number): Promise<PublicUser> {
-    const user = await this.usersService.findById(userId);
+    const user = await this.usersService.findByIdWithIdentities(userId);
     if (!user) {
       throw new UnauthorizedException();
     }
@@ -388,7 +512,7 @@ export class AuthService {
    * conceivable. No internal ids beyond the journey's own, no hashes.
    */
   async exportMyData(userId: number) {
-    const user = await this.usersService.findById(userId);
+    const user = await this.usersService.findByIdWithIdentities(userId);
     if (!user) {
       throw new UnauthorizedException();
     }
@@ -409,6 +533,10 @@ export class AuthService {
         email: user.email,
         displayName: user.displayName,
         emailVerified: user.emailVerified,
+        signInMethods: [
+          ...(user.passwordHash ? ['password'] : []),
+          ...(user.identities ?? []).map((identity) => identity.provider),
+        ],
         createdAt: user.createdAt,
       },
       visits: visits.map((visit) => ({

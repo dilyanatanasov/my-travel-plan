@@ -8,6 +8,7 @@ import {
 } from 'typeorm';
 import { Visit } from '../../visits/entities/visit.entity';
 import { FlightJourney } from '../../flights/entities/flight-journey.entity';
+import { UserIdentity } from '../../auth/entities/user-identity.entity';
 
 @Entity('users')
 export class User {
@@ -72,6 +73,10 @@ export class User {
 
   @OneToMany(() => FlightJourney, (journey) => journey.user)
   flightJourneys: FlightJourney[];
+
+  /** Outside sign-in methods (Google). Loaded only where the profile needs it. */
+  @OneToMany(() => UserIdentity, (identity) => identity.user)
+  identities: UserIdentity[];
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
