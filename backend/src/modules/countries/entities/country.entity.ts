@@ -18,7 +18,11 @@ export class Country {
   @Column({ name: 'iso_code', length: 3, unique: true })
   isoCode: string;
 
-  @Column({ name: 'iso_code_2', length: 2, unique: true })
+  /**
+   * Alpha-2, except the UK's four countries which carry their ISO 3166-2
+   * code (GB-ENG, GB-SCT, GB-WLS, GB-NIR) - also the flag-icons name.
+   */
+  @Column({ name: 'iso_code_2', length: 6, unique: true })
   isoCode2: string;
 
   /**

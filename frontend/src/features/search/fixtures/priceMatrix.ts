@@ -51,7 +51,7 @@ const DESTINATIONS: FixtureDestination[] = [
   { iata: 'CDG', city: 'Paris', countryName: 'France', iso2: 'FR', continent: 'Europe', basePrice: 62, richness: 0.95 },
   { iata: 'AMS', city: 'Amsterdam', countryName: 'Netherlands', iso2: 'NL', continent: 'Europe', basePrice: 68, richness: 0.9 },
   { iata: 'BER', city: 'Berlin', countryName: 'Germany', iso2: 'DE', continent: 'Europe', basePrice: 48, richness: 0.9 },
-  { iata: 'LTN', city: 'London', countryName: 'United Kingdom', iso2: 'GB', continent: 'Europe', basePrice: 58, richness: 0.95 },
+  { iata: 'LTN', city: 'London', countryName: 'England', iso2: 'GB-ENG', continent: 'Europe', basePrice: 58, richness: 0.95 },
   { iata: 'DUB', city: 'Dublin', countryName: 'Ireland', iso2: 'IE', continent: 'Europe', basePrice: 85, richness: 0.7 },
   { iata: 'LIS', city: 'Lisbon', countryName: 'Portugal', iso2: 'PT', continent: 'Europe', basePrice: 95, richness: 0.75 },
   { iata: 'ATH', city: 'Athens', countryName: 'Greece', iso2: 'GR', continent: 'Europe', basePrice: 65, richness: 0.85 },

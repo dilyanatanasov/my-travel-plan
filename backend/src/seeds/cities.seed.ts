@@ -1,6 +1,7 @@
 import { inflateRawSync } from 'zlib';
 import { DataSource } from 'typeorm';
 import { City } from '../modules/cities/entities/city.entity';
+import { ukConstituentFor } from '../geo/uk-constituent';
 
 /**
  * Cities for land travel (2026-08-17): GeoNames cities1000 - every place
@@ -90,7 +91,8 @@ export async function seedCities(dataSource: DataSource): Promise<void> {
       geonamesId: Number(cols[0]),
       name: cols[1].slice(0, 200),
       asciiName: (cols[2] || cols[1]).slice(0, 200),
-      countryIso: cols[8],
+      // GeoNames says GB; the app has four UK countries. Place by coordinates.
+      countryIso: cols[8] === 'GB' ? ukConstituentFor(latitude, longitude) : cols[8],
       latitude,
       longitude,
       population: Number(cols[14]) || 0,

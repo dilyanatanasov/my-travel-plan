@@ -22,7 +22,8 @@ export class City {
   @Column({ name: 'ascii_name', length: 200 })
   asciiName: string;
 
-  @Column({ name: 'country_iso', length: 2 })
+  /** Alpha-2, or ISO 3166-2 for the UK's four countries (GB-ENG...). */
+  @Column({ name: 'country_iso', length: 6 })
   countryIso: string;
 
   @Column({ type: 'decimal', precision: 9, scale: 6 })

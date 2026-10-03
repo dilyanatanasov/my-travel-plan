@@ -7,8 +7,10 @@
  * "mark it on your map" pointed at open ocean. One file also means one
  * fetch: the daily and the map used to download two different worlds.
  *
- * Self-hosted (vendored from world-atlas@2 into public/geo): the most
- * important pixel on the site must not depend on a third-party CDN.
+ * Self-hosted in public/geo: the most important pixel on the site must not
+ * depend on a third-party CDN. Built by scripts/build-world-atlas.mjs from
+ * Natural Earth map units (2026-10-03), so the United Kingdom is drawn as
+ * England, Scotland, Wales and Northern Ireland.
  */
 export const WORLD_ATLAS_URL = '/geo/countries-50m.json';
 

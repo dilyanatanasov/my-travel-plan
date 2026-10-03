@@ -13,6 +13,10 @@
 /** [longitude, latitude], the order d3 and GeoJSON use. */
 export type LonLatTuple = [number, number];
 
+/**
+ * ISO 3166-1 alpha-2 - except the UK's four countries, which carry their
+ * ISO 3166-2 code (GB-ENG, GB-SCT, GB-WLS, GB-NIR). Never assume 2 chars.
+ */
 export type Alpha2 = string & { readonly __iso: 'alpha2' };
 export type Alpha3 = string & { readonly __iso: 'alpha3' };
 
@@ -26,7 +30,7 @@ export interface Country {
   name: string;
   /** Alpha-3, matching the map's geography keys. */
   isoCode: Alpha3;
-  /** Alpha-2, matching what airports store. */
+  /** Alpha-2 (or ISO 3166-2 for the UK's countries), matching what airports and cities store. */
   isoCode2: Alpha2;
   /**
    * Bonus place: an ISO territory (Puerto Rico, the Faroes). Markable and
