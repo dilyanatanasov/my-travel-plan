@@ -43,7 +43,7 @@ export const numericToAlpha3: Record<string, string> = {
   '760': 'SYR', '158': 'TWN', '762': 'TJK', '834': 'TZA', '764': 'THA',
   '626': 'TLS', '768': 'TGO', '776': 'TON', '780': 'TTO', '788': 'TUN',
   '792': 'TUR', '795': 'TKM', '798': 'TUV', '800': 'UGA', '804': 'UKR',
-  '784': 'ARE', '826': 'GBR', '840': 'USA', '858': 'URY', '860': 'UZB',
+  '784': 'ARE', '840': 'USA', '858': 'URY', '860': 'UZB',
   '548': 'VUT', '336': 'VAT', '862': 'VEN', '704': 'VNM', '887': 'YEM',
   '894': 'ZMB', '716': 'ZWE', '732': 'ESH', '16': 'ASM', '530': 'ANT',
   '60': 'BMU', '136': 'CYM', '184': 'COK', '238': 'FLK', '234': 'FRO',
@@ -68,6 +68,13 @@ export const numericToAlpha3: Record<string, string> = {
  */
 export const nameToAlpha3: Record<string, string> = {
   Kosovo: 'XKX',
+  // The UK's four countries (2026-10-03): the atlas is built from Natural
+  // Earth map units so each has its own polygon, but no ISO numeric id.
+  // Keys are Natural Earth's unit codes, as the countries table stores them.
+  England: 'ENG',
+  Scotland: 'SCT',
+  Wales: 'WLS',
+  'Northern Ireland': 'NIR',
 };
 
 /**

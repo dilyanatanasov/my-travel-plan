@@ -188,7 +188,13 @@ export const countriesData = [
   { name: 'Uganda', isoCode: 'UGA', isoCode2: 'UG' },
   { name: 'Ukraine', isoCode: 'UKR', isoCode2: 'UA' },
   { name: 'United Arab Emirates', isoCode: 'ARE', isoCode2: 'AE' },
-  { name: 'United Kingdom', isoCode: 'GBR', isoCode2: 'GB' },
+  // The UK is four countries here (2026-10-03): ISO 3166-2 alpha-2 keys,
+  // Natural Earth unit codes as alpha-3. Existing databases get the same
+  // rows from migration 1787800000000-SplitUnitedKingdom.
+  { name: 'England', isoCode: 'ENG', isoCode2: 'GB-ENG' },
+  { name: 'Scotland', isoCode: 'SCT', isoCode2: 'GB-SCT' },
+  { name: 'Wales', isoCode: 'WLS', isoCode2: 'GB-WLS' },
+  { name: 'Northern Ireland', isoCode: 'NIR', isoCode2: 'GB-NIR' },
   { name: 'United States', isoCode: 'USA', isoCode2: 'US' },
   { name: 'Uruguay', isoCode: 'URY', isoCode2: 'UY' },
   { name: 'Uzbekistan', isoCode: 'UZB', isoCode2: 'UZ' },

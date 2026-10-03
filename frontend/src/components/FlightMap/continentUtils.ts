@@ -18,7 +18,12 @@ export const ALL_CONTINENTS: Continent[] = [
 
 const CONTINENT_MAP: Record<string, Continent> = {
   // Europe
+  // The UK's four countries carry ISO 3166-2 codes; GB stays for old data.
   GB: 'Europe',
+  'GB-ENG': 'Europe',
+  'GB-SCT': 'Europe',
+  'GB-WLS': 'Europe',
+  'GB-NIR': 'Europe',
   DE: 'Europe',
   FR: 'Europe',
   IT: 'Europe',

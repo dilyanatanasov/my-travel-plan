@@ -1,5 +1,6 @@
 import { DataSource } from 'typeorm';
 import { Airport } from '../modules/airports/entities/airport.entity';
+import { ukConstituentFor, ukConstituentName } from '../geo/uk-constituent';
 
 const AIRPORTS_CSV_URL =
   'https://raw.githubusercontent.com/datasets/airport-codes/master/data/airport-codes.csv';
@@ -106,7 +107,7 @@ const countryNames: Record<string, string> = {
   TW: 'Taiwan', TJ: 'Tajikistan', TZ: 'Tanzania', TH: 'Thailand',
   TL: 'Timor-Leste', TG: 'Togo', TO: 'Tonga', TT: 'Trinidad and Tobago',
   TN: 'Tunisia', TR: 'Turkey', TM: 'Turkmenistan', TV: 'Tuvalu', UG: 'Uganda',
-  UA: 'Ukraine', AE: 'United Arab Emirates', GB: 'United Kingdom',
+  UA: 'Ukraine', AE: 'United Arab Emirates',
   US: 'United States', UY: 'Uruguay', UZ: 'Uzbekistan', VU: 'Vanuatu',
   VA: 'Vatican City', VE: 'Venezuela', VN: 'Vietnam', YE: 'Yemen',
   ZM: 'Zambia', ZW: 'Zimbabwe',
@@ -164,13 +165,22 @@ export async function seedAirports(dataSource: DataSource): Promise<void> {
       })
       .map((airport) => {
         const coords = parseCoordinates(airport.coordinates)!;
+        // The dataset only knows "GB"; the app knows England, Scotland,
+        // Wales and Northern Ireland. Place UK airports by coordinates.
+        const countryIso =
+          airport.iso_country === 'GB'
+            ? ukConstituentFor(coords.lat, coords.lon)
+            : airport.iso_country;
         return {
           iataCode: airport.iata_code.toUpperCase(),
           icaoCode: airport.icao_code || null,
           name: airport.name.replace(/"/g, ''),
           city: airport.municipality || null,
-          country: countryNames[airport.iso_country] || airport.iso_country,
-          countryIso: airport.iso_country,
+          country:
+            ukConstituentName(countryIso) ??
+            countryNames[countryIso] ??
+            countryIso,
+          countryIso,
           latitude: coords.lat,
           longitude: coords.lon,
         };

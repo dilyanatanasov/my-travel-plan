@@ -28,7 +28,8 @@ export class Airport {
   @Column({ length: 100, nullable: true })
   country: string;
 
-  @Column({ name: 'country_iso', length: 2, nullable: true })
+  /** Alpha-2, or ISO 3166-2 for the UK's four countries (GB-ENG...). */
+  @Column({ name: 'country_iso', length: 6, nullable: true })
   countryIso: string;
 
   @Column({ type: 'decimal', precision: 10, scale: 7 })
