@@ -20,11 +20,42 @@ export interface EditableStop {
   city: CityRef | null;
 }
 
-export const emptyStop = (): EditableStop => ({
-  kind: 'airport',
+export type StopKind = EditableStop['kind'];
+
+export const emptyStopOfKind = (kind: StopKind): EditableStop => ({
+  kind,
   airport: null,
   city: null,
 });
+
+export const emptyStop = (): EditableStop => emptyStopOfKind('airport');
+
+/**
+ * The kind a stop must be, from the hops touching it (owner rule,
+ * 2026-10-03: "if the transport of the row is not a plane, it's a
+ * city"). A plane needs an airport at both ends; train, car, bus and
+ * ferry run between cities; the stop where a flight meets a drive is the
+ * airport you landed at. Mirrored server-side in stop-kinds.util.ts.
+ */
+export function requiredStopKind(modes: TravelMode[], index: number): StopKind {
+  const touching = [modes[index - 1], modes[index]].filter(
+    (mode): mode is TravelMode => mode !== undefined,
+  );
+  if (touching.length === 0) return 'airport';
+  return touching.includes('flight') ? 'airport' : 'city';
+}
+
+/** The kind a NEW stop appended after the last hop should start as. */
+export function kindForNewStop(modes: TravelMode[]): StopKind {
+  const last = modes[modes.length - 1] ?? 'flight';
+  return last === 'flight' ? 'airport' : 'city';
+}
+
+/** The two lookups a kind change may need: city -> its airport, airport -> its city. */
+export interface StopResolvers {
+  airportForCity: (city: CityRef) => Promise<Airport | null>;
+  cityForAirport: (airport: Airport) => Promise<CityRef | null>;
+}
 
 /** Every mode the schema knows, ferry included (owner, 2026-08-18). */
 export const HOP_MODES: TravelMode[] = ['flight', 'train', 'car', 'bus', 'ferry'];
@@ -132,46 +163,75 @@ export function loopStatus(
 }
 
 /**
- * Make the chain agree with a hop's new mode (owner ask, 2026-08-18:
- * "if i pick train the search should switch to city, if i pick flight
- * auto pick the airport").
+ * Make stops agree with their hops' modes (owner ask, 2026-08-18: "if i
+ * pick train the search should switch to city, if i pick flight auto
+ * pick the airport"; tightened 2026-10-03: a filled airport under a land
+ * hop becomes its city too - editing a flown journey into a drive used
+ * to leave IATA codes under the car icon and save a car leg between two
+ * airports).
  *
- * For a FLIGHT hop both endpoints must be airports: empty stops switch
- * kind; a stop already holding a city resolves to that city's airport
- * when one exists (Mostar -> OMO), reported in `conversions` so the form
- * can say so out loud. A city with no airport stays put - the form's
- * validation message explains better than silently clearing a choice.
- *
- * For a LAND hop only EMPTY airport stops switch to city mode: a filled
- * airport is a legitimate land endpoint (the train from Geneva Airport),
- * and clearing someone's chosen stop is never the helpful move.
+ * For each stop in `indexes` whose kind disagrees with requiredStopKind:
+ *   - needs an airport: a chosen city resolves to its airport when one
+ *     exists (Mostar -> OMO); a city with no airport stays put so the
+ *     form's validation can explain; an empty city stop just switches.
+ *   - needs a city: a chosen airport resolves to the city it serves
+ *     (LHR -> London); when that fails the stop becomes an empty city
+ *     search and is listed in `unresolved` - unless `keepUnresolved`,
+ *     which the edit-open pass uses so a stop nobody touched is never
+ *     cleared behind their back.
+ * Conversions are reported so the form can say so out loud.
  */
-export async function syncStopsWithMode(
+export async function conformStopsToModes(
   stops: EditableStop[],
-  hopIndex: number,
-  mode: TravelMode,
-  resolveAirport: (city: CityRef) => Promise<Airport | null>,
-): Promise<{ stops: EditableStop[]; conversions: string[] }> {
+  modes: TravelMode[],
+  resolvers: StopResolvers,
+  options: { indexes?: number[]; keepUnresolved?: boolean } = {},
+): Promise<{ stops: EditableStop[]; conversions: string[]; unresolved: string[] }> {
   const next = [...stops];
   const conversions: string[] = [];
-  for (const index of [hopIndex, hopIndex + 1]) {
+  const unresolved: string[] = [];
+  const indexes = options.indexes ?? stops.map((_, i) => i);
+  for (const index of indexes) {
     const stop = next[index];
     if (!stop) continue;
-    if (mode === 'flight') {
-      if (stop.kind === 'city' && stop.city) {
-        const airport = await resolveAirport(stop.city);
+    const required = requiredStopKind(modes, index);
+    if (stop.kind === required) continue;
+    if (required === 'airport') {
+      if (stop.city) {
+        const airport = await resolvers.airportForCity(stop.city);
         if (airport) {
           next[index] = { kind: 'airport', airport, city: null };
           conversions.push(`${stop.city.name} → ${airport.iataCode}`);
         }
-      } else if (stop.kind === 'city') {
-        next[index] = emptyStop();
+      } else {
+        next[index] = emptyStopOfKind('airport');
       }
-    } else if (stop.kind === 'airport' && !stop.airport) {
-      next[index] = { kind: 'city', airport: null, city: null };
+    } else if (stop.airport) {
+      const city = await resolvers.cityForAirport(stop.airport);
+      if (city) {
+        next[index] = { kind: 'city', airport: null, city };
+        conversions.push(`${stop.airport.iataCode} → ${city.name}`);
+      } else if (!options.keepUnresolved) {
+        next[index] = emptyStopOfKind('city');
+        unresolved.push(stop.airport.iataCode);
+      }
+    } else {
+      next[index] = emptyStopOfKind('city');
     }
   }
-  return { stops: next, conversions };
+  return { stops: next, conversions, unresolved };
+}
+
+/** A hop's mode changed: its two endpoints follow. `modes` already holds the new mode. */
+export function syncStopsWithMode(
+  stops: EditableStop[],
+  modes: TravelMode[],
+  hopIndex: number,
+  resolvers: StopResolvers,
+): Promise<{ stops: EditableStop[]; conversions: string[]; unresolved: string[] }> {
+  return conformStopsToModes(stops, modes, resolvers, {
+    indexes: [hopIndex, hopIndex + 1],
+  });
 }
 
 /**

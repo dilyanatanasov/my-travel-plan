@@ -16,6 +16,7 @@ import { calculateAirportDistance } from '../../common/utils/haversine';
 import { splitChainAtGroundTransfers } from './flight-chain.util';
 import { VisitsService } from '../visits/visits.service';
 import { VisitType } from '../visits/entities/visit.entity';
+import { stopKindViolation } from './stop-kinds.util';
 
 @Injectable()
 export class FlightsService {
@@ -259,6 +260,17 @@ export class FlightsService {
     }
     if (cityById.size !== cityIds.length) {
       throw new BadRequestException('One or more cities not found');
+    }
+    // The other half of the kind rule (owner, 2026-10-03): a train, car,
+    // bus or ferry hop runs between cities, so an airport that no flight
+    // touches is a mistake - the editor converts it, this refuses it.
+    const kindViolation = stopKindViolation(
+      stops,
+      modes,
+      (id) => airportById.get(id)?.iataCode,
+    );
+    if (kindViolation) {
+      throw new BadRequestException(kindViolation);
     }
 
     const pointOf = (stop: TravelStopDto) => {

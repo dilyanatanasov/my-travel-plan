@@ -12,7 +12,6 @@ import { useUpdateFlightMutation } from '../../features/flights/flightsApi';
 import { useToast } from '../../components/Toast/ToastProvider';
 import {
   type EditableStop,
-  emptyStop,
   journeyToStops,
   moveStopWithModes,
   stopFilled,
@@ -24,8 +23,12 @@ import {
   hopRouteDistancesKm,
   HOP_MODES,
   MODE_LABEL,
+  emptyStopOfKind,
+  kindForNewStop,
+  conformStopsToModes,
 } from './stopChain';
 import { useAirportForCity } from '../FlightForm/useAirportForCity';
+import { useCityForAirport } from '../FlightForm/useCityForAirport';
 import { journeyRouteLabel, legEndpoints, legMode } from '../FlightMap/routeUtils';
 import ModeIcon, { CityIcon } from '../ui/ModeIcon';
 import StopPhotoControl from '../../features/flights/StopPhotoControl';
@@ -110,9 +113,10 @@ function FlightCard({
   };
 
   const addStop = () => {
-    applyStops([...editStops, emptyStop()]);
     // The new hop inherits the previous one's mode - drove out, likely
-    // driving on; all-flight chains still beget flights.
+    // driving on; all-flight chains still beget flights - and the new
+    // stop starts as the kind that mode needs (a city after a drive).
+    applyStops([...editStops, emptyStopOfKind(kindForNewStop(editModes))]);
     setEditModes((current) => [
       ...current,
       current[current.length - 1] ?? 'flight',
@@ -128,25 +132,48 @@ function FlightCard({
   };
 
   const resolveAirport = useAirportForCity();
+  const resolveCity = useCityForAirport();
+  const resolvers = { airportForCity: resolveAirport, cityForAirport: resolveCity };
 
-  // Same rule as the add form: the mode teaches its endpoints - land
-  // flips empty stops to city search, flight resolves a chosen city to
-  // its own airport when one exists.
-  const changeEditMode = async (index: number, mode: TravelMode) => {
-    setEditModes((current) => current.map((m, i) => (i === index ? mode : m)));
-    const { stops: synced, conversions } = await syncStopsWithMode(
-      editStops,
-      index,
-      mode,
-      resolveAirport,
-    );
-    applyStops(synced);
+  /** The form's one voice for what a kind change did to the stops. */
+  const announceSync = (conversions: string[], unresolved: string[]) => {
     if (conversions.length > 0) {
+      showToast(`Adjusted for you: ${conversions.join(', ')}`, {
+        key: 'stop-kind-sync',
+      });
+    }
+    if (unresolved.length > 0) {
       showToast(
-        `Picked the airport for the flight: ${conversions.join(', ')}`,
-        { key: 'stop-kind-sync' },
+        `Pick the city for ${unresolved.join(', ')} - train, car, bus and ferry hops run between cities`,
+        { key: 'stop-kind-unresolved' },
       );
     }
+  };
+
+  // Same rule as the add form: the mode teaches its endpoints - a land
+  // hop turns its airports into their cities, a flight hop resolves a
+  // chosen city to its own airport when one exists.
+  const changeEditMode = async (index: number, mode: TravelMode) => {
+    const nextModes = editModes.map((m, i) => (i === index ? mode : m));
+    setEditModes(nextModes);
+    const synced = await syncStopsWithMode(editStops, nextModes, index, resolvers);
+    applyStops(synced.stops);
+    announceSync(synced.conversions, synced.unresolved);
+  };
+
+  /*
+    Opening the editor applies the same rule to what was saved before it
+    existed: an airport under a car hop becomes its city, announced. A
+    stop that cannot be resolved is left alone - nobody asked for it to
+    be cleared - and the server's message explains on save.
+  */
+  const conformOnOpen = async (stops: EditableStop[], modes: TravelMode[]) => {
+    const result = await conformStopsToModes(stops, modes, resolvers, {
+      keepUnresolved: true,
+    });
+    if (result.conversions.length === 0) return;
+    applyStops(result.stops);
+    announceSync(result.conversions, []);
   };
 
   const removeStop = (index: number) => {
@@ -170,6 +197,7 @@ function FlightCard({
     setEditModes(chain.modes);
     setRoundTripAutoCleared(false);
     setIsEditing(true);
+    void conformOnOpen(chain.stops, chain.modes);
   };
 
   // A plane cannot land in a city centre: flight hops need airports.

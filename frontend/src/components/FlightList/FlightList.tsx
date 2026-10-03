@@ -62,7 +62,8 @@ function matchesQuery(journey: FlightJourney, query: string): boolean {
 }
 
 function FlightList() {
-  const { data: journeys = [], isLoading, error } = useGetFlightsQuery();
+  const { data: journeys = [], isLoading, isFetching, error } =
+    useGetFlightsQuery();
   const [removeFlight] = useRemoveFlightMutation();
   const [reorderFlights, { isLoading: isReordering }] =
     useReorderFlightsMutation();
@@ -298,7 +299,15 @@ function FlightList() {
                         onDelete={handleDelete}
                         onMoveUp={moveUp}
                         onMoveDown={moveDown}
-                        isReordering={isReordering}
+                        /*
+                          Busy until the refetch lands too: the swap only
+                          invalidates, so between the POST resolving and the
+                          list updating the old order showed live arrows, and
+                          a quick second click sent the same pair again -
+                          swapping it straight back (owner: "moving up
+                          doesn't always work", 2026-10-03).
+                        */
+                        isReordering={isReordering || isFetching}
                         onShare={() => setShareJourney(journey)}
                       />
                     );

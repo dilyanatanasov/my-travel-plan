@@ -6,6 +6,9 @@ import {
   syncStopsWithMode,
   resolveFlightEndpoints,
   type EditableStop,
+  conformStopsToModes,
+  requiredStopKind,
+  kindForNewStop,
 } from './stopChain';
 import type { Airport, CityRef } from '../../types';
 
@@ -38,7 +41,9 @@ describe('moveStop', () => {
 
 describe('syncStopsWithMode', () => {
   const mostar = { id: 7, name: 'Mostar' } as unknown as CityRef;
+  const london = { id: 9, name: 'London' } as unknown as CityRef;
   const omo = { id: 42, iataCode: 'OMO', city: 'Mostar' } as unknown as Airport;
+  const lhr = { id: 43, iataCode: 'LHR', city: 'London' } as unknown as Airport;
   const airportStop = (a: Airport | null): EditableStop => ({
     kind: 'airport',
     airport: a,
@@ -49,14 +54,19 @@ describe('syncStopsWithMode', () => {
     airport: null,
     city: c,
   });
+  const resolvers = {
+    airportForCity: async (city: CityRef) => (city.name === 'Mostar' ? omo : null),
+    cityForAirport: async (airport: Airport) =>
+      airport.iataCode === 'LHR' ? london : null,
+  };
 
   it('resolves a chosen city to its airport when the hop becomes a flight', async () => {
-    const stops = [cityStop(mostar), airportStop(airport(1))];
+    const stops = [cityStop(mostar), airportStop(null)];
     const { stops: next, conversions } = await syncStopsWithMode(
       stops,
+      ['flight'],
       0,
-      'flight',
-      async () => omo,
+      resolvers,
     );
     expect(next[0].kind).toBe('airport');
     expect(next[0].airport).toBe(omo);
@@ -69,35 +79,102 @@ describe('syncStopsWithMode', () => {
     const stops = [cityStop(mostar), airportStop(null)];
     const { stops: next, conversions } = await syncStopsWithMode(
       stops,
+      ['flight'],
       0,
-      'flight',
-      async () => null,
+      { ...resolvers, airportForCity: async () => null },
     );
     expect(next[0].kind).toBe('city');
     expect(next[0].city).toBe(mostar);
     expect(conversions).toEqual([]);
   });
 
-  it('flips empty stops to the mode’s kind, never filled ones', async () => {
-    // Land hop: the empty airport stop becomes a city search...
-    const land = await syncStopsWithMode(
-      [airportStop(airport(1)), airportStop(null)],
+  it('turns a filled airport into its city when the hop becomes a drive', async () => {
+    // Owner rule (2026-10-03): not a plane means a city - even for stops
+    // already chosen, which the old rule left as IATA codes under a car.
+    const { stops: next, conversions, unresolved } = await syncStopsWithMode(
+      [airportStop(lhr), airportStop(null)],
+      ['car'],
       0,
-      'train',
-      async () => null,
+      resolvers,
     );
-    expect(land.stops[0].kind).toBe('airport'); // filled airport stays -
-    expect(land.stops[0].airport?.id).toBe(1); // trains leave airports too
-    expect(land.stops[1].kind).toBe('city');
+    expect(next[0].kind).toBe('city');
+    expect(next[0].city).toBe(london);
+    expect(next[1].kind).toBe('city');
+    expect(conversions).toEqual(['LHR → London']);
+    expect(unresolved).toEqual([]);
+  });
 
-    // ...and a flight hop flips an empty city stop back to airports.
+  it('clears an airport it cannot place and names it', async () => {
+    const { stops: next, unresolved } = await syncStopsWithMode(
+      [airportStop(omo), airportStop(null)],
+      ['train'],
+      0,
+      resolvers,
+    );
+    expect(next[0]).toEqual(cityStop(null));
+    expect(unresolved).toEqual(['OMO']);
+  });
+
+  it('keeps the airport where a flight meets a drive', async () => {
+    // VAR -> LHR by plane, LHR -> London by car: LHR is the airport.
+    const { stops: next } = await syncStopsWithMode(
+      [airportStop(airport(1)), airportStop(lhr), cityStop(null)],
+      ['flight', 'car'],
+      1,
+      resolvers,
+    );
+    expect(next[1].kind).toBe('airport');
+    expect(next[1].airport).toBe(lhr);
+  });
+
+  it('flips an empty city stop back to an airport for a flight', async () => {
     const air = await syncStopsWithMode(
       [cityStop(null), airportStop(null)],
+      ['flight'],
       0,
-      'flight',
-      async () => null,
+      resolvers,
     );
     expect(air.stops[0].kind).toBe('airport');
+  });
+});
+
+describe('conformStopsToModes on edit open', () => {
+  const london = { id: 9, name: 'London' } as unknown as CityRef;
+  const lhr = { id: 43, iataCode: 'LHR', city: 'London' } as unknown as Airport;
+  const airportStop = (a: Airport | null): EditableStop => ({
+    kind: 'airport',
+    airport: a,
+    city: null,
+  });
+  const resolvers = {
+    airportForCity: async () => null,
+    cityForAirport: async (a: Airport) => (a.iataCode === 'LHR' ? london : null),
+  };
+
+  it('converts what it can and leaves the rest untouched', async () => {
+    const stops = [airportStop(lhr), airportStop(airport(1))];
+    const result = await conformStopsToModes(stops, ['car'], resolvers, {
+      keepUnresolved: true,
+    });
+    expect(result.stops[0].city).toBe(london);
+    expect(result.stops[1]).toBe(stops[1]);
+    expect(result.conversions).toEqual(['LHR → London']);
+    expect(result.unresolved).toEqual([]);
+  });
+});
+
+describe('requiredStopKind and kindForNewStop', () => {
+  it('follows the hops touching the stop', () => {
+    expect(requiredStopKind(['flight', 'car'], 0)).toBe('airport');
+    expect(requiredStopKind(['flight', 'car'], 1)).toBe('airport');
+    expect(requiredStopKind(['flight', 'car'], 2)).toBe('city');
+    expect(requiredStopKind(['bus'], 0)).toBe('city');
+  });
+
+  it('starts a new stop as what the inherited mode needs', () => {
+    expect(kindForNewStop(['flight'])).toBe('airport');
+    expect(kindForNewStop(['flight', 'car'])).toBe('city');
+    expect(kindForNewStop([])).toBe('airport');
   });
 });
 

@@ -6,6 +6,8 @@ import ModeIcon, { CityIcon } from '../ui/ModeIcon';
 import {
   type EditableStop,
   emptyStop,
+  emptyStopOfKind,
+  kindForNewStop,
   stopFilled,
   stopLabel,
   syncStopsWithMode,
@@ -16,6 +18,7 @@ import {
   MODE_LABEL,
 } from '../FlightList/stopChain';
 import { useAirportForCity } from './useAirportForCity';
+import { useCityForAirport } from './useCityForAirport';
 import { useToast } from '../Toast/ToastProvider';
 import { MONTH_NAMES } from '../../utils/journeyDate';
 
@@ -48,32 +51,40 @@ function RouteBuilder({ onSubmit, isLoading }: RouteBuilderProps) {
   };
 
   const resolveAirport = useAirportForCity();
+  const resolveCity = useCityForAirport();
   const { showToast } = useToast();
 
   /*
     Picking a mode teaches the stops (owner ask, 2026-08-18): a land hop
-    flips its empty endpoints to city search, a flight hop flips them to
-    airport search - and a city already chosen resolves to its own
-    airport when it has one, announced rather than silent.
+    turns its endpoints into cities - empty ones switch search, a chosen
+    airport becomes the city it serves - and a flight hop does the
+    reverse, resolving a chosen city to its own airport when it has one.
+    Announced rather than silent.
   */
   const setMode = async (index: number, mode: TravelMode) => {
-    setModes((current) => current.map((m, i) => (i === index ? mode : m)));
-    const { stops: synced, conversions } = await syncStopsWithMode(
-      stops,
-      index,
-      mode,
-      resolveAirport,
-    );
-    setStops(synced);
-    if (conversions.length > 0) {
-      showToast(`Picked the airport for the flight: ${conversions.join(', ')}`, {
+    const nextModes = modes.map((m, i) => (i === index ? mode : m));
+    setModes(nextModes);
+    const synced = await syncStopsWithMode(stops, nextModes, index, {
+      airportForCity: resolveAirport,
+      cityForAirport: resolveCity,
+    });
+    setStops(synced.stops);
+    if (synced.conversions.length > 0) {
+      showToast(`Adjusted for you: ${synced.conversions.join(', ')}`, {
         key: 'stop-kind-sync',
       });
+    }
+    if (synced.unresolved.length > 0) {
+      showToast(
+        `Pick the city for ${synced.unresolved.join(', ')} - train, car, bus and ferry hops run between cities`,
+        { key: 'stop-kind-unresolved' },
+      );
     }
   };
 
   const addLeg = () => {
-    setStops((current) => [...current, emptyStop()]);
+    // The new stop starts as the kind the inherited mode needs.
+    setStops((current) => [...current, emptyStopOfKind(kindForNewStop(modes))]);
     // The new hop inherits the previous one's mode (owner, 2026-08-18):
     // after driving out to Annecy, the hop back is a drive too - and an
     // all-flight chain still begets flights.
