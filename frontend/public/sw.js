@@ -12,7 +12,9 @@
 // consulted before the network, so a shell change without a version bump is
 // invisible to every browser that has visited before — that is exactly how
 // the myContrail rename failed to reach installed/returning visitors.
-const CACHE = 'mycontrail-v3';
+// v4 (2026-10-03): the world atlas under /geo/ changed shape (the UK became
+// four countries) and the old one stayed pinned in every returning browser.
+const CACHE = 'mycontrail-v4';
 
 const APP_SHELL = [
   '/',
@@ -111,6 +113,27 @@ self.addEventListener('fetch', (event) => {
           return response;
         })
         .catch(() => caches.match('/').then((cached) => cached || Response.error()))
+    );
+    return;
+  }
+
+  // The world atlas is NOT fingerprinted - /geo/countries-50m.json keeps its
+  // name across deploys - so cache-first pinned the old world forever: the
+  // UK split shipped and returning browsers kept drawing one UK polygon
+  // whose id no longer matched any country (owner report, 2026-10-03).
+  // Network first, cached copy only when offline. The HTTP cache still
+  // answers with a 304 when nothing changed, so this costs one round trip.
+  if (url.pathname.startsWith('/geo/')) {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          if (response.ok && response.type === 'basic') {
+            const copy = response.clone();
+            caches.open(CACHE).then((cache) => cache.put(request, copy));
+          }
+          return response;
+        })
+        .catch(() => caches.match(request).then((cached) => cached || Response.error()))
     );
     return;
   }
