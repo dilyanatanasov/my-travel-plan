@@ -101,6 +101,17 @@
   --color-panel-accent: 86 99 63;
 
   /*
+    Travel book (2026-10-27). Paper stays paper in both themes - warm cream
+    by day, a warm dark stock at night so the open book does not glare. The
+    cover is leather with gold foil and does not invert: a book cover is an
+    object, not a surface.
+  */
+  --color-paper: 250 243 230;
+  --color-paper-edge: 226 212 188;
+  --color-binding: 92 47 18;
+  --color-binding-foil: 232 196 140;
+
+  /*
     Elevation. Full shadow strings rather than a colour, because light and
     dark need different alphas, not just a different hue: on a dark surface a
     shadow at light-mode opacity is invisible, so depth has to come from a
@@ -176,6 +187,11 @@
 
   /* Deeper sage so the filled panel still separates from a dark canvas. */
   --color-panel-accent: 61 71 43;
+
+  --color-paper: 44 40 35;
+  --color-paper-edge: 30 27 24;
+  --color-binding: 74 38 15;
+  --color-binding-foil: 222 186 130;
 
   /* Harder and deeper: dark surfaces separate by contrast, not by tint. */
   --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.40);

@@ -24,6 +24,7 @@ const PrivacyPage = lazy(() => import('./pages/PrivacyPage'));
 const TermsPage = lazy(() => import('./pages/TermsPage'));
 const DailyPage = lazy(() => import('./pages/DailyPage'));
 const TripSearchPage = lazy(() => import('./pages/TripSearchPage'));
+const TravelBookPage = lazy(() => import('./pages/TravelBookPage'));
 
 function App() {
   // Stale open tabs get a "new version — reload" toast after deploys.
@@ -61,6 +62,8 @@ function App() {
             <Route index element={<TravelMapPage />} />
             {/* Redirect old routes to home */}
             <Route path="countries" element={<Navigate to="/" replace />} />
+            {/* The travel book - the owner's journeys as a yearbook */}
+            <Route path="book" element={<TravelBookPage />} />
           </Route>
           <Route path="/settings" element={<SettingsPage />} />
           {/* Destination discovery — "where haven't I been that's cheap" */}

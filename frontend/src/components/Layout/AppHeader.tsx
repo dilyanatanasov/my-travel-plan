@@ -110,6 +110,33 @@ function AppHeader() {
             </span>
           </Link>
           {/*
+            The travel book (2026-10-27, owner: entry in the main nav).
+            Icon-only on phones like the Play chip - a fixed 44px square
+            so the tight phone header keeps its measured spare room -
+            and labelled from sm, where the header has width to give.
+          */}
+          <Link
+            to="/book"
+            aria-label="Travel book"
+            className="flex items-center justify-center gap-1.5 min-h-11 min-w-11 sm:px-3 rounded-lg border border-line
+              bg-surface text-sm font-medium text-ink-muted hover:text-ink"
+          >
+            <svg
+              className="w-4 h-4 flex-shrink-0"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M12 6.5C10.3 5.2 7.9 4.5 4 4.5v13c3.9 0 6.3.7 8 2 1.7-1.3 4.1-2 8-2v-13c-3.9 0-6.3.7-8 2z" />
+              <path d="M12 6.5v13" />
+            </svg>
+            <span className="hidden sm:block">Book</span>
+          </Link>
+          {/*
             The games' entry, PHONES ONLY (owner call, 2026-08-21). This
             reverses the 2026-08-14 "no header entry" decision, and the
             reason it changes is that there are two games now, both

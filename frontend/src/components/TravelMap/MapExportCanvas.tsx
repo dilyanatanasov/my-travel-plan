@@ -80,6 +80,12 @@ interface MapExportCanvasProps {
   focusLegOrder?: number | null;
   /** Distinct id so a trip canvas cannot collide with the map-card one. */
   svgId?: string;
+  /**
+   * Draw in place, filling the parent, instead of off-screen for export
+   * (travel book, 2026-10-27): the book's route pages show the same trip
+   * map the share card uses, so there is one trip renderer, not two.
+   */
+  inline?: boolean;
 }
 
 function MapExportCanvas({
@@ -88,6 +94,7 @@ function MapExportCanvas({
   journey,
   focusLegOrder,
   svgId,
+  inline,
 }: MapExportCanvasProps) {
   const outer = useTheme();
 
@@ -107,6 +114,7 @@ function MapExportCanvas({
         journey={journey}
         focusLegOrder={focusLegOrder}
         svgId={svgId}
+        inline={inline}
       />
     </ThemeContext.Provider>
   );
@@ -117,11 +125,13 @@ function MapExportCanvasInner({
   journey,
   focusLegOrder,
   svgId,
+  inline,
 }: {
   height: number;
   journey?: FlightJourney;
   focusLegOrder?: number | null;
   svgId?: string;
+  inline?: boolean;
 }) {
   const { map: colors } = useMapColors();
   const { data: visits = [] } = useGetVisitsQuery();
@@ -328,8 +338,12 @@ function MapExportCanvasInner({
   return (
     <div
       aria-hidden="true"
-      className="pointer-events-none fixed top-0 -left-[20000px]"
-      style={{ width: EXPORT_WIDTH, height }}
+      className={
+        inline
+          ? 'pointer-events-none w-full h-full'
+          : 'pointer-events-none fixed top-0 -left-[20000px]'
+      }
+      style={inline ? undefined : { width: EXPORT_WIDTH, height }}
     >
       <ComposableMap
         id={svgId ?? EXPORT_SVG_ID}
@@ -337,7 +351,9 @@ function MapExportCanvasInner({
         height={height}
         projectionConfig={{ rotate: [-10, 0, 0], scale: EXPORT_SCALE }}
         data-framed={centroidsSettled ? '1' : '0'}
-        style={{ width: EXPORT_WIDTH, height }}
+        style={
+          inline ? { width: '100%', height: '100%' } : { width: EXPORT_WIDTH, height }
+        }
       >
         <ZoomableGroup
           zoom={framing?.zoom ?? 1}
