@@ -1,6 +1,6 @@
 import { useMapContext, useZoomPanContext } from 'react-simple-maps';
 import { getZoomAdjustedSize } from '../FlightMap/routeUtils';
-import { legPhotoUrl } from '../../features/flights/StopPhotoControl';
+import { legPhotoUrl } from '../../features/flights/legPhoto';
 import type { ReplayPostcard } from './useReplayOrchestration';
 import { wrapCaption } from './postcardCaption';
 

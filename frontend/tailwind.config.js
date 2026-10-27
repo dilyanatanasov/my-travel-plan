@@ -63,6 +63,16 @@ export default {
           DEFAULT: token('danger'),
           soft: token('danger-soft'),
         },
+        // Travel book stock and binding; see tokens.css.
+        paper: {
+          DEFAULT: token('paper'),
+          edge: token('paper-edge'),
+        },
+        // Not "cover": bg-cover is Tailwind's background-size utility.
+        binding: {
+          DEFAULT: token('binding'),
+          foil: token('binding-foil'),
+        },
       },
 
       /*

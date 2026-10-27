@@ -5,15 +5,7 @@ import {
   useDeleteLegPhotoMutation,
 } from './flightsApi';
 import { useToast } from '../../components/Toast/ToastProvider';
-
-const API_BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? '/api';
-
-/** Authed photo URL - <img> sends same-origin cookies, so no client magic. */
-export function legPhotoUrl(legId: number, cacheBust?: number): string {
-  return `${API_BASE}/flights/legs/${legId}/photo${
-    cacheBust ? `?v=${cacheBust}` : ''
-  }`;
-}
+import { legPhotoUrl } from './legPhoto';
 
 /**
  * The camera on a stop chip (trip photos, 2026-08-14): upload, replace via
