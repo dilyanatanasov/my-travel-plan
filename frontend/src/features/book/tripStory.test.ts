@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { FlightJourney } from '../../types';
-import { joinList, tripStory, type StoryContext } from './tripStory';
+import { joinList, tripStory, withArticle, type StoryContext } from './tripStory';
 import type { BookStop } from './types';
 
 const SOFIA: BookStop = { name: 'Sofia', iso2: null, latitude: 42.69, longitude: 23.41 };
@@ -100,5 +100,24 @@ describe('joinList', () => {
     expect(joinList(['a'])).toBe('a');
     expect(joinList(['a', 'b'])).toBe('a and b');
     expect(joinList(['a', 'b', 'c'])).toBe('a, b and c');
+  });
+});
+
+describe('country names in sentences', () => {
+  it('adds "the" where the name needs it', () => {
+    expect(withArticle('United States')).toBe('the United States');
+    expect(withArticle('Netherlands')).toBe('the Netherlands');
+    expect(withArticle('Cayman Islands')).toBe('the Cayman Islands');
+    expect(withArticle('Japan')).toBe('Japan');
+    expect(withArticle('Ukraine')).toBe('Ukraine');
+  });
+
+  it('reads naturally mid-sentence and at a sentence start', () => {
+    const story = tripStory(context({ newCountries: ['United States'] }));
+    expect(story).toMatch(/Your first time in the United States\.|The United States went into the passport/);
+    expect(tripStory(context({ newCountries: ['Japan', 'Philippines'] }))).toContain('Japan and the Philippines');
+    expect(tripStory(context({ returns: [{ name: 'Netherlands', firstYear: 2019 }] }))).toContain(
+      'Back in the Netherlands, first visited in 2019.',
+    );
   });
 });

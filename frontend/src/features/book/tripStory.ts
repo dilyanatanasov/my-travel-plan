@@ -54,6 +54,19 @@ function capitalize(text: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
+/*
+  Country names that read with "the" in a sentence: "your first time in
+  the United States", "back in the Netherlands". Matched on the names the
+  countries table uses.
+*/
+const NEEDS_THE =
+  /^(United |Czech Republic|Central African|Dominican Republic|Democratic Republic|British Indian|French Southern|U\.S\. |Congo$)|(Islands|Bahamas|Comoros|Gambia|Maldives|Netherlands|Philippines|Seychelles)$/;
+
+/** "the United States", "Japan". Lower-case "the": capitalize at a sentence start. */
+export function withArticle(name: string): string {
+  return NEEDS_THE.test(name) ? `the ${name}` : name;
+}
+
 /** "a", "a and b", "a, b and c". */
 export function joinList(items: string[]): string {
   if (items.length <= 1) return items.join('');
@@ -146,9 +159,9 @@ function route(ctx: StoryContext): string | null {
 
 function highlight(ctx: StoryContext): string | null {
   const seed = ctx.journey.id;
-  const fresh = ctx.newCountries;
+  const fresh = ctx.newCountries.map(withArticle);
   if (fresh.length === 1) {
-    return pick(seed, [`Your first time in ${fresh[0]}.`, `${fresh[0]} went into the passport for the first time.`]);
+    return pick(seed, [`Your first time in ${fresh[0]}.`, `${capitalize(fresh[0])} went into the passport for the first time.`]);
   }
   if (fresh.length > 1) {
     const shown = fresh.slice(0, 3);
@@ -162,14 +175,14 @@ function highlight(ctx: StoryContext): string | null {
   if (ctx.firstModes.length > 0 && ctx.indexInBook > 0) {
     return `The first time the book travels by ${joinList(ctx.firstModes.map((m) => MODE_NOUN[m]))}.`;
   }
-  const back = ctx.returns[0];
+  const back = ctx.returns[0] && { ...ctx.returns[0], name: withArticle(ctx.returns[0].name) };
   if (back) {
     if (back.firstYear !== null && back.firstYear === ctx.year) return `Back in ${back.name} again, the same year.`;
     if (back.firstYear !== null) return `Back in ${back.name}, first visited in ${back.firstYear}.`;
     return `Back in ${back.name} once more.`;
   }
   if (ctx.domestic) {
-    return ctx.homeName ? `A journey at home, in ${ctx.homeName}.` : 'A journey close to home.';
+    return ctx.homeName ? `A journey at home, in ${withArticle(ctx.homeName)}.` : 'A journey close to home.';
   }
   const share = ctx.distanceKm / EARTH_KM;
   if (share >= 0.05) return `That is ${Math.round(share * 100)}% of the way around the Earth.`;
