@@ -63,3 +63,20 @@ clamps to the back cover on phone, dark mode passport. No console errors.
 
 ## Remaining
 - Owner local test, then merge/deploy on the owner's go.
+
+## Post-deploy fix (same day): swipes on the contents page, lag
+Owner report after going live: laggy; swiping on the contents page does
+not turn well; one swipe went from page 3 to page 64.
+- Cause 1: `onPointerDown` ignored gestures that began on a button or link.
+  The contents page is almost all buttons, so swipes there never turned,
+  and the browser then read the swipe as a tap on a chapter and jumped.
+  Now any gesture can turn the page: pointer capture starts only after a
+  clearly sideways move (8px, more x than y), a moved gesture swallows the
+  click that follows (`onClickCapture`), a still tap on a control is left
+  to the control.
+- Cause 2: every pointer move re-rendered every mounted page (route maps
+  included). Page content is now a memoized `PageContent` with a stable
+  api and a `useCallback` renderPage in TravelBookPage; phones mount one
+  turned leaf instead of two.
+- Checked: mouse + real touch (CDP) swipes on contents both ways, taps and
+  wobbly taps still jump to chapters, drag at p95 16.9 ms per frame.

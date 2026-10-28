@@ -3,7 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import BrandMark from '../components/BrandMark';
 import ContrailLoader from '../components/ContrailLoader';
 import { useAuth } from '../features/auth/authApi';
-import FlipBook from '../features/book/components/FlipBook';
+import FlipBook, { type FlipBookApi } from '../features/book/components/FlipBook';
 import { BookPageView } from '../features/book/components/BookPages';
 import { useTravelBook } from '../features/book/useTravelBook';
 import type { BookPage } from '../features/book/types';
@@ -44,6 +44,13 @@ function TravelBookPage() {
     [params, setParams],
   );
 
+  // Stable between URL writes, so FlipBook's memoized pages do not re-render on every turn.
+  const renderPage = useCallback(
+    (index: number, side: 'left' | 'right' | 'single', api: FlipBookApi) =>
+      book ? <BookPageView page={pages[index]} book={book} side={side} number={index} api={api} canEdit /> : null,
+    [book, pages],
+  );
+
   if (isGuest || !user) return <GuestTeaser />;
 
   if (isLoading) {
@@ -73,9 +80,7 @@ function TravelBookPage() {
         initialPage={Math.min(initialPage, pages.length - 1)}
         onPageChange={onPageChange}
         pageLabel={(index) => pageLabel(pages, index)}
-        renderPage={(index, side, api) => (
-          <BookPageView page={pages[index]} book={book} side={side} number={index} api={api} canEdit />
-        )}
+        renderPage={renderPage}
       />
     </div>
   );
