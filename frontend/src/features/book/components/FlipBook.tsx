@@ -43,11 +43,15 @@ function usePrefersReducedMotion(): boolean {
 interface Drag {
   pointerId: number;
   startX: number;
+  /** Horizontal travel so far; positive is to the right. */
+  dx: number;
   /** The leaf being dragged and which way it travels. */
   leaf: number;
   forward: boolean;
   progress: number;
   moved: boolean;
+  /** Forward from the back cover: closes the book and reopens it at the cover. */
+  loop: boolean;
 }
 
 /**
@@ -94,6 +98,13 @@ function FlipBook({ pageCount, renderPage, pageLabel, initialPage = 0, onPageCha
   const [page, setPage] = useState(() => Math.min(Math.max(initialPage, 0), pageCount - 1));
   const leafCount = spread ? pageCount / 2 : pageCount;
   const turned = spread ? Math.ceil(page / 2) : page;
+  /*
+    Where the book ends. In spreads the back cover is the last leaf's back,
+    shown once every leaf is turned. On a phone the back cover is the last
+    leaf's front, so turning that leaf too would leave a blank page.
+  */
+  const maxTurned = spread ? leafCount : leafCount - 1;
+  const atEnd = turned >= maxTurned;
 
   const [drag, setDrag] = useState<Drag | null>(null);
   const [turning, setTurning] = useState<number | null>(null);
@@ -107,7 +118,7 @@ function FlipBook({ pageCount, renderPage, pageLabel, initialPage = 0, onPageCha
 
   const turnTo = useCallback(
     (nextTurned: number) => {
-      const clamped = Math.min(Math.max(nextTurned, 0), leafCount);
+      const clamped = Math.min(Math.max(nextTurned, 0), maxTurned);
       if (clamped === turned) return;
       if (Math.abs(clamped - turned) > 1) {
         // A jump (contents, chapter links) fades instead of riffling.
@@ -119,12 +130,18 @@ function FlipBook({ pageCount, renderPage, pageLabel, initialPage = 0, onPageCha
       }
       setPage(pageForTurned(clamped));
     },
-    [leafCount, turned, pageForTurned],
+    [maxTurned, turned, pageForTurned],
   );
+
+  /** Past the back cover: the book closes and opens again at the cover. */
+  const restart = useCallback(() => {
+    setJumpKey((k) => k + 1);
+    setPage(0);
+  }, []);
 
   const api: FlipBookApi = {
     goTo: (target) => turnTo(spread ? Math.ceil(target / 2) : target),
-    next: () => turnTo(turned + 1),
+    next: () => (atEnd ? restart() : turnTo(turned + 1)),
     prev: () => turnTo(turned - 1),
   };
   const apiRef = useRef(api);
@@ -160,12 +177,18 @@ function FlipBook({ pageCount, renderPage, pageLabel, initialPage = 0, onPageCha
     if ((event.target as HTMLElement).closest('a, button')) return;
     const rect = bookRef.current?.getBoundingClientRect();
     if (!rect) return;
-    const onRight = spread ? event.clientX > rect.left + rect.width / 2 : event.clientX > rect.left + rect.width * 0.3;
-    const forward = onRight;
+    /*
+      On the closed back cover a tap or a swipe to the left reopens the
+      book at the front; only a drag to the right goes back a page (see
+      onPointerUp). Elsewhere the tapped side decides the direction.
+    */
+    const split = spread ? rect.left + rect.width / 2 : rect.left + rect.width * 0.3;
+    const loop = atEnd;
+    const forward = loop || event.clientX > split;
     const leaf = forward ? turned : turned - 1;
-    if (leaf < 0 || leaf >= leafCount) return;
+    if (!loop && (leaf < 0 || leaf >= leafCount)) return;
     (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
-    setDrag({ pointerId: event.pointerId, startX: event.clientX, leaf, forward, progress: 0, moved: false });
+    setDrag({ pointerId: event.pointerId, startX: event.clientX, dx: 0, leaf, forward, progress: 0, moved: false, loop });
   };
 
   const onPointerMove = (event: React.PointerEvent) => {
@@ -174,12 +197,17 @@ function FlipBook({ pageCount, renderPage, pageLabel, initialPage = 0, onPageCha
     const travel = pageWidth * (spread ? 1.6 : 1);
     const raw = drag.forward ? -dx / travel : dx / travel;
     const progress = Math.min(Math.max(raw, 0), 1);
-    setDrag({ ...drag, progress, moved: drag.moved || Math.abs(dx) > 6 });
+    setDrag({ ...drag, progress, dx, moved: drag.moved || Math.abs(dx) > 6 });
   };
 
   const onPointerUp = (event: React.PointerEvent) => {
     if (!drag || event.pointerId !== drag.pointerId) return;
     setDrag(null);
+    if (drag.loop) {
+      if (!drag.moved || drag.progress > 0.3) restart();
+      else if (drag.dx > 0) turnTo(turned - 1);
+      return;
+    }
     if (!drag.moved) {
       // A tap turns the page on the side that was tapped.
       turnTo(drag.forward ? turned + 1 : turned - 1);
@@ -256,13 +284,14 @@ function FlipBook({ pageCount, renderPage, pageLabel, initialPage = 0, onPageCha
             {leaves.map((leaf) => {
               const isTurned = leaf < turned;
               let angle = isTurned ? -180 : 0;
-              if (drag && drag.leaf === leaf) {
+              const dragging = drag !== null && !drag.loop && drag.leaf === leaf;
+              if (dragging) {
                 angle = drag.forward ? -180 * drag.progress : -180 + 180 * drag.progress;
               }
-              const active = turning === leaf || drag?.leaf === leaf;
+              const active = turning === leaf || dragging;
               // Unturned leaves stack first-on-top; turned ones last-on-top.
               const z = active ? 1000 : isTurned ? leaf + 1 : leafCount - leaf;
-              const shade = drag?.leaf === leaf ? Math.sin((Math.abs(angle) * Math.PI) / 180) * 0.35 : 0;
+              const shade = dragging ? Math.sin((Math.abs(angle) * Math.PI) / 180) * 0.35 : 0;
               const frontPage = spread ? 2 * leaf : leaf;
               const backPage = spread ? 2 * leaf + 1 : null;
               const frontVisible = visiblePages.includes(frontPage) && !isTurned;
@@ -320,13 +349,14 @@ function FlipBook({ pageCount, renderPage, pageLabel, initialPage = 0, onPageCha
         <button
           type="button"
           onClick={api.next}
-          disabled={turned === leafCount}
-          aria-label="Next page"
+          disabled={pageCount < 2}
+          aria-label={atEnd ? 'Back to the cover' : 'Next page'}
+          title={atEnd ? 'Back to the cover' : undefined}
           className="w-11 h-11 flex items-center justify-center rounded-full border border-line bg-surface text-ink
             hover:bg-surface-sunken disabled:opacity-40 disabled:cursor-default focus:outline-none focus:ring-2 focus:ring-brand-500"
         >
           <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M9 18l6-6-6-6" />
+            {atEnd ? <path d="M3 12a9 9 0 1 0 3-6.7M3 4v5h5" /> : <path d="M9 18l6-6-6-6" />}
           </svg>
         </button>
       </nav>
