@@ -23,6 +23,8 @@ export interface BookTrip {
   /** Legs that carry a photo, in leg order. */
   photoLegIds: number[];
   notes: string | null;
+  /** A few sentences written from the trip's own data (see tripStory). */
+  story: string;
 }
 
 export interface BookChapter {
@@ -46,8 +48,24 @@ export interface BookData {
     firstYear: number | null;
     lastYear: number | null;
   };
+  /** Every stamp ever collected, in first-visit order. */
+  passport: PassportEntry[];
   /** Alpha-2 -> display name, for stamps and captions. */
   countryNames: Record<string, string>;
+}
+
+/** One stamp in the passport: a country and the trip that first reached it. */
+export interface PassportEntry {
+  iso2: Alpha2;
+  /** Short stamp date, e.g. "MAY 2023"; null for undated trips. */
+  date: string | null;
+}
+
+/** A line in the table of contents. */
+export interface ContentsEntry {
+  key: string;
+  title: string;
+  page: number;
 }
 
 /**
@@ -58,11 +76,21 @@ export interface BookData {
 export type BookPage =
   | { kind: 'cover' }
   | { kind: 'intro' }
-  | { kind: 'contents'; entries: { chapter: BookChapter; page: number }[] }
+  | { kind: 'contents'; entries: ContentsEntry[] }
   | { kind: 'chapter-title'; chapter: BookChapter }
   | { kind: 'chapter-stamps'; chapter: BookChapter }
   | { kind: 'trip-route'; trip: BookTrip; chapter: BookChapter }
   | { kind: 'trip-story'; trip: BookTrip; chapter: BookChapter }
+  | { kind: 'passport-title' }
+  | {
+      kind: 'passport';
+      /** The stamps on this page, then `emptySlots` dotted rings. */
+      stamps: PassportEntry[];
+      emptySlots: number;
+      /** 1-based page of the passport and how many there are. */
+      sheet: number;
+      sheets: number;
+    }
   | { kind: 'the-end' }
   | { kind: 'next-chapter' }
   | { kind: 'back-cover' };

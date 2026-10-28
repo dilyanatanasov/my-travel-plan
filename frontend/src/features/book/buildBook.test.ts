@@ -187,7 +187,41 @@ describe('buildBook', () => {
       'chapter-title',
       'chapter-title',
       'chapter-title',
+      'passport-title',
     ]);
+  });
+
+  it('collects every stamp into the passport in first-visit order', () => {
+    expect(book.passport.map((e) => e.iso2)).toEqual(['PT', 'TR', 'JP']);
+    expect(book.passport[0].date).toBe('JUN 1, 2022');
+  });
+
+  it('writes a story for every trip', () => {
+    const [first, second] = [book.chapters[0].trips[0], book.chapters[1].trips[0]];
+    expect(first.story).toContain('This is where the book begins.');
+    expect(first.story).toContain('Portugal');
+    expect(second.story).toContain('Turkey');
+  });
+});
+
+describe('passport pages', () => {
+  function bookWithStamps(count: number) {
+    const codes = Array.from({ length: count }, (_, i) => `X${String.fromCharCode(65 + (i % 26))}${i}`);
+    const book = buildBook({ journeys: [], countries, photoLegIds: [] });
+    return { ...book, passport: codes.map((iso) => ({ iso2: asAlpha2(iso.slice(0, 2)), date: null })) };
+  }
+
+  it.each([1, 8, 9, 17, 18, 26])('keeps room to grow and the page count even with %i stamps', (count) => {
+    const pages = buildPages(bookWithStamps(count));
+    expect(pages.length % 2).toBe(0);
+    const sheets = pages.filter((p) => p.kind === 'passport');
+    const last = sheets[sheets.length - 1];
+    expect(last.kind === 'passport' && last.emptySlots).toBeGreaterThan(0);
+    const placed = sheets.reduce((sum, p) => sum + (p.kind === 'passport' ? p.stamps.length : 0), 0);
+    expect(placed).toBe(count);
+    // The passport opens on a left-hand page, like a chapter.
+    expect(pages.findIndex((p) => p.kind === 'passport-title') % 2).toBe(1);
+    expect(pages[pages.length - 1].kind).toBe('back-cover');
   });
 
   it('still makes a valid book with no trips', () => {

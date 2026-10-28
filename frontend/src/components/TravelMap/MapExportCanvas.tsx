@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ComposableMap, ZoomableGroup } from 'react-simple-maps';
-import type { FlightJourney } from '../../types';
+import type { Country, FlightJourney, Visit } from '../../types';
 import {
   useGetVisitsQuery,
   useGetCountriesQuery,
@@ -120,6 +120,15 @@ function MapExportCanvas({
   );
 }
 
+/*
+  Stable empties while the queries load. A fresh [] per render made the
+  framing memo new every render, its effect set state, and the trip map
+  looped until React gave up (seen in the travel book on a slow load).
+*/
+const NO_VISITS: Visit[] = [];
+const NO_FLIGHTS: FlightJourney[] = [];
+const NO_COUNTRIES: Country[] = [];
+
 function MapExportCanvasInner({
   height,
   journey,
@@ -134,8 +143,8 @@ function MapExportCanvasInner({
   inline?: boolean;
 }) {
   const { map: colors } = useMapColors();
-  const { data: visits = [] } = useGetVisitsQuery();
-  const { data: flights = [] } = useGetFlightsQuery();
+  const { data: visits = NO_VISITS } = useGetVisitsQuery();
+  const { data: flights = NO_FLIGHTS } = useGetFlightsQuery();
 
   // Trip mode narrows every layer to the one journey.
   const shownFlights = useMemo(
@@ -143,7 +152,7 @@ function MapExportCanvasInner({
     [journey, flights],
   );
 
-  const { data: countries = [] } = useGetCountriesQuery();
+  const { data: countries = NO_COUNTRIES } = useGetCountriesQuery();
 
   const fullDisplayMap = useMemo(
     () => buildCountryDisplayMap(visits),

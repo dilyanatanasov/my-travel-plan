@@ -74,7 +74,7 @@ function TravelBookPage() {
         onPageChange={onPageChange}
         pageLabel={(index) => pageLabel(pages, index)}
         renderPage={(index, side, api) => (
-          <BookPageView page={pages[index]} book={book} side={side} number={index} api={api} />
+          <BookPageView page={pages[index]} book={book} side={side} number={index} api={api} canEdit />
         )}
       />
     </div>

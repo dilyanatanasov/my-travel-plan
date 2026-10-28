@@ -5,13 +5,15 @@ import { ModeIcon } from '../../../components/ui/ModeIcon';
 import MapExportCanvas from '../../../components/TravelMap/MapExportCanvas';
 import { legPhotoUrl } from '../../flights/legPhoto';
 import { formatJourneyDate } from '../../../utils/journeyDate';
-import type { BookChapter, BookData, BookPage, BookTrip } from '../types';
+import type { BookChapter, BookData, BookPage, BookTrip, ContentsEntry, PassportEntry } from '../types';
+import { STAMPS_PER_SHEET } from '../buildBook';
 import type { FlipBookApi } from './FlipBook';
 import BookPageFrame from './BookPageFrame';
 import FlagBackdrop from './FlagBackdrop';
 import PassportStamp from './PassportStamp';
 
 const EARTH_KM = 40075;
+const WORLD_COUNTRIES = 195;
 
 function km(value: number): string {
   return `${Math.round(value).toLocaleString()} km`;
@@ -110,7 +112,7 @@ function ContentsPage({
   number,
   entries,
   api,
-}: PageProps & { entries: { chapter: BookChapter; page: number }[] }) {
+}: PageProps & { entries: ContentsEntry[] }) {
   const dense = entries.length > 12;
   return (
     <BookPageFrame side={side} pageNumber={number}>
@@ -123,8 +125,8 @@ function ContentsPage({
           </p>
         ) : (
           <ol className={dense ? 'grid grid-cols-2 gap-x-6' : ''}>
-            {entries.map(({ chapter, page }, i) => (
-              <li key={chapter.key}>
+            {entries.map(({ key, title, page }, i) => (
+              <li key={key}>
                 <button
                   type="button"
                   onClick={() => api.goTo(page)}
@@ -134,7 +136,7 @@ function ContentsPage({
                   ].join(' ')}
                 >
                   {!dense && <span className="text-[11px] text-ink-subtle tabular-nums w-5">{i + 1}</span>}
-                  <span className="font-serif">{chapter.title}</span>
+                  <span className="font-serif">{title}</span>
                   <span className="flex-1 border-b border-dotted border-ink/30 translate-y-[-4px]" />
                   <span className="text-[12px] text-ink-muted tabular-nums">{page}</span>
                 </button>
@@ -279,10 +281,10 @@ const POSTCARD_LAYOUTS: { top: number; left: number; width: number; rotate: numb
   ],
 ];
 
-function TripStoryPage({ book, trip, side, number }: PageProps & { trip: BookTrip }) {
+function TripStoryPage({ book, trip, side, number, canEdit }: PageProps & { trip: BookTrip }) {
   const photos = trip.photoLegIds.slice(0, 3);
   const layout = POSTCARD_LAYOUTS[photos.length - 1];
-  const empty = photos.length === 0 && !trip.notes;
+  const bare = photos.length === 0 && !trip.notes;
   return (
     <BookPageFrame
       side={side}
@@ -317,7 +319,8 @@ function TripStoryPage({ book, trip, side, number }: PageProps & { trip: BookTri
           </div>
         )}
 
-        {trip.notes && (
+        {/* The owner's own words win; otherwise the book tells the story from the data. */}
+        {trip.notes ? (
           <p
             className={[
               'font-serif italic text-[15px] leading-[1.7] text-ink whitespace-pre-line',
@@ -326,27 +329,38 @@ function TripStoryPage({ book, trip, side, number }: PageProps & { trip: BookTri
           >
             {trip.notes}
           </p>
-        )}
-
-        {empty && (
+        ) : bare ? (
           <div className="mt-2">
-            <Eyebrow>Countries on this journey</Eyebrow>
+            <Eyebrow>The journey</Eyebrow>
             <Rule />
-            <ul className="space-y-2.5">
-              {trip.countries.slice(0, 8).map((iso) => (
-                <li key={iso} className="flex items-center gap-3 text-[15px] font-serif">
-                  <CountryFlag iso2={iso} className="!w-6" />
-                  {book.countryNames[iso] ?? iso}
-                </li>
-              ))}
-              {trip.countries.length === 0 && (
-                <li className="font-serif italic text-ink-muted text-[15px]">Close to home this time.</li>
-              )}
-            </ul>
-            <p className="mt-8 font-serif italic text-ink-subtle text-[13px] leading-relaxed">
-              Photos and notes you add to this journey will appear on this page.
-            </p>
+            <p className="font-serif text-[18px] leading-[1.75] text-ink">{trip.story}</p>
+            {trip.countries.length > 0 && (
+              <ul className="mt-7 flex flex-wrap gap-x-5 gap-y-2.5">
+                {trip.countries.slice(0, 6).map((iso) => (
+                  <li key={iso} className="flex items-center gap-2 text-[13px] text-ink-muted">
+                    <CountryFlag iso2={iso} className="!w-5" />
+                    {book.countryNames[iso] ?? iso}
+                  </li>
+                ))}
+              </ul>
+            )}
+            {canEdit && (
+              <Link
+                to="/"
+                state={{ section: 'flights' }}
+                className="mt-5 inline-flex items-center gap-1.5 min-h-11 text-[13px] font-medium text-brand-text hover:underline"
+              >
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <rect x="3" y="6" width="18" height="14" rx="2" />
+                  <circle cx="12" cy="13" r="3.5" />
+                  <path d="M8.5 6l1.5-2h4l1.5 2" />
+                </svg>
+                Add a photo
+              </Link>
+            )}
           </div>
+        ) : (
+          <p className="mt-6 font-serif text-[15px] leading-[1.7] text-ink line-clamp-4">{trip.story}</p>
         )}
 
         {trip.newCountries.length > 0 && (
@@ -361,6 +375,121 @@ function TripStoryPage({ book, trip, side, number }: PageProps & { trip: BookTri
               />
             ))}
           </div>
+        )}
+      </div>
+    </BookPageFrame>
+  );
+}
+
+// --- Passport -----------------------------------------------------------------
+
+function PassportTitlePage({ book, side, number }: PageProps) {
+  const { passport } = book;
+  const first = passport[0];
+  const latest = passport[passport.length - 1];
+  // The familiar count of sovereign states; the countries table also holds territories.
+  const world = WORLD_COUNTRIES;
+  return (
+    <BookPageFrame side={side} pageNumber={number}>
+      <div className="h-full flex flex-col px-14 pt-16 pb-14">
+        <Eyebrow>Passport</Eyebrow>
+        <Rule />
+        <p className="font-serif text-[15px] text-ink-muted leading-relaxed">
+          Every country in this book, stamped in the order you first got there.
+        </p>
+        <div className="mt-10 flex items-end gap-4">
+          <p className="font-display text-[88px] leading-none text-brand-text tabular-nums">{passport.length}</p>
+          <p className="pb-3 text-[11px] uppercase tracking-[0.18em] text-ink-muted leading-relaxed">
+            {passport.length === 1 ? 'stamp' : 'stamps'}
+            {world > 0 && (
+              <>
+                <br />
+                of {world} countries
+              </>
+            )}
+          </p>
+        </div>
+        {world > 0 && (
+          <div className="mt-4 h-1.5 rounded-full bg-ink/10 overflow-hidden" aria-hidden="true">
+            <div
+              className="h-full rounded-full bg-brand-500"
+              style={{ width: `${Math.max(2, Math.min(100, (passport.length / world) * 100))}%` }}
+            />
+          </div>
+        )}
+        {first && latest && (
+          <dl className="mt-auto grid grid-cols-2 gap-x-6">
+            <PassportField label="First entry" entry={first} book={book} />
+            <PassportField label="Latest entry" entry={latest} book={book} />
+          </dl>
+        )}
+      </div>
+    </BookPageFrame>
+  );
+}
+
+function PassportField({ label, entry, book }: { label: string; entry: PassportEntry; book: BookData }) {
+  return (
+    <div>
+      <dt className="text-[10px] uppercase tracking-[0.2em] text-ink-subtle">{label}</dt>
+      <dd className="mt-1.5 flex items-center gap-2 font-serif text-[15px] text-ink">
+        <CountryFlag iso2={entry.iso2} className="!w-5" />
+        {book.countryNames[entry.iso2] ?? entry.iso2}
+      </dd>
+      {entry.date && <dd className="mt-0.5 text-[11px] text-ink-muted tracking-wider">{entry.date}</dd>}
+    </div>
+  );
+}
+
+function PassportSheetPage({
+  book,
+  side,
+  number,
+  stamps,
+  emptySlots,
+  sheet,
+  sheets,
+}: PageProps & { stamps: PassportEntry[]; emptySlots: number; sheet: number; sheets: number }) {
+  const offset = (sheet - 1) * STAMPS_PER_SHEET;
+  return (
+    <BookPageFrame side={side} pageNumber={number}>
+      <div className="h-full flex flex-col px-12 pt-16 pb-14">
+        <div className="flex items-baseline justify-between">
+          <Eyebrow>Entries</Eyebrow>
+          {sheets > 1 && (
+            <p className="text-[10px] tracking-[0.2em] text-ink-subtle tabular-nums">
+              {sheet} / {sheets}
+            </p>
+          )}
+        </div>
+        <Rule />
+        <div className="grid grid-cols-3 gap-x-3 gap-y-7 justify-items-center items-center mt-1">
+          {stamps.map((entry, i) => (
+            <div key={entry.iso2} className="relative">
+              <PassportStamp
+                iso2={entry.iso2}
+                name={book.countryNames[entry.iso2] ?? entry.iso2}
+                date={entry.date}
+                size={100}
+              />
+              <span className="absolute -bottom-4 left-1/2 -translate-x-1/2 text-[9px] text-ink-subtle tabular-nums">
+                {offset + i + 1}
+              </span>
+            </div>
+          ))}
+          {/* Unfilled slots: the collection has room to grow. */}
+          {Array.from({ length: emptySlots }, (_, i) => (
+            <div
+              key={`empty-${i}`}
+              aria-hidden="true"
+              className="w-[100px] h-[100px] rounded-full border-[1.5px] border-dashed border-ink/15"
+            />
+          ))}
+        </div>
+        {sheet === sheets && (
+          <p className="mt-auto font-serif italic text-ink-muted text-[14px]">
+            {emptySlots === STAMPS_PER_SHEET ? 'A fresh page, ready for the next stamp.' : 'Room for the next ones.'}
+          </p>
         )}
       </div>
     </BookPageFrame>
@@ -427,6 +556,8 @@ interface PageProps {
   side: PageSide;
   number: number;
   api: FlipBookApi;
+  /** The owner's own book: shows the small edit links. False for a future shared book. */
+  canEdit: boolean;
 }
 
 /** Render one page of the book. Pure: everything comes in through props. */
@@ -446,6 +577,18 @@ export function BookPageView({ page, ...props }: PageProps & { page: BookPage })
       return <TripRoutePage {...props} trip={page.trip} />;
     case 'trip-story':
       return <TripStoryPage {...props} trip={page.trip} />;
+    case 'passport-title':
+      return <PassportTitlePage {...props} />;
+    case 'passport':
+      return (
+        <PassportSheetPage
+          {...props}
+          stamps={page.stamps}
+          emptySlots={page.emptySlots}
+          sheet={page.sheet}
+          sheets={page.sheets}
+        />
+      );
     case 'the-end':
       return <TheEndPage {...props} />;
     case 'next-chapter':
