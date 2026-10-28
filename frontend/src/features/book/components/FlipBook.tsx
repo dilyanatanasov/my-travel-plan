@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
 /** Page shape: 3:4, fixed so the book reads as a book and can print later. */
 export const PAGE_RATIO = 3 / 4;
@@ -43,6 +43,9 @@ function usePrefersReducedMotion(): boolean {
 interface Drag {
   pointerId: number;
   startX: number;
+  startY: number;
+  /** Started on a button or link: a still tap is that control's click. */
+  onControl: boolean;
   /** Horizontal travel so far; positive is to the right. */
   dx: number;
   /** The leaf being dragged and which way it travels. */
@@ -146,6 +149,15 @@ function FlipBook({ pageCount, renderPage, pageLabel, initialPage = 0, onPageCha
   };
   const apiRef = useRef(api);
   apiRef.current = api;
+  /** Same object for the book's life, so memoized pages are not re-rendered by it. */
+  const stableApi = useMemo<FlipBookApi>(
+    () => ({
+      goTo: (target) => apiRef.current.goTo(target),
+      next: () => apiRef.current.next(),
+      prev: () => apiRef.current.prev(),
+    }),
+    [],
+  );
 
   // Through a ref: a parent's callback identity must not re-fire this.
   const onPageChangeRef = useRef(onPageChange);
@@ -171,10 +183,27 @@ function FlipBook({ pageCount, renderPage, pageLabel, initialPage = 0, onPageCha
   // --- Drag to turn -------------------------------------------------------
   const bookRef = useRef<HTMLDivElement>(null);
 
+  /*
+    A swipe may start anywhere, buttons included: the contents page is
+    almost all buttons, and skipping them meant a swipe there never turned
+    the page, and the browser then read the swipe as a tap on a chapter
+    and jumped to it (owner report, 2026-10-28: "from 3 to 64"). So:
+    pointer capture only starts once the finger really travels sideways,
+    a gesture that moved swallows the click that follows, and a still tap
+    on a button or link is left to the button or link.
+  */
+  const suppressClick = useRef(false);
+
+  const onClickCapture = (event: React.MouseEvent) => {
+    if (!suppressClick.current) return;
+    suppressClick.current = false;
+    event.preventDefault();
+    event.stopPropagation();
+  };
+
   const onPointerDown = (event: React.PointerEvent) => {
+    suppressClick.current = false;
     if (event.button !== 0 || reducedMotion) return;
-    // Links and buttons inside a page keep working as links and buttons.
-    if ((event.target as HTMLElement).closest('a, button')) return;
     const rect = bookRef.current?.getBoundingClientRect();
     if (!rect) return;
     /*
@@ -187,22 +216,44 @@ function FlipBook({ pageCount, renderPage, pageLabel, initialPage = 0, onPageCha
     const forward = loop || event.clientX > split;
     const leaf = forward ? turned : turned - 1;
     if (!loop && (leaf < 0 || leaf >= leafCount)) return;
-    (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
-    setDrag({ pointerId: event.pointerId, startX: event.clientX, dx: 0, leaf, forward, progress: 0, moved: false, loop });
+    const onControl = Boolean((event.target as HTMLElement).closest('a, button'));
+    setDrag({
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      dx: 0,
+      leaf,
+      forward,
+      progress: 0,
+      moved: false,
+      loop,
+      onControl,
+    });
   };
 
   const onPointerMove = (event: React.PointerEvent) => {
     if (!drag || event.pointerId !== drag.pointerId) return;
     const dx = event.clientX - drag.startX;
+    let moved = drag.moved;
+    if (!moved) {
+      // Wait for a clearly sideways move; a small wobble is still a tap.
+      const dy = event.clientY - drag.startY;
+      if (Math.abs(dx) < 8 || Math.abs(dx) < Math.abs(dy)) return;
+      moved = true;
+      suppressClick.current = true;
+      (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+    }
     const travel = pageWidth * (spread ? 1.6 : 1);
     const raw = drag.forward ? -dx / travel : dx / travel;
     const progress = Math.min(Math.max(raw, 0), 1);
-    setDrag({ ...drag, progress, dx, moved: drag.moved || Math.abs(dx) > 6 });
+    setDrag({ ...drag, progress, dx, moved });
   };
 
   const onPointerUp = (event: React.PointerEvent) => {
     if (!drag || event.pointerId !== drag.pointerId) return;
     setDrag(null);
+    // A still tap on a button or link belongs to it, not to the book.
+    if (!drag.moved && drag.onControl) return;
     if (drag.loop) {
       if (!drag.moved || drag.progress > 0.3) restart();
       else if (drag.dx > 0) turnTo(turned - 1);
@@ -231,7 +282,8 @@ function FlipBook({ pageCount, renderPage, pageLabel, initialPage = 0, onPageCha
   */
   const shift = !spread ? 0 : turned === 0 ? -pageWidth / 2 : turned === leafCount ? pageWidth / 2 : 0;
 
-  const firstLeaf = Math.max(0, turned - 2);
+  // Spreads need two turned leaves (the left page under the one turning back).
+  const firstLeaf = Math.max(0, turned - (spread ? 2 : 1));
   const lastLeaf = Math.min(leafCount - 1, turned + 1);
   const leaves: number[] = [];
   for (let i = firstLeaf; i <= lastLeaf; i++) leaves.push(i);
@@ -269,6 +321,7 @@ function FlipBook({ pageCount, renderPage, pageLabel, initialPage = 0, onPageCha
             onPointerMove={onPointerMove}
             onPointerUp={onPointerUp}
             onPointerCancel={() => setDrag(null)}
+            onClickCapture={onClickCapture}
           >
             {/* The book's own shadow, under whatever is open: one cover or the spread. */}
             <div
@@ -312,11 +365,11 @@ function FlipBook({ pageCount, renderPage, pageLabel, initialPage = 0, onPageCha
                   }}
                 >
                   <Face hidden={!frontVisible} shade={shade} animate={turning === leaf && !reducedMotion}>
-                    {renderPage(frontPage, spread ? 'right' : 'single', api)}
+                    <PageContent index={frontPage} side={spread ? 'right' : 'single'} renderPage={renderPage} api={stableApi} />
                   </Face>
                   {backPage !== null && (
                     <Face back hidden={!backVisible} shade={shade} animate={turning === leaf && !reducedMotion}>
-                      {renderPage(backPage, 'left', api)}
+                      <PageContent index={backPage} side="left" renderPage={renderPage} api={stableApi} />
                     </Face>
                   )}
                 </div>
@@ -363,6 +416,25 @@ function FlipBook({ pageCount, renderPage, pageLabel, initialPage = 0, onPageCha
     </div>
   );
 }
+
+/*
+  A page's content, memoized: dragging re-renders the shell on every
+  pointer move, and without this every mounted page (route maps
+  included) re-rendered with it - the lag the owner felt on phones.
+*/
+const PageContent = memo(function PageContent({
+  index,
+  side,
+  renderPage,
+  api,
+}: {
+  index: number;
+  side: 'left' | 'right' | 'single';
+  renderPage: FlipBookProps['renderPage'];
+  api: FlipBookApi;
+}) {
+  return <>{renderPage(index, side, api)}</>;
+});
 
 /** One side of a leaf. The back is pre-rotated so it reads correctly once turned. */
 function Face({
